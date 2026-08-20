@@ -1,0 +1,24 @@
+{
+  "capturedAt": "2026-08-20",
+  "scope": "agent-market-domain-data-outbox",
+  "status": "LOCAL_VERIFIED",
+  "implemented": [
+    "Agent draft and publication lifecycle with normalized capabilities",
+    "AES-256-GCM agent credential envelope bound to agent identity",
+    "Task lifecycle with request_id idempotency",
+    "PostgreSQL and pgvector core schema",
+    "Transactional outbox success acknowledgement and retry retention"
+  ],
+  "verification": {
+    "command": "pnpm --filter @agent-market/transaction-engine test",
+    "testFilesPassed": 7,
+    "testsPassed": 14,
+    "typecheckCommand": "pnpm --filter @agent-market/transaction-engine typecheck",
+    "typecheck": "PASS"
+  },
+  "externalBoundary": {
+    "awsInventory": "BLOCKED_BY_EXPIRED_CLI_SESSION",
+    "awsDeployment": "NOT_STARTED",
+    "productionVerification": "NOT_STARTED"
+  }
+}

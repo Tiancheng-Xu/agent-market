@@ -1,0 +1,421 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Agent Market project-owned performance evidence chain. Reuses the protected shared course foundation.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: agent-market
+    AllowedPattern: "[a-z0-9-]+"
+  SharedVpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  SharedDatabaseSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+  SharedDatabaseSecretArn:
+    Type: String
+    NoEcho: true
+  AllowedOrigin:
+    Type: String
+    Default: https://agent-market.baby2b.online
+  AggregatorImageTag:
+    Type: String
+    Default: latest
+
+Resources:
+  AggregatorRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: !Sub ${ProjectName}-performance-aggregator
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: >-
+          {"rules":[{"rulePriority":1,"description":"Retain five newest images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":5},"action":{"type":"expire"}}]}
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  PerformanceCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${ProjectName}-performance
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ProjectSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Agent Market short-lived compute egress
+      VpcId: !Ref SharedVpcId
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-compute
+        - Key: Project
+          Value: !Ref ProjectName
+
+  SharedDatabaseIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SharedDatabaseSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref ProjectSecurityGroup
+      Description: Agent Market project schema access
+
+  PerformanceTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${ProjectName}-performance
+      KmsMasterKeyId: alias/aws/sns
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  PerformanceDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${ProjectName}-performance-dlq
+      KmsMasterKeyId: alias/aws/sqs
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  PerformanceWorkQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${ProjectName}-performance-work
+      KmsMasterKeyId: alias/aws/sqs
+      MessageRetentionPeriod: 345600
+      VisibilityTimeout: 5400
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PerformanceDeadLetterQueue.Arn
+        maxReceiveCount: 2
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  PerformanceQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref PerformanceWorkQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt PerformanceWorkQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref PerformanceTopic
+
+  PerformanceSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref PerformanceTopic
+      Protocol: sqs
+      Endpoint: !GetAtt PerformanceWorkQueue.Arn
+      RawMessageDelivery: true
+
+  IngestionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ProjectName}-performance-ingest
+      RetentionInDays: 7
+
+  IngestionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: PublishPerformanceEvents
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref PerformanceTopic
+
+  IngestionFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: IngestionLogGroup
+    Properties:
+      FunctionName: !Sub ${ProjectName}-performance-ingest
+      Runtime: python3.13
+      Handler: index.handler
+      Role: !GetAtt IngestionRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref PerformanceTopic
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
+      Code:
+        ZipFile: |
+          import base64, boto3, json, math, os, uuid
+          sns = boto3.client("sns")
+          KEYS = {"schemaVersion","requestId","route","version","observedAt","metrics"}
+          METRICS = {"TTFB","FCP","LCP","CLS","INP"}
+          def response(status, payload):
+              return {"statusCode":status,"headers":{"content-type":"application/json","access-control-allow-origin":os.environ["ALLOWED_ORIGIN"]},"body":json.dumps(payload,separators=(",",":"))}
+          def valid(value):
+              try:
+                  if not isinstance(value,dict) or set(value) != KEYS or value["schemaVersion"] != 1: return False
+                  uuid.UUID(value["requestId"])
+                  if not isinstance(value["route"],str) or not value["route"].startswith("/") or len(value["route"]) > 256 or "?" in value["route"] or "#" in value["route"]: return False
+                  if not isinstance(value["version"],str) or len(value["version"]) > 64: return False
+                  metrics=value["metrics"]
+                  if not isinstance(metrics,dict) or not metrics or not set(metrics) <= METRICS: return False
+                  return all(isinstance(item,(int,float)) and not isinstance(item,bool) and math.isfinite(item) and item >= 0 for item in metrics.values())
+              except (KeyError,TypeError,ValueError): return False
+          def handler(event, context):
+              try:
+                  raw=event.get("body") or ""
+                  if event.get("isBase64Encoded"): raw=base64.b64decode(raw).decode("utf-8")
+                  payload=json.loads(raw)
+              except Exception: return response(400,{"error":"PERFORMANCE_ENVELOPE_INVALID"})
+              if not valid(payload): return response(400,{"error":"PERFORMANCE_ENVELOPE_INVALID"})
+              headers={str(k).lower():str(v) for k,v in (event.get("headers") or {}).items()}
+              if headers.get("x-request-id") not in (None,payload["requestId"]): return response(409,{"error":"REQUEST_ID_MISMATCH"})
+              message={**payload,"eventType":"PerformanceObserved"}
+              sns.publish(TopicArn=os.environ["TOPIC_ARN"],Message=json.dumps(message,separators=(",",":")),MessageAttributes={"request_id":{"DataType":"String","StringValue":payload["requestId"]}})
+              return response(202,{"accepted":True,"requestId":payload["requestId"]})
+
+  PerformanceApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub ${ProjectName}-performance
+      ProtocolType: HTTP
+      DisableExecuteApiEndpoint: false
+      Tags:
+        Project: !Ref ProjectName
+
+  PerformanceIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref PerformanceApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt IngestionFunction.Arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 10000
+
+  PerformanceRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref PerformanceApi
+      RouteKey: POST /performance
+      Target: !Sub integrations/${PerformanceIntegration}
+
+  PerformanceStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref PerformanceApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 5
+        ThrottlingRateLimit: 2
+      Tags:
+        Project: !Ref ProjectName
+
+  ApiInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref IngestionFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${PerformanceApi}/*/POST/performance
+
+  AggregatorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${ProjectName}-performance-aggregator
+      RetentionInDays: 7
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  AggregatorTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ReadSharedDatabaseSecret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref SharedDatabaseSecretArn
+
+  AggregatorTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${ProjectName}-performance-aggregator
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: "256"
+      Memory: "512"
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt AggregatorTaskRole.Arn
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+        - Name: performance-aggregator
+          Image: !Sub ${AggregatorRepository.RepositoryUri}:${AggregatorImageTag}
+          Essential: true
+          Environment:
+            - Name: DATABASE_SECRET_ARN
+              Value: !Ref SharedDatabaseSecretArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AggregatorLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: task
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  DispatcherLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ProjectName}-performance-dispatch
+      RetentionInDays: 7
+
+  DispatcherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
+      Policies:
+        - PolicyName: RunAndInspectAggregator
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:RunTask
+                  - ecs:DescribeTasks
+                Resource: "*"
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !GetAtt TaskExecutionRole.Arn
+                  - !GetAtt AggregatorTaskRole.Arn
+
+  DispatcherFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: DispatcherLogGroup
+    Properties:
+      FunctionName: !Sub ${ProjectName}-performance-dispatch
+      Runtime: python3.13
+      Handler: index.handler
+      Role: !GetAtt DispatcherRole.Arn
+      Timeout: 900
+      MemorySize: 256
+      Environment:
+        Variables:
+          CLUSTER_ARN: !GetAtt PerformanceCluster.Arn
+          TASK_DEFINITION_ARN: !Ref AggregatorTaskDefinition
+          SUBNET_IDS: !Join [",", !Ref PrivateSubnetIds]
+          SECURITY_GROUP_ID: !Ref ProjectSecurityGroup
+      Code:
+        ZipFile: |
+          import base64, boto3, os, time
+          ecs=boto3.client("ecs")
+          def handler(event, context):
+              for record in event.get("Records",[]):
+                  encoded=base64.b64encode(record["body"].encode("utf-8")).decode("ascii")
+                  launched=ecs.run_task(cluster=os.environ["CLUSTER_ARN"],taskDefinition=os.environ["TASK_DEFINITION_ARN"],launchType="FARGATE",count=1,networkConfiguration={"awsvpcConfiguration":{"subnets":os.environ["SUBNET_IDS"].split(","),"securityGroups":[os.environ["SECURITY_GROUP_ID"]],"assignPublicIp":"DISABLED"}},overrides={"containerOverrides":[{"name":"performance-aggregator","environment":[{"name":"PERFORMANCE_EVENT_B64","value":encoded}]}]})
+                  if launched.get("failures") or not launched.get("tasks"): raise RuntimeError("ECS_RUN_TASK_FAILED")
+                  task_arn=launched["tasks"][0]["taskArn"]
+                  deadline=time.time()+780
+                  while time.time() < deadline:
+                      task=ecs.describe_tasks(cluster=os.environ["CLUSTER_ARN"],tasks=[task_arn])["tasks"][0]
+                      if task["lastStatus"] == "STOPPED":
+                          containers=task.get("containers",[])
+                          if not containers or containers[0].get("exitCode") != 0: raise RuntimeError("ECS_TASK_FAILED")
+                          break
+                      time.sleep(5)
+                  else: raise RuntimeError("ECS_TASK_TIMEOUT")
+              return {"processed":len(event.get("Records",[]))}
+
+  PerformanceConsumerMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    DependsOn:
+      - PerformanceQueuePolicy
+      - PerformanceSubscription
+    Properties:
+      EventSourceArn: !GetAtt PerformanceWorkQueue.Arn
+      FunctionName: !Ref DispatcherFunction
+      Enabled: true
+      BatchSize: 1
+      MaximumBatchingWindowInSeconds: 0
+      ScalingConfig:
+        MaximumConcurrency: 2
+
+Outputs:
+  ApiOrigin:
+    Value: !Sub https://${PerformanceApi}.execute-api.${AWS::Region}.amazonaws.com/
+  AggregatorRepositoryUri:
+    Value: !GetAtt AggregatorRepository.RepositoryUri
+  ClusterName:
+    Value: !Sub ${ProjectName}-performance
+  ConsumerMappingUuid:
+    Value: !Ref PerformanceConsumerMapping
+  WorkQueueUrl:
+    Value: !Ref PerformanceWorkQueue
+  DeadLetterQueueUrl:
+    Value: !Ref PerformanceDeadLetterQueue
+  TaskDefinitionArn:
+    Value: !Ref AggregatorTaskDefinition

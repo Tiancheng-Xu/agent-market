@@ -1,0 +1,23 @@
+{
+  "name": "@agent-market/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "hardhat compile",
+    "check": "pnpm typecheck",
+    "test": "hardhat test",
+    "typecheck": "hardhat compile && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "6.1.0",
+    "@types/mocha": "10.0.10",
+    "@types/node": "26.2.0",
+    "ethers": "6.15.0",
+    "hardhat": "2.26.3",
+    "ts-node": "10.9.2",
+    "typescript": "5.8.3"
+  }
+}

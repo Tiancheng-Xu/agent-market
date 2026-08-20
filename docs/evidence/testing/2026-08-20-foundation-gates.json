@@ -1,0 +1,66 @@
+{
+  "schema_version": "agent-market.local-gates.v1",
+  "captured_on": "2026-08-20",
+  "environment": "local",
+  "results": [
+    {
+      "id": "shared-contracts",
+      "status": "passed",
+      "tests": 2,
+      "additional_gates": ["typecheck"]
+    },
+    {
+      "id": "transaction-engine",
+      "status": "passed",
+      "tests": 2,
+      "additional_gates": ["typecheck", "production-build"]
+    },
+    {
+      "id": "matcher-go",
+      "status": "passed",
+      "additional_gates": ["go-vet", "go-test"]
+    },
+    {
+      "id": "contracts-local-closure",
+      "status": "passed",
+      "tests": 6,
+      "additional_gates": ["hardhat-compile", "typecheck"],
+      "network": "hardhat-local"
+    },
+    {
+      "id": "ctr-trainer-protocol",
+      "status": "passed",
+      "tests": 3,
+      "additional_gates": ["pytest"]
+    },
+    {
+      "id": "evidence-and-ci-rules",
+      "status": "passed",
+      "tests": 4,
+      "additional_gates": ["repository-validator", "evidence-validator"]
+    },
+    {
+      "id": "web",
+      "status": "passed",
+      "tests": 3,
+      "additional_gates": ["typecheck", "production-build"],
+      "remaining_gates": ["responsive-browser", "accessibility", "public-artifact-scan"]
+    },
+    {
+      "id": "web-desktop-browser",
+      "status": "passed",
+      "viewport": 1280,
+      "routes": ["/", "/evidence"],
+      "root_horizontal_overflow": false,
+      "evidence_requirement_rows": 15,
+      "evidence_diagrams": 2,
+      "remaining_gates": ["375", "390", "430", "1440"]
+    }
+  ],
+  "external_verification": {
+    "aws": "not_started",
+    "cloudflare": "not_started",
+    "github_actions_current_revision": "not_started",
+    "sepolia": "not_started"
+  }
+}

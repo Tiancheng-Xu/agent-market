@@ -1,0 +1,6 @@
+{"sample_id":"sample-001","request_id":"018f3f50-7b2d-7cc1-98f5-9ab68e75a211","capability_score":0.95,"reliability_score":0.91,"price_score":0.80,"selected":1}
+{"sample_id":"sample-002","request_id":"018f3f50-7b2d-7cc1-98f5-9ab68e75a212","capability_score":0.85,"reliability_score":0.88,"price_score":0.72,"selected":1}
+{"sample_id":"sample-003","request_id":"018f3f50-7b2d-7cc1-98f5-9ab68e75a213","capability_score":0.78,"reliability_score":0.82,"price_score":0.90,"selected":1}
+{"sample_id":"sample-004","request_id":"018f3f50-7b2d-7cc1-98f5-9ab68e75a214","capability_score":0.42,"reliability_score":0.51,"price_score":0.35,"selected":0}
+{"sample_id":"sample-005","request_id":"018f3f50-7b2d-7cc1-98f5-9ab68e75a215","capability_score":0.31,"reliability_score":0.45,"price_score":0.55,"selected":0}
+{"sample_id":"sample-006","request_id":"018f3f50-7b2d-7cc1-98f5-9ab68e75a216","capability_score":0.20,"reliability_score":0.30,"price_score":0.25,"selected":0}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "profile": "full",
+  "status": "planned",
+  "summary": "The Agent Market performance foundation and database migrations are deployed, but the production browser-to-public-Evidence closure is not yet presented as verified.",
+  "evidenceUrl": "https://agent-market.baby2b.online/evidence",
+  "limitations": [
+    "No real production browser event has completed the Cloudflare, AWS, PostgreSQL, and public Evidence readback chain yet.",
+    "The AWS consumer remains enabled only for the controlled acceptance run and will be paused after public Evidence readback succeeds."
+  ],
+  "nextStep": "Deploy the Cloudflare production site, run one controlled Web Vitals event end to end, publish the sanitized readback, and reversibly pause the AWS consumer."
+}

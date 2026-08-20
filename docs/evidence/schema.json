@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-market.local/evidence.schema.json",
+  "title": "Agent Market evidence ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["requirements"],
+  "properties": {
+    "requirements": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requirement_id",
+          "status",
+          "implementation_locations",
+          "test_evidence",
+          "deployment_evidence",
+          "transaction_evidence",
+          "last_verified_at",
+          "blockers"
+        ],
+        "properties": {
+          "requirement_id": { "type": "string", "pattern": "^REQ-AM-(0[1-9]|1[0-5])$" },
+          "status": {
+            "enum": ["NOT_STARTED", "IMPLEMENTING", "IMPLEMENTED_UNVERIFIED", "VERIFIED", "BLOCKED"]
+          },
+          "implementation_locations": { "$ref": "#/$defs/stringList" },
+          "test_evidence": { "$ref": "#/$defs/stringList" },
+          "deployment_evidence": { "$ref": "#/$defs/stringList" },
+          "transaction_evidence": { "$ref": "#/$defs/stringList" },
+          "last_verified_at": { "type": ["string", "null"], "format": "date-time" },
+          "blockers": { "$ref": "#/$defs/stringList" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+flowchart LR
+  U[User and MetaMask] --> WEB[Cloudflare Pages\nReact and Vite]
+  WEB --> EDGE[Cloudflare Worker\nrequest_id and security]
+  EDGE --> APIGW[AWS API Gateway]
+  APIGW --> API[Next.js Transaction API\nLambda]
+  API --> DB[Shared PostgreSQL\nagent_market schema and pgvector]
+  API --> OUTBOX[Transactional Outbox]
+  OUTBOX --> RELAY[Outbox Relay Lambda]
+  RELAY --> SNS[SNS Domain Events]
+  SNS --> MATCHQ[SQS Match Queue]
+  SNS --> LEARNQ[SQS Learning Queue]
+  SNS --> OPSQ[SQS Ops Queue]
+  MATCHQ --> MATCH[Go Matching Lambda]
+  MATCH --> DB
+  MATCHQ --> DLQ[Dead Letter Queue]
+  LEARNQ --> TRAIN[One-shot ECS Fargate\nCTR Training]
+  TRAIN --> DB
+  API --> RPC[Sepolia RPC]
+  RPC --> CHAIN[YD, Escrow, Vault, Arbitration]
+  CHAIN --> API
