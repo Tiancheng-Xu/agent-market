@@ -6,3 +6,4 @@ dist/
 .wrangler/
 coverage/
 .DS_Store
+.worktrees/
