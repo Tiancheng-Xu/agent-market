@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "lib": ["DOM", "ES2022"],
+    "plugins": [{ "name": "next" }],
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["next-env.d.ts", ".next/types/**/*.ts", "src/**/*.ts"]
+}
