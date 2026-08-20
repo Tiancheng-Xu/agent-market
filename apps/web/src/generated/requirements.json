@@ -1,0 +1,235 @@
+{
+  "requirements": [
+    {
+      "requirement_id": "REQ-AM-01",
+      "status": "IMPLEMENTING",
+      "implementation_locations": [
+        "apps/web/src/pages/DirectoryPages.tsx"
+      ],
+      "test_evidence": [],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Agent full-fields onboarding and wallet binding"
+    },
+    {
+      "requirement_id": "REQ-AM-02",
+      "status": "IMPLEMENTING",
+      "implementation_locations": [
+        "packages/shared-contracts/src/request-context.ts",
+        "apps/transaction-engine/src/lib/request-context.ts"
+      ],
+      "test_evidence": [],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "End-to-end ID and encrypted/redacted credentials"
+    },
+    {
+      "requirement_id": "REQ-AM-03",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "implementation_locations": [
+        "apps/web/src/pages/DirectoryPages.tsx",
+        "packages/contracts/contracts/AgentMarketEscrow.sol"
+      ],
+      "test_evidence": [
+        "packages/contracts/test/SettlementFlow.test.ts"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Task publishing and Sepolia escrow"
+    },
+    {
+      "requirement_id": "REQ-AM-04",
+      "status": "IMPLEMENTING",
+      "implementation_locations": [
+        "services/matcher-go/internal/ranking/rank.go"
+      ],
+      "test_evidence": [
+        "services/matcher-go/internal/ranking/rank_test.go"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Hard filters, vector recall, randomized exploration, max 3"
+    },
+    {
+      "requirement_id": "REQ-AM-05",
+      "status": "IMPLEMENTING",
+      "implementation_locations": [
+        "apps/web/src/pages/DirectoryPages.tsx",
+        "services/matcher-go/internal/ranking/rank.go"
+      ],
+      "test_evidence": [],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Five score categories, thresholds, explanations"
+    },
+    {
+      "requirement_id": "REQ-AM-06",
+      "status": "IMPLEMENTING",
+      "implementation_locations": [
+        "services/trainer/src/agent_market_trainer/train.py"
+      ],
+      "test_evidence": [
+        "services/trainer/tests/test_train.py"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Feedback features and nightly CTR training"
+    },
+    {
+      "requirement_id": "REQ-AM-07",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "implementation_locations": [
+        "packages/contracts/contracts/ArbitrationCommittee.sol",
+        "packages/contracts/contracts/AgentMarketEscrow.sol"
+      ],
+      "test_evidence": [
+        "packages/contracts/test/SettlementFlow.test.ts"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Three-member committee and two-vote ruling"
+    },
+    {
+      "requirement_id": "REQ-AM-08",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "implementation_locations": [
+        "packages/contracts/contracts/YDToken.sol"
+      ],
+      "test_evidence": [
+        "packages/contracts/test/YDToken.test.ts"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Two YD airdrops"
+    },
+    {
+      "requirement_id": "REQ-AM-09",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "implementation_locations": [
+        "packages/contracts/contracts/AgentMarketEscrow.sol",
+        "packages/contracts/contracts/StakeYieldVault.sol"
+      ],
+      "test_evidence": [
+        "packages/contracts/test/SettlementFlow.test.ts"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Escrow, bond, and staking at 6% linear annual yield"
+    },
+    {
+      "requirement_id": "REQ-AM-10",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "implementation_locations": [
+        "apps/web/src/App.tsx",
+        "apps/web/src/hooks/useWallet.ts",
+        "apps/web/src/styles.css"
+      ],
+      "test_evidence": [
+        "apps/web/src/lib/domain.test.ts"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "React, Vite, Tailwind, and MetaMask"
+    },
+    {
+      "requirement_id": "REQ-AM-11",
+      "status": "IMPLEMENTING",
+      "implementation_locations": [
+        "apps/transaction-engine/src/app/api/health/route.ts",
+        "apps/transaction-engine/src/lib/request-context.ts"
+      ],
+      "test_evidence": [
+        "apps/transaction-engine/src/app/api/health/route.test.ts",
+        "apps/transaction-engine/src/lib/request-context.test.ts"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Next.js and Lambda transaction adapter"
+    },
+    {
+      "requirement_id": "REQ-AM-12",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "implementation_locations": [
+        "services/matcher-go/cmd/matcher/main.go",
+        "services/matcher-go/internal/ranking/rank.go"
+      ],
+      "test_evidence": [
+        "services/matcher-go/internal/contracts/events_test.go",
+        "services/matcher-go/internal/ranking/rank_test.go"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Go scheduler adapter"
+    },
+    {
+      "requirement_id": "REQ-AM-13",
+      "status": "NOT_STARTED",
+      "implementation_locations": [],
+      "test_evidence": [],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "PostgreSQL, SQS, SNS, DLQ, and pgvector"
+    },
+    {
+      "requirement_id": "REQ-AM-14",
+      "status": "IMPLEMENTING",
+      "implementation_locations": [
+        "services/trainer/Dockerfile",
+        "services/trainer/src/agent_market_trainer/train.py"
+      ],
+      "test_evidence": [
+        "services/trainer/tests/test_train.py"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "One-shot ECS training"
+    },
+    {
+      "requirement_id": "REQ-AM-15",
+      "status": "IMPLEMENTING",
+      "implementation_locations": [
+        ".github/workflows/verify.yml",
+        ".github/workflows/project-delivery.yml",
+        ".github/baby2b-publish.yml",
+        "apps/web/src/pages/EvidencePage.tsx"
+      ],
+      "test_evidence": [
+        "scripts/verify-all.test.mjs",
+        "docs/evidence/testing/2026-08-20-foundation-gates.json"
+      ],
+      "deployment_evidence": [],
+      "transaction_evidence": [],
+      "last_verified_at": null,
+      "blockers": [],
+      "title": "Cloudflare, AWS, PR environments, CI, observability, AI Ops, and Codex record"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const REQUIRED_DIRECTORIES = [
+	"apps/web",
 	"apps/transaction-engine",
 	"packages/shared-contracts",
 	"packages/contracts",

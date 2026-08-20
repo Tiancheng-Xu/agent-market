@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    participant B as Browser Web Vitals
+    participant C as Cloudflare Edge Worker
+    participant A as API Gateway
+    participant L as Ingestion Lambda
+    participant N as SNS
+    participant Q as SQS / DLQ
+    participant E as ECS Fargate
+    participant P as PostgreSQL / pgvector
+    participant V as Evidence Readback
+    participant O as AWS Pause Gate
+
+    B->>C: POST /api/performance (request_id)
+    C->>A: Sanitized envelope (request_id)
+    A->>L: HTTP event
+    L->>N: PerformanceRecorded
+    N->>Q: Durable delivery
+    Q->>E: Bounded batch
+    E->>P: Aggregate and persist
+    P-->>V: Query metric sample
+    V-->>B: Public Evidence page and screenshot
+    V->>O: Evidence readback confirmed
+    O->>Q: Disable consumer trigger
+    O->>E: Confirm running tasks = 0

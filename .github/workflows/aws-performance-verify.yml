@@ -1,0 +1,51 @@
+name: AWS performance architecture verify
+
+on:
+  pull_request:
+    paths:
+      - "apps/transaction-engine/**"
+      - "database/migrations/**"
+      - "infra/aws/**"
+      - "services/performance-aggregator/**"
+      - ".github/workflows/aws-performance-verify.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/transaction-engine/**"
+      - "database/migrations/**"
+      - "infra/aws/**"
+      - "services/performance-aggregator/**"
+      - ".github/workflows/aws-performance-verify.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-performance-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify TypeScript workspace
+        run: pnpm verify
+
+      - name: Verify AWS infrastructure contract
+        run: node --test infra/aws/template.test.mjs
+
+      - name: Verify performance aggregator
+        run: python3 -m unittest discover -s services/performance-aggregator -p 'test_*.py'

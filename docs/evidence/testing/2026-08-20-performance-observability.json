@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-08-20",
+  "scope": "performance-observability-full-chain",
+  "status": "LOCAL_VERIFIED",
+  "correlationField": "request_id",
+  "chain": [
+    { "step": 1, "system": "Browser Web Vitals", "status": "LOCAL_VERIFIED" },
+    { "step": 2, "system": "Cloudflare Edge Worker", "status": "LOCAL_VERIFIED" },
+    { "step": 3, "system": "API Gateway", "status": "NOT_DEPLOYED" },
+    { "step": 4, "system": "Ingestion Lambda", "status": "LOCAL_VERIFIED" },
+    { "step": 5, "system": "SNS", "status": "NOT_DEPLOYED" },
+    { "step": 6, "system": "SQS and DLQ", "status": "NOT_DEPLOYED" },
+    { "step": 7, "system": "ECS Fargate", "status": "NOT_DEPLOYED" },
+    { "step": 8, "system": "PostgreSQL and pgvector", "status": "SCHEMA_LOCAL_VERIFIED" },
+    { "step": 9, "system": "Public Evidence readback", "status": "NOT_STARTED" },
+    { "step": 10, "system": "AWS reversible pause", "status": "NOT_STARTED" }
+  ],
+  "privacyBoundary": {
+    "captured": ["route pathname", "build version", "TTFB", "FCP", "LCP", "CLS", "INP"],
+    "excluded": ["wallet", "identity", "cookie", "authorization header", "query string", "full URL"]
+  },
+  "verification": {
+    "webTestFilesPassed": 8,
+    "webTestsPassed": 17,
+    "transactionEngineTestFilesPassed": 9,
+    "transactionEngineTestsPassed": 18,
+    "webEdgeBuild": "PASS",
+    "transactionEngineTypecheck": "PASS"
+  },
+  "productionAcceptance": {
+    "realCoreWebVitalsRun": "PENDING",
+    "awsRequestContinuity": "PENDING",
+    "databaseReadback": "PENDING",
+    "publicEvidenceReadback": "PENDING",
+    "consumerTriggerDisabled": "PENDING",
+    "ecsRunningTaskCount": "PENDING"
+  }
+}

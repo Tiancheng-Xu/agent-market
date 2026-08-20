@@ -1,0 +1,32 @@
+{
+  "capturedAt": "2026-08-20",
+  "scope": "cloudflare-pages-edge-rendering",
+  "status": "LOCAL_VERIFIED",
+  "designReference": "https://babysteps.baby2b.online/evidence",
+  "implementation": {
+    "serverRuntime": "React Web Streams on Cloudflare Pages Advanced Worker",
+    "clientBootstrap": "Exact hydration when route and build version match",
+    "fatalRecovery": "At most one clean CSR remount",
+    "browserOnlyBoundary": "Wallet and MetaMask runtime excluded from the Edge bundle",
+    "routing": "Known deep links render at the Edge and unknown routes preserve HTTP 404"
+  },
+  "verification": {
+    "webTestFilesPassed": 5,
+    "webTestsPassed": 12,
+    "clientBuild": "PASS",
+    "edgeWorkerBuild": "PASS",
+    "runtimeCasesPassed": 5,
+    "runtimeCases": [
+      "/evidence SSR",
+      "/tasks/task-01/workspace SSR",
+      "/missing HTTP 404 SSR",
+      "static asset delegation",
+      "forced render failure CSR fallback"
+    ]
+  },
+  "externalBoundary": {
+    "cloudflarePagesDeployment": "NOT_STARTED",
+    "customDomainReadback": "NOT_STARTED",
+    "productionHydrationReadback": "NOT_STARTED"
+  }
+}

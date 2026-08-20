@@ -7,9 +7,13 @@
 		"pnpm": ">=11 <12"
 	},
 	"scripts": {
-		"check": "node scripts/validate-repository.mjs && pnpm -r --if-present check",
+		"check": "node scripts/validate-repository.mjs && node scripts/validate-evidence.mjs && pnpm -r --if-present check",
 		"test": "node --test scripts/*.test.mjs && pnpm -r --if-present test",
 		"typecheck": "pnpm -r --if-present typecheck",
-		"build": "pnpm -r --if-present build"
+		"build": "pnpm -r --if-present build",
+		"verify": "node scripts/verify-all.mjs"
+	},
+	"devDependencies": {
+		"yaml": "2.8.1"
 	}
 }

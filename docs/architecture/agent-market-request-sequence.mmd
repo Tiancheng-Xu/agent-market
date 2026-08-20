@@ -1,0 +1,20 @@
+sequenceDiagram
+  participant B as Browser
+  participant E as Cloudflare Edge
+  participant A as Transaction API
+  participant D as PostgreSQL
+  participant Q as SNS and SQS
+  participant M as Go Matcher
+  participant C as Sepolia
+  B->>E: command plus idempotency_key
+  E->>A: x-request-id
+  A->>D: state plus outbox plus audit
+  D-->>A: commit
+  A-->>B: accepted plus request_id
+  A->>Q: relay versioned event
+  Q->>M: event plus request_id
+  M->>D: idempotent match result
+  B->>C: signed transaction(request_ref)
+  B->>A: tx_hash plus request_id
+  A->>C: verify receipt and event
+  A->>D: reconcile confirmed state

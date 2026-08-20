@@ -1,0 +1,14 @@
+name: Project delivery contract
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-project:
+    uses: Tiancheng-Xu/.github/.github/workflows/verify-project.yml@main
+    with:
+      publish-config-path: .github/baby2b-publish.yml

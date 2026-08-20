@@ -1,0 +1,69 @@
+{
+  "evidenceVersion": 1,
+  "project": "agent-market",
+  "capturedAt": "2026-08-20T22:03:10Z",
+  "region": "us-east-1",
+  "scope": "performance-observability-foundation",
+  "privacy": {
+    "accountIdPublished": false,
+    "resourceArnsPublished": false,
+    "apiOriginPublished": false,
+    "credentialsPublished": false
+  },
+  "sharedInfrastructure": {
+    "strategy": "reuse",
+    "resources": [
+      "VPC",
+      "private subnets",
+      "NAT gateway",
+      "PostgreSQL RDS",
+      "GitHub OIDC provider",
+      "artifact storage"
+    ],
+    "createdByAgentMarket": false,
+    "deletedByAgentMarket": false
+  },
+  "projectStack": {
+    "name": "agent-market-performance",
+    "status": "CREATE_COMPLETE",
+    "apiGateway": "DEPLOYED_UNVERIFIED",
+    "ingestionLambda": "DEPLOYED_UNVERIFIED",
+    "sns": "DEPLOYED_UNVERIFIED",
+    "sqs": "DEPLOYED_UNVERIFIED",
+    "dispatcherLambda": "DEPLOYED_UNVERIFIED",
+    "ecsFargate": "DEPLOYED_IDLE",
+    "postgresqlSchema": "VERIFIED"
+  },
+  "consumerControl": {
+    "state": "Enabled",
+    "batchSize": 1,
+    "maximumConcurrency": 2,
+    "runningFargateTasks": 0,
+    "pauseAfterPublicReadback": "PENDING"
+  },
+  "aggregatorImage": {
+    "tag": "latest",
+    "digest": "sha256:af823dbae036ff1de41b09f79f6b2d7a85b3dd3ad817f1cc183b667ba44c0783",
+    "registryArtifactEntries": 3,
+    "pushedAt": "2026-08-20T22:03:10.200Z",
+    "scanStatus": "NOT_REPORTED"
+  },
+  "databaseMigration": {
+    "taskExitCode": 0,
+    "appliedCount": 2,
+    "applied": [
+      "0001_agent_market_core.sql",
+      "0002_performance_observability.sql"
+    ],
+    "status": "VERIFIED"
+  },
+  "productionClosure": {
+    "cloudflareProduction": "PENDING",
+    "realBrowserPerformanceSample": "PENDING",
+    "requestIdContinuity": "PENDING",
+    "databaseReadback": "PENDING",
+    "publicEvidenceReadback": "PENDING",
+    "consumerPause": "PENDING"
+  },
+  "truthBoundary": "Infrastructure and database migration are verified. No production browser sample or public Evidence readback has been completed yet."
+}
