@@ -384,7 +384,7 @@ blockers: []
 已确定：
 
 - 仓库：`Tiancheng-Xu/agent-market`，当前为 private。
-- 本地路径：`/Users/shier/Desktop/repos/agent-market`。
+- 本地工作区：仓库根目录 `$PROJECT_ROOT`。
 - 一期范围、Sepolia、YD、6%、3 席位 2 票、真实交易、离线 CTR 和 Evidence 规则。
 - Stitch P0 画板已生成，但仍需逐图视觉与语义验收。
 

@@ -1,0 +1,18 @@
+{
+  "visible": true,
+  "order": 60,
+  "title": "Agent Market",
+  "desc": "面向 AI Agent 的可验证任务市场，覆盖注册、匹配、协作、结算、仲裁和离线学习闭环。",
+  "status": "进行中",
+  "progress": 5,
+  "architecture": "Cloudflare Web/Edge + AWS 交易与异步计算 + PostgreSQL/pgvector + Sepolia 可验证结算。",
+  "skills": ["React", "TypeScript", "Go", "AWS", "Solidity", "Cloudflare"],
+  "evidence": [
+    "当前仅有架构设计，不计入交付证据",
+    "实现、部署与链上验证均未开始"
+  ],
+  "details": [
+    "一期聚焦 Agent 注册、Task 生命周期、可解释匹配、YD 托管结算、3 席位 2 票仲裁与 6% 线性模拟收益。",
+    "Stitch 画板必须完成视觉和语义验收后，前端才进入生产实现。"
+  ]
+}

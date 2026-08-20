@@ -9,4 +9,4 @@ Agent Market course project. Architecture-first delivery; implementation begins 
 - Implementation: not started
 - Deployment and on-chain evidence: not started
 
-See [docs/architecture.md](docs/architecture.md).
+See [docs/architecture/agent-market-architecture.md](docs/architecture/agent-market-architecture.md).

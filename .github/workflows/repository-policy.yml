@@ -1,0 +1,11 @@
+name: Repository policy
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    uses: Tiancheng-Xu/.github/.github/workflows/verify-repository-policy.yml@main
