@@ -100,6 +100,7 @@
 .full-chain__steps p { margin: 0; color: #909688; font-size: 0.84rem; line-height: 1.45; }
 .full-chain__steps strong { align-self: start; color: #f0b45a; font-size: 0.68rem; white-space: nowrap; }
 .full-chain__steps strong[data-status="LOCAL VERIFIED"] { color: #e0ff57; }
+.full-chain__steps strong[data-status^="VERIFIED"] { color: #4cdbf7; }
 
 @media (max-width: 760px) {
   .full-chain { width: min(100% - 20px, 1180px); margin: 32px auto; }

@@ -1,7 +1,7 @@
 {
   "evidenceVersion": 1,
   "project": "agent-market",
-  "capturedAt": "2026-08-20T22:03:10Z",
+  "capturedAt": "2026-08-21T01:07:15Z",
   "region": "us-east-1",
   "scope": "performance-observability-foundation",
   "privacy": {
@@ -25,13 +25,13 @@
   },
   "projectStack": {
     "name": "agent-market-performance",
-    "status": "CREATE_COMPLETE",
-    "apiGateway": "DEPLOYED_UNVERIFIED",
-    "ingestionLambda": "DEPLOYED_UNVERIFIED",
-    "sns": "DEPLOYED_UNVERIFIED",
-    "sqs": "DEPLOYED_UNVERIFIED",
-    "dispatcherLambda": "DEPLOYED_UNVERIFIED",
-    "ecsFargate": "DEPLOYED_IDLE",
+    "status": "UPDATE_COMPLETE",
+    "apiGateway": "VERIFIED",
+    "ingestionLambda": "VERIFIED",
+    "sns": "VERIFIED",
+    "sqs": "VERIFIED",
+    "dispatcherLambda": "VERIFIED",
+    "ecsFargate": "VERIFIED_EXIT_0",
     "postgresqlSchema": "VERIFIED"
   },
   "consumerControl": {
@@ -59,11 +59,25 @@
   },
   "productionClosure": {
     "cloudflareProduction": "PENDING",
-    "realBrowserPerformanceSample": "PENDING",
-    "requestIdContinuity": "PENDING",
-    "databaseReadback": "PENDING",
+    "realBrowserPerformanceSample": "VERIFIED",
+    "requestIdContinuity": "VERIFIED",
+    "databaseReadback": "VERIFIED",
     "publicEvidenceReadback": "PENDING",
     "consumerPause": "PENDING"
   },
-  "truthBoundary": "Infrastructure and database migration are verified. No production browser sample or public Evidence readback has been completed yet."
+  "queueEncryption": {
+    "mode": "SQS_MANAGED_SSE",
+    "snsDeliveryAfterUpdate": "VERIFIED",
+    "stackUpdatedAt": "2026-08-20T23:09:46Z"
+  },
+  "verifiedPerformanceRun": {
+    "requestId": "38979d29-2ef6-4006-b120-6cc95e59eef4",
+    "runId": "44c41841-3d20-4856-9f71-76750075c3a4",
+    "taskExitCode": 0,
+    "sampleCount": 1,
+    "lcpMs": 1192,
+    "errorRate": 0,
+    "databaseReadback": "VERIFIED"
+  },
+  "truthBoundary": "Infrastructure, browser-to-database request continuity, ECS exit code, and PostgreSQL readback are verified. Public Evidence readback, custom-domain production, and consumer pause remain pending."
 }

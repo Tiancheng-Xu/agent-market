@@ -26,6 +26,26 @@ if [[ -z "$mapping_uuid" || -z "$cluster_name" ]]; then
   exit 1
 fi
 
+wait_for_mapping_state() {
+  local expected_state="$1"
+  local state
+
+  for _ in {1..30}; do
+    state="$(aws lambda get-event-source-mapping \
+      --uuid "$mapping_uuid" \
+      --region "$AWS_REGION" \
+      --query 'State' \
+      --output text)"
+    if [[ "$state" == "$expected_state" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "Timed out waiting for event source mapping state $expected_state (last state: $state)." >&2
+  return 1
+}
+
 if [[ "$ACTION" == "pause" ]]; then
   aws lambda update-event-source-mapping \
     --uuid "$mapping_uuid" \
@@ -33,9 +53,7 @@ if [[ "$ACTION" == "pause" ]]; then
     --region "$AWS_REGION" \
     --query 'State' \
     --output text >/dev/null
-  aws lambda wait event-source-mapping-updated \
-    --uuid "$mapping_uuid" \
-    --region "$AWS_REGION"
+  wait_for_mapping_state "Disabled"
 elif [[ "$ACTION" == "resume" ]]; then
   aws lambda update-event-source-mapping \
     --uuid "$mapping_uuid" \
@@ -43,9 +61,7 @@ elif [[ "$ACTION" == "resume" ]]; then
     --region "$AWS_REGION" \
     --query 'State' \
     --output text >/dev/null
-  aws lambda wait event-source-mapping-updated \
-    --uuid "$mapping_uuid" \
-    --region "$AWS_REGION"
+  wait_for_mapping_state "Enabled"
 fi
 
 mapping_state="$(aws lambda get-event-source-mapping \

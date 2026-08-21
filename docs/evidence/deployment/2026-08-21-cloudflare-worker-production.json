@@ -1,0 +1,20 @@
+{
+  "capturedAt": "2026-08-21T07:52:50Z",
+  "project": "agent-market",
+  "service": "agent-market-web",
+  "versionId": "9b15c141-aaf8-4d1f-8aad-423853688602",
+  "productionUrl": "https://agent-market.baby2b.online",
+  "fallbackUrl": "https://agent-market-web.271251549.workers.dev",
+  "customDomain": {
+    "hostname": "agent-market.baby2b.online",
+    "environment": "production",
+    "enabled": true,
+    "pagesDomainBindings": 0,
+    "workerDomainBindings": 1
+  },
+  "runtimeReadback": [
+    { "path": "/evidence", "status": 200, "renderMode": "ssr" },
+    { "path": "/tasks/task-01/workspace", "status": 200, "renderMode": "ssr" },
+    { "path": "/missing", "status": 404, "renderMode": "ssr" }
+  ]
+}

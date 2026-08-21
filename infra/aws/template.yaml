@@ -87,7 +87,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub ${ProjectName}-performance-dlq
-      KmsMasterKeyId: alias/aws/sqs
+      SqsManagedSseEnabled: true
       MessageRetentionPeriod: 1209600
       Tags:
         - Key: Project
@@ -97,7 +97,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub ${ProjectName}-performance-work
-      KmsMasterKeyId: alias/aws/sqs
+      SqsManagedSseEnabled: true
       MessageRetentionPeriod: 345600
       VisibilityTimeout: 5400
       RedrivePolicy:

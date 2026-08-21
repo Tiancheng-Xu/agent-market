@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 
 import { Badge, DemoNotice, Panel, Stat } from "../components/Ui";
+import { Localized } from "../i18n/LanguageProvider";
 
 export function HomePage() {
   return (
-    <div className="home-page">
+    <Localized><div className="home-page">
       <section className="hero reveal">
         <div className="hero-copy">
           <Badge tone="cyan">PHASE 1 / SEPOLIA</Badge>
@@ -35,6 +36,6 @@ export function HomePage() {
           ].map(([index, title, body]) => <Panel key={index} className="capability-card"><span>{index}</span><h3>{title}</h3><p>{body}</p></Panel>)}
         </div>
       </section>
-    </div>
+    </div></Localized>
   );
 }

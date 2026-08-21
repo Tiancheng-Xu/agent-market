@@ -1,0 +1,26 @@
+{
+  "capturedAt": "2026-08-21T01:55:00Z",
+  "project": "agent-market",
+  "stack": "agent-market-performance",
+  "region": "us-east-1",
+  "action": "pause",
+  "eventSourceMapping": "Disabled",
+  "runningFargateTasks": 0,
+  "performanceWorkQueue": {
+    "visible": 0,
+    "notVisible": 0,
+    "delayed": 0
+  },
+  "performanceDeadLetterQueue": {
+    "visible": 0,
+    "notVisible": 0,
+    "delayed": 0
+  },
+  "publicEvidenceReadback": {
+    "url": "https://agent-market.baby2b.online/evidence",
+    "status": "VERIFIED"
+  },
+  "destructiveAction": false,
+  "sharedInfrastructureChanged": false,
+  "customDomainCutover": "VERIFIED_WORKER_CUSTOM_DOMAIN"
+}

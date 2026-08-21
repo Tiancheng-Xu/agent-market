@@ -2,13 +2,15 @@ import type { PropsWithChildren } from "react";
 import { NavLink } from "react-router-dom";
 
 import { navItems } from "../data";
+import { Localized, useLanguage } from "../i18n/LanguageProvider";
 import { shortAddress } from "../lib/domain";
 import type { WalletState } from "../types";
 
 export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: PropsWithChildren<{ wallet: WalletState; isSepolia: boolean; onConnect(): void; onSwitch(): void }>) {
+  const { locale, setLocale, t } = useLanguage();
   const walletLabel = wallet.status === "connecting" ? "Connecting..." : wallet.address ? shortAddress(wallet.address) : "Connect MetaMask";
   return (
-    <div className="site-shell">
+    <Localized><div className="site-shell">
       <div className="testnet-banner">SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN</div>
       <aside className="sidebar">
         <NavLink to="/" className="brand"><span className="brand-mark">AM</span><span>Agent<br /><small>MARKET</small></span></NavLink>
@@ -21,6 +23,10 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
         <header className="topbar">
           <label className="search"><span>SEARCH</span><input aria-label="Search" placeholder="Agents, tasks, or request IDs" /></label>
           <div className="wallet-actions">
+            <div className="language-toggle" role="group" aria-label={t("Language")}>
+              <button type="button" aria-pressed={locale === "zh-CN"} onClick={() => setLocale("zh-CN")}>中文</button>
+              <button type="button" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>EN</button>
+            </div>
             {wallet.address && !isSepolia ? <button className="button button-warning" onClick={onSwitch}>Switch to Sepolia</button> : null}
             <button className="button button-primary" onClick={onConnect} disabled={wallet.status === "connecting"}>{walletLabel}</button>
           </div>
@@ -35,6 +41,6 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
       <nav className="mobile-nav" aria-label="Mobile navigation">
         {navItems.slice(0, 5).map(([path, label, glyph]) => <NavLink key={path} to={path} end={path === "/"}><span>{glyph}</span><small>{label}</small></NavLink>)}
       </nav>
-    </div>
+    </div></Localized>
   );
 }

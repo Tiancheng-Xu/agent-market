@@ -1,21 +1,23 @@
 import "./full-chain.css";
+import { Localized, useLanguage } from "../i18n/LanguageProvider";
 
 const chain = [
-  { name: "Browser Web Vitals", detail: "TTFB, FCP, LCP, CLS and INP envelope", status: "LOCAL VERIFIED" },
-  { name: "Cloudflare Edge Worker", detail: "Same-origin proxy, SSR and request boundary", status: "LOCAL VERIFIED" },
-  { name: "API Gateway", detail: "Public HTTP ingestion boundary", status: "NOT DEPLOYED" },
-  { name: "Ingestion Lambda", detail: "Schema validation and request continuity", status: "NOT DEPLOYED" },
-  { name: "SNS", detail: "Performance event fan-out", status: "NOT DEPLOYED" },
-  { name: "SQS / DLQ", detail: "Bounded retry and poison-message isolation", status: "NOT DEPLOYED" },
-  { name: "ECS Fargate", detail: "Short-lived aggregation task", status: "NOT DEPLOYED" },
-  { name: "PostgreSQL / pgvector", detail: "Metric sample and evidence persistence", status: "SCHEMA PENDING" },
-  { name: "Evidence public readback", detail: "Production metrics, logs and screenshots", status: "PENDING READBACK" },
-  { name: "AWS reversible pause", detail: "Disable consumer trigger and prove ECS running=0", status: "PENDING READBACK" },
+  { name: "Browser Web Vitals", detail: "TTFB, FCP, LCP, CLS and INP envelope", status: "VERIFIED" },
+  { name: "Cloudflare Edge Worker", detail: "Same-origin proxy, SSR and request boundary", status: "VERIFIED" },
+  { name: "API Gateway", detail: "Public HTTP ingestion boundary", status: "VERIFIED" },
+  { name: "Ingestion Lambda", detail: "Schema validation and request continuity", status: "VERIFIED" },
+  { name: "SNS", detail: "Performance event fan-out", status: "VERIFIED" },
+  { name: "SQS / DLQ", detail: "Bounded retry and poison-message isolation", status: "VERIFIED" },
+  { name: "ECS Fargate", detail: "Short-lived aggregation task", status: "VERIFIED EXIT 0" },
+  { name: "PostgreSQL / pgvector", detail: "Metric sample and evidence persistence", status: "VERIFIED READBACK" },
+  { name: "Evidence public readback", detail: "Production metrics, logs and screenshots", status: "VERIFIED PUBLIC READBACK" },
+  { name: "AWS reversible pause", detail: "Disable consumer trigger and prove ECS running=0", status: "VERIFIED PAUSED" },
 ] as const;
 
 export function FullChainEvidence() {
+  const { locale } = useLanguage();
   return (
-    <section className="full-chain" aria-labelledby="full-chain-title">
+    <Localized><section className="full-chain" aria-labelledby="full-chain-title">
       <div className="full-chain__heading">
         <div>
           <p className="full-chain__eyebrow">END-TO-END DELIVERY EVIDENCE</p>
@@ -32,7 +34,7 @@ export function FullChainEvidence() {
 
       <figure className="full-chain__diagram">
         <img
-          src="/architecture/full-delivery-chain.svg"
+          src={locale === "zh-CN" ? "/architecture/full-delivery-chain.zh-CN.svg" : "/architecture/full-delivery-chain.svg"}
           alt="Agent Market browser to Cloudflare, AWS, PostgreSQL, Evidence and pause sequence"
           loading="lazy"
         />
@@ -54,6 +56,6 @@ export function FullChainEvidence() {
           </li>
         ))}
       </ol>
-    </section>
+    </section></Localized>
   );
 }
