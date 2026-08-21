@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { bootstrapClient, readRenderStateFromDocument } from "./bootstrap";
 import { FullChainEvidence } from "./evidence/FullChainEvidence";
+import { LanguageProvider } from "./i18n/LanguageProvider";
 import { startPerformanceCollection } from "./performance/collector";
 import { ServerApp } from "./ssr/ServerApp";
 import "./styles.css";
@@ -22,16 +23,18 @@ function ClientApplication({ initialInteractive }: { initialInteractive: boolean
 
   return (
     <StrictMode>
-      {interactive
-        ? (
-            <BrowserRouter>
-              <App />
-              {globalThis.location.pathname === "/evidence"
-                ? <FullChainEvidence />
-                : null}
-            </BrowserRouter>
-          )
-        : <ServerApp pathname={globalThis.location.pathname} />}
+      <LanguageProvider>
+        {interactive
+          ? (
+              <BrowserRouter>
+                <App />
+                {globalThis.location.pathname === "/evidence"
+                  ? <FullChainEvidence />
+                  : null}
+              </BrowserRouter>
+            )
+          : <ServerApp pathname={globalThis.location.pathname} />}
+      </LanguageProvider>
     </StrictMode>
   );
 }

@@ -96,12 +96,12 @@ requirements:
     last_verified_at: null
     blockers: []
   - requirement_id: REQ-AM-13
-    status: NOT_STARTED
-    implementation_locations: []
-    test_evidence: []
-    deployment_evidence: []
-    transaction_evidence: []
-    last_verified_at: null
+    status: VERIFIED
+    implementation_locations: [infra/aws/template.yaml, database/migrations/0002_performance_observability.sql, services/performance-aggregator/worker.py]
+    test_evidence: [services/performance-aggregator/test_worker.py, infra/aws/template.test.mjs]
+    deployment_evidence: [docs/evidence/deployment/2026-08-20-aws-performance-foundation.json, docs/evidence/testing/2026-08-20-performance-observability.json, apps/web/public/evidence/aws-cloudformation-stack.png, apps/web/public/evidence/aws-runtime-exit-zero.png]
+    transaction_evidence: [request_id:38979d29-2ef6-4006-b120-6cc95e59eef4, run_id:44c41841-3d20-4856-9f71-76750075c3a4]
+    last_verified_at: "2026-08-21T01:06:51Z"
     blockers: []
   - requirement_id: REQ-AM-14
     status: IMPLEMENTING

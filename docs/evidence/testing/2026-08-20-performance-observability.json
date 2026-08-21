@@ -1,38 +1,57 @@
 {
-  "capturedAt": "2026-08-20",
+  "capturedAt": "2026-08-21T01:55:00Z",
   "scope": "performance-observability-full-chain",
-  "status": "FOUNDATION_DEPLOYED_PRODUCTION_PENDING",
+  "status": "PRODUCTION_SAMPLE_VERIFIED_PUBLIC_READBACK_COMPLETE_AWS_PAUSED",
   "correlationField": "request_id",
   "chain": [
-    { "step": 1, "system": "Browser Web Vitals", "status": "LOCAL_VERIFIED" },
-    { "step": 2, "system": "Cloudflare Edge Worker", "status": "LOCAL_VERIFIED" },
-    { "step": 3, "system": "API Gateway", "status": "DEPLOYED_UNVERIFIED" },
-    { "step": 4, "system": "Ingestion Lambda", "status": "DEPLOYED_UNVERIFIED" },
-    { "step": 5, "system": "SNS", "status": "DEPLOYED_UNVERIFIED" },
-    { "step": 6, "system": "SQS and DLQ", "status": "DEPLOYED_UNVERIFIED" },
-    { "step": 7, "system": "ECS Fargate", "status": "DEPLOYED_IDLE" },
-    { "step": 8, "system": "PostgreSQL and pgvector", "status": "SCHEMA_VERIFIED" },
-    { "step": 9, "system": "Public Evidence readback", "status": "NOT_STARTED" },
-    { "step": 10, "system": "AWS reversible pause", "status": "NOT_STARTED" }
+    { "step": 1, "system": "Browser Web Vitals", "status": "VERIFIED" },
+    { "step": 2, "system": "Cloudflare Edge Worker", "status": "VERIFIED" },
+    { "step": 3, "system": "API Gateway", "status": "VERIFIED" },
+    { "step": 4, "system": "Ingestion Lambda", "status": "VERIFIED" },
+    { "step": 5, "system": "SNS", "status": "VERIFIED" },
+    { "step": 6, "system": "SQS and DLQ", "status": "VERIFIED" },
+    { "step": 7, "system": "ECS Fargate", "status": "VERIFIED_EXIT_0" },
+    { "step": 8, "system": "PostgreSQL and pgvector", "status": "VERIFIED_READBACK" },
+    { "step": 9, "system": "Public Evidence readback", "status": "VERIFIED" },
+    { "step": 10, "system": "AWS reversible pause", "status": "VERIFIED_DISABLED_ECS_0_QUEUES_0" }
   ],
   "privacyBoundary": {
     "captured": ["route pathname", "build version", "TTFB", "FCP", "LCP", "CLS", "INP"],
     "excluded": ["wallet", "identity", "cookie", "authorization header", "query string", "full URL"]
   },
   "verification": {
-    "webTestFilesPassed": 8,
-    "webTestsPassed": 17,
+    "webTestFilesPassed": 9,
+    "webTestsPassed": 21,
     "transactionEngineTestFilesPassed": 10,
     "transactionEngineTestsPassed": 20,
     "webEdgeBuild": "PASS",
     "transactionEngineTypecheck": "PASS"
   },
   "productionAcceptance": {
-    "realCoreWebVitalsRun": "PENDING",
-    "awsRequestContinuity": "PENDING",
-    "databaseReadback": "PENDING",
-    "publicEvidenceReadback": "PENDING",
-    "consumerTriggerDisabled": "PENDING",
-    "ecsRunningTaskCount": 0
+    "realCoreWebVitalsRun": "VERIFIED",
+    "awsRequestContinuity": "VERIFIED",
+    "databaseReadback": "VERIFIED",
+    "publicEvidenceReadback": "VERIFIED",
+    "publicEvidenceUrl": "https://agent-market.baby2b.online/evidence",
+    "consumerTriggerDisabled": "VERIFIED",
+    "ecsRunningTaskCount": 0,
+    "workQueueDepth": 0,
+    "deadLetterQueueDepth": 0,
+    "pausedAt": "2026-08-21T01:55:00Z"
+  },
+  "verifiedRun": {
+    "requestId": "38979d29-2ef6-4006-b120-6cc95e59eef4",
+    "runId": "44c41841-3d20-4856-9f71-76750075c3a4",
+    "route": "/evidence",
+    "sampleCount": 1,
+    "lcpMs": 1192,
+    "p50LcpMs": 1192,
+    "p75LcpMs": 1192,
+    "p95LcpMs": 1192,
+    "errorRate": 0,
+    "taskExitCode": 0,
+    "databaseEvidenceStatus": "verified",
+    "aggregatedAt": "2026-08-21T01:04:32Z",
+    "readBackAt": "2026-08-21T01:06:51Z"
   }
 }

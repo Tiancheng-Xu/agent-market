@@ -55,6 +55,7 @@ runVite(["build", "--config", "vite.ssr.config.ts"]);
 
 await mkdir(outputDirectory, { recursive: true });
 await cp(clientDirectory, outputDirectory, { recursive: true });
+await rm(resolve(clientDirectory, "_redirects"), { force: true });
 await cp(
   resolve(workerDirectory, "_worker.js"),
   resolve(outputDirectory, "_worker.js"),

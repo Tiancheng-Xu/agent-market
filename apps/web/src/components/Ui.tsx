@@ -1,5 +1,7 @@
 import type { PropsWithChildren, ReactNode } from "react";
 
+import { Localized } from "../i18n/LanguageProvider";
+
 export function Badge({ children, tone = "neutral" }: PropsWithChildren<{ tone?: "cyan" | "amber" | "rose" | "neutral" | "indigo" }>) {
   return <span className={`badge badge-${tone}`}>{children}</span>;
 }
@@ -32,7 +34,7 @@ export function Stat({ label, value, note, tone = "plain" }: { label: string; va
 }
 
 export function DemoNotice() {
-  return <div className="demo-notice"><Badge tone="amber">DEMO FIXTURE</Badge><span>Values on this page demonstrate UI states and are not deployment or transaction evidence.</span></div>;
+  return <Localized><div className="demo-notice"><Badge tone="amber">DEMO FIXTURE</Badge><span>Values on this page demonstrate UI states and are not deployment or transaction evidence.</span></div></Localized>;
 }
 
 export function EmptyState({ title, description }: { title: string; description: string }) {
