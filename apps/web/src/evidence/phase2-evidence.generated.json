@@ -2,10 +2,10 @@
   "evidenceVersion": 2,
   "project": "agent-market",
   "snapshot": "phase2-local-validation",
-  "capturedAt": "2026-08-21T20:25:42Z",
+  "capturedAt": "2026-08-21T21:50:00Z",
   "truthBoundary": {
-    "en": "V1 production proof remains valid only for its recorded V1 scope. V2 claims are local, pending external verification, or deferred.",
-    "zh": "V1 生产证据只在其既有范围内有效。V2 状态仅为本地已验证、等待外部验证或延期。"
+    "en": "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
+    "zh": "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。"
   },
   "assets": {
     "diagrams": [
@@ -26,7 +26,8 @@
       "apps/web/public/evidence/aws-cloudformation-stack.png",
       "apps/web/public/evidence/aws-runtime-exit-zero.png",
       "apps/web/public/evidence/github-actions-success.png",
-      "apps/web/public/evidence/cloudflare-edge-ssr.png"
+      "apps/web/public/evidence/cloudflare-edge-ssr.png",
+      "apps/web/public/evidence/cloudflare-v2-edge-ssr.png"
     ]
   },
   "items": [
@@ -224,12 +225,12 @@
       "id": "V2-CLOUDFLARE-ACTIONS",
       "phase": "v2",
       "requirement": {
-        "en": "Gate contracts, TypeScript, Go, Python, Evidence and repository policy without automatic production deployment.",
-        "zh": "对 contracts、TypeScript、Go、Python、Evidence 和仓库策略执行 Gate，且不自动生产部署。"
+        "en": "Gate contracts, TypeScript, Go, Python, Evidence and repository policy, then deliver the accepted merge through Git-integrated Cloudflare Pages.",
+        "zh": "对 contracts、TypeScript、Go、Python、Evidence 和仓库策略执行 Gate，再通过 Git 集成 Cloudflare Pages 交付已验收合并。"
       },
       "implementation": {
-        "en": "GitHub Actions uses Node 24 action runtimes and invokes the local verification matrix.",
-        "zh": "GitHub Actions 使用 Node 24 action runtime，并调用本地验证矩阵。"
+        "en": "PR checks passed before merge. Cloudflare Pages deployed merge commit ae743d8 as production deployment 301df641; public document requests returned SSR 200, the workspace deep link returned 200, and /missing returned 404.",
+        "zh": "PR 检查在合并前全部通过。Cloudflare Pages 将合并提交 ae743d8 部署为生产部署 301df641；公开文档请求返回 SSR 200，工作区深链返回 200，/missing 返回 404。"
       },
       "code": [
         ".github/workflows/verify.yml",
@@ -238,20 +239,22 @@
       ],
       "evidence": [
         "scripts/verify-all.test.mjs",
-        "scripts/validate-repository.test.mjs"
+        "scripts/validate-repository.test.mjs",
+        "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json",
+        "apps/web/public/evidence/cloudflare-v2-edge-ssr.png"
       ],
-      "status": "verified-local"
+      "status": "verified-production"
     },
     {
       "id": "V2-EXTERNAL-DELIVERY",
       "phase": "v2",
       "requirement": {
-        "en": "Deploy V2 to AWS and Cloudflare and publish fresh external readback.",
-        "zh": "把 V2 部署到 AWS 与 Cloudflare，并发布新的外部回读。"
+        "en": "Deploy the remaining V2 AWS runtime and publish fresh external readback.",
+        "zh": "部署剩余的 V2 AWS runtime，并发布新的外部回读。"
       },
       "implementation": {
-        "en": "No production deployment runs from CI; release remains a separate authorized action.",
-        "zh": "CI 不执行生产部署；发布仍是单独授权动作。"
+        "en": "Cloudflare delivery is independently verified; the V2 AWS runtime remains undeployed and cannot inherit Cloudflare production status.",
+        "zh": "Cloudflare 交付已独立验证；V2 AWS runtime 仍未部署，不能继承 Cloudflare 的生产状态。"
       },
       "code": [
         ".github/workflows/verify.yml",

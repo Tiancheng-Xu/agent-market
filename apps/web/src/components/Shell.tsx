@@ -1,5 +1,5 @@
-import type { PropsWithChildren } from "react";
-import { NavLink } from "react-router-dom";
+import { type FormEvent, type PropsWithChildren, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { navItems } from "../data";
 import { Localized, useLanguage } from "../i18n/LanguageProvider";
@@ -8,7 +8,24 @@ import type { WalletState } from "../types";
 
 export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: PropsWithChildren<{ wallet: WalletState; isSepolia: boolean; onConnect(): void; onSwitch(): void }>) {
   const { locale, setLocale, t } = useLanguage();
+  const [searchTerm, setSearchTerm] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
   const walletLabel = wallet.status === "connecting" ? "Connecting..." : wallet.address ? shortAddress(wallet.address) : "Connect MetaMask";
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const term = searchTerm.trim();
+    if (!term) return;
+
+    const query = `?q=${encodeURIComponent(term)}`;
+    if (location.pathname.startsWith("/agents")) {
+      navigate(`/agents${query}`);
+      return;
+    }
+    navigate(`/tasks${query}`);
+  }
+
   return (
     <Localized><div className="site-shell">
       <div className="testnet-banner">SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN</div>
@@ -21,7 +38,10 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
       </aside>
       <div className="app-column">
         <header className="topbar">
-          <label className="search"><span>SEARCH</span><input aria-label="Search" placeholder="Agents, tasks, or request IDs" /></label>
+          <form className="search" role="search" onSubmit={submitSearch}>
+            <span>SEARCH</span>
+            <input aria-label="Search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Agents, tasks, or request IDs" />
+          </form>
           <div className="wallet-actions">
             <div className="language-toggle" role="group" aria-label={t("Language")}>
               <button type="button" aria-pressed={locale === "zh-CN"} onClick={() => setLocale("zh-CN")}>中文</button>
