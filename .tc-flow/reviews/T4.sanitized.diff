@@ -1,0 +1,2550 @@
+diff --git a/apps/transaction-engine/src/domain/tasks.test.ts b/apps/transaction-engine/src/domain/tasks.test.ts
+index 884a946..f877539 100644
+--- a/apps/transaction-engine/src/domain/tasks.test.ts
++++ b/apps/transaction-engine/src/domain/tasks.test.ts
+@@ -54,4 +54,36 @@ describe("task aggregate", () => {
+     expect(() => task.submit("agent-01", "ipfs://delivery", "req-submit-03"))
+       .toThrowError("TASK_TRANSITION_INVALID");
+   });
++
++  it("tracks funding, dispute, settlement, and budget-only refund states idempotently", () => {
++    const funded = TaskAggregate.create({
++      id: "task-04", publisherId: "publisher-01", title: "Funded task",
++      budgetAtomic: 20_000n, requestId: "req-create-04",
++    });
++    funded.markFundingPending("publisher-01", "req-funding-04");
++    const fundingResult = funded.markFunded("publisher-01", "req-funded-04");
++    expect(funded.markFunded("publisher-01", "req-funded-04")).toEqual(fundingResult);
++    funded.startMatching("req-match-04");
++    funded.assign("agent-04", "req-assign-04");
++    funded.acceptAssignment("agent-04", "req-accept-04");
++    funded.submit("agent-04", "ipfs://delivery-04", "req-submit-04");
++    funded.openDispute("req-dispute-04");
++    funded.settle("req-settle-04");
++    expect(funded.snapshot().status).toBe("settled");
++
++    const refundable = TaskAggregate.create({
++      id: "task-05", publisherId: "publisher-01", title: "Refund budget",
++      budgetAtomic: 30_000n, requestId: "req-create-05",
++    });
++    refundable.markFundingPending("publisher-01", "req-funding-05");
++    refundable.markFunded("publisher-01", "req-funded-05");
++    refundable.refundBudget("publisher-01", "req-refund-05");
++    expect(refundable.snapshot()).toMatchObject({
++      status: "refunded",
++      refundScope: "budget_only",
++      bondDisposition: "platform_treasury",
++    });
++    expect(() => refundable.refundBudget("attacker", "req-refund-attack"))
++      .toThrow("TASK_PUBLISHER_FORBIDDEN");
++  });
+ });
+diff --git a/apps/transaction-engine/src/domain/tasks.ts b/apps/transaction-engine/src/domain/tasks.ts
+index 1cd4319..94795b1 100644
+--- a/apps/transaction-engine/src/domain/tasks.ts
++++ b/apps/transaction-engine/src/domain/tasks.ts
+@@ -1,10 +1,15 @@
+ export type TaskStatus =
+   | "open"
++  | "funding_pending"
++  | "funded"
+   | "matching"
+   | "assigned"
+   | "in_progress"
+   | "submitted"
+-  | "accepted";
++  | "accepted"
++  | "disputed"
++  | "settled"
++  | "refunded";
+
+ export interface CreateTaskInput {
+   id: string;
+@@ -23,6 +28,8 @@ export interface TaskSnapshot {
+   agentId?: string;
+   deliveryUri?: string;
+   version: number;
++  refundScope?: "budget_only";
++  bondDisposition?: "platform_treasury";
+ }
+
+ export interface TaskTransitionResult {
+@@ -30,6 +37,8 @@ export interface TaskTransitionResult {
+   requestId: string;
+   status: TaskStatus;
+   version: number;
++  refundScope?: "budget_only";
++  bondDisposition?: "platform_treasury";
+ }
+
+ export class TaskAggregate {
+@@ -61,7 +70,17 @@ export class TaskAggregate {
+   }
+
+   startMatching(requestId: string): TaskTransitionResult {
+-    return this.transition(requestId, "open", "matching");
++    return this.transition(requestId, ["open", "funded"], "matching");
++  }
++
++  markFundingPending(publisherId: string, requestId: string): TaskTransitionResult {
++    this.requirePublisher(publisherId);
++    return this.transition(requestId, "open", "funding_pending");
++  }
++
++  markFunded(publisherId: string, requestId: string): TaskTransitionResult {
++    this.requirePublisher(publisherId);
++    return this.transition(requestId, "funding_pending", "funded");
+   }
+
+   assign(agentId: string, requestId: string): TaskTransitionResult {
+@@ -91,15 +110,29 @@ export class TaskAggregate {
+   }
+
+   acceptDelivery(publisherId: string, requestId: string): TaskTransitionResult {
+-    if (this.state.publisherId !== publisherId) {
+-      throw new Error("TASK_PUBLISHER_FORBIDDEN");
+-    }
++    this.requirePublisher(publisherId);
+     return this.transition(requestId, "submitted", "accepted");
+   }
+
++  openDispute(requestId: string): TaskTransitionResult {
++    return this.transition(requestId, "submitted", "disputed");
++  }
++
++  settle(requestId: string): TaskTransitionResult {
++    return this.transition(requestId, ["accepted", "disputed"], "settled");
++  }
++
++  refundBudget(publisherId: string, requestId: string): TaskTransitionResult {
++    this.requirePublisher(publisherId);
++    return this.transition(requestId, ["funded", "assigned", "in_progress", "submitted", "disputed"], "refunded", () => {
++      this.state.refundScope = "budget_only";
++      this.state.bondDisposition = "platform_treasury";
++    });
++  }
++
+   private transition(
+     requestId: string,
+-    expected: TaskStatus,
++    expected: TaskStatus | readonly TaskStatus[],
+     next: TaskStatus,
+     mutate?: () => void,
+   ): TaskTransitionResult {
+@@ -107,7 +140,8 @@ export class TaskAggregate {
+     if (existing) {
+       return existing;
+     }
+-    if (this.state.status !== expected) {
++    const allowed = Array.isArray(expected) ? expected : [expected];
++    if (!allowed.includes(this.state.status)) {
+       throw new Error("TASK_TRANSITION_INVALID");
+     }
+
+@@ -119,12 +153,20 @@ export class TaskAggregate {
+     return result;
+   }
+
++  private requirePublisher(publisherId: string): void {
++    if (this.state.publisherId !== publisherId) {
++      throw new Error("TASK_PUBLISHER_FORBIDDEN");
++    }
++  }
++
+   private result(requestId: string): TaskTransitionResult {
+     return {
+       taskId: this.state.id,
+       requestId,
+       status: this.state.status,
+       version: this.state.version,
++      ...(this.state.refundScope ? { refundScope: this.state.refundScope } : {}),
++      ...(this.state.bondDisposition ? { bondDisposition: this.state.bondDisposition } : {}),
+     };
+   }
+ }
+diff --git a/apps/transaction-engine/src/persistence/schema.test.ts b/apps/transaction-engine/src/persistence/schema.test.ts
+index 85524e0..ce8f241 100644
+--- a/apps/transaction-engine/src/persistence/schema.test.ts
++++ b/apps/transaction-engine/src/persistence/schema.test.ts
+@@ -6,9 +6,17 @@ import { describe, expect, it } from "vitest";
+ const migrationPath = fileURLToPath(
+   new URL("../../../../database/migrations/0001_agent_market_core.sql", import.meta.url),
+ );
++const phase2MigrationPath = fileURLToPath(
++  new URL("../../../../database/migrations/0003_phase2_lifecycle.sql", import.meta.url),
++);
++const reconciliationMigrationPath = fileURLToPath(
++  new URL("../../../../database/migrations/0004_chain_reconciliation.sql", import.meta.url),
++);
+
+ describe("PostgreSQL core schema", () => {
+   const sql = readFileSync(migrationPath, "utf8").toLowerCase();
++  const phase2Sql = readFileSync(phase2MigrationPath, "utf8").toLowerCase();
++  const reconciliationSql = readFileSync(reconciliationMigrationPath, "utf8").toLowerCase();
+
+   it("enables pgvector and defines the core marketplace records", () => {
+     expect(sql).toContain("create extension if not exists vector");
+@@ -19,6 +27,15 @@ describe("PostgreSQL core schema", () => {
+     expect(sql).toContain("create table outbox_events");
+   });
+
++  it("adds idempotent chain reconciliation and public event projection fields", () => {
++    expect(reconciliationSql).toContain("add column if not exists call_data");
++    expect(reconciliationSql).toContain("add column if not exists expires_at");
++    expect(reconciliationSql).toContain("add column if not exists block_hash");
++    expect(reconciliationSql).toContain("add column if not exists event_name");
++    expect(reconciliationSql).toContain("add column if not exists event_request_ref");
++    expect(reconciliationSql).toContain("idx_chain_transactions_hash_status");
++  });
++
+   it("stores only encrypted credential envelope fields", () => {
+     expect(sql).toContain("ciphertext bytea not null");
+     expect(sql).toContain("authentication_tag bytea not null");
+@@ -31,4 +48,30 @@ describe("PostgreSQL core schema", () => {
+     expect(sql).toContain("unique (task_id, request_id)");
+     expect(sql).toContain("idx_outbox_events_pending");
+   });
++
++  it("adds wallet, transaction, matching, model, and replay lifecycle records", () => {
++    expect(phase2Sql).toContain("create table if not exists wallet_challenges");
++    expect(phase2Sql).toContain("create table if not exists wallet_sessions");
++    expect(phase2Sql).toContain("create table if not exists idempotency_records");
++    expect(phase2Sql).toContain("create table if not exists chain_transactions");
++    expect(phase2Sql).toContain("create table if not exists consumed_events");
++    expect(phase2Sql).toContain("create table if not exists match_candidates");
++    expect(phase2Sql).toContain("create table if not exists match_feedback");
++    expect(phase2Sql).toContain("create table if not exists model_versions");
++    expect(phase2Sql).toContain("create table if not exists dlq_replay_audits");
++  });
++
++  it("keeps Sepolia and replay identities unique without plaintext credentials", () => {
++    expect(phase2Sql).toContain("check (chain_id = 11155111)");
++    expect(phase2Sql).toContain("unique (actor_wallet, command, resource_id, idempotency_key)");
++    expect(phase2Sql).toContain("unique (original_event_id, idempotency_key)");
++    expect(phase2Sql).toContain("unique (request_id, wallet_address, chain_id)");
++    expect(phase2Sql).toContain("primary key (consumer, event_id)");
++    expect(phase2Sql).toContain("status != 'confirmed'");
++    expect(phase2Sql).toContain("expected_value_atomic >= 0");
++    expect(phase2Sql).toContain("create table if not exists wallet_challenges");
++    expect(phase2Sql).toContain("add column if not exists key_version");
++    expect(sql).toContain("ciphertext");
++    expect(phase2Sql).not.toMatch(/credential_plaintext|plaintext_secret|api_key\s+text/);
++  });
+ });
+diff --git a/apps/transaction-engine/src/app/api/transactions/intents/route.ts b/apps/transaction-engine/src/app/api/transactions/intents/route.ts
+new file mode 100644
+index 0000000..b5d0e47
+--- /dev/null
++++ b/apps/transaction-engine/src/app/api/transactions/intents/route.ts
+@@ -0,0 +1,74 @@
++import { getAuthService } from "../../../../auth/runtime";
++import { AuthError, readSessionCookie, type WalletAuthService } from "../../../../auth/session";
++import { buildTransactionIntent, type BuildIntentInput } from "../../../../chain/intents";
++import { bindMethodArguments, contractForMethod, deriveChainResource, type ContractAllowlist } from "../../../../chain/policy";
++import { getTransactionRuntime } from "../../../../chain/runtime";
++import type { TransactionStore } from "../../../../chain/transaction-store";
++import { resolveRequestId } from "../../../../lib/request-context";
++
++interface IntentHandlerDependencies {
++  auth: WalletAuthService;
++  store: TransactionStore;
++  contracts: ContractAllowlist;
++  now?: () => Date;
++}
++
++export function createIntentHandler({ auth, store, contracts, now = () => new Date() }: IntentHandlerDependencies) {
++  return async function POST(request: Request): Promise<Response> {
++    const requestId = resolveRequestId(request.headers);
++    try {
++      const token = readSessionCookie(request.headers);
++      if (!token) throw new AuthError("AUTH_SESSION_INVALID");
++      const session = await auth.authenticateSession(token);
++      auth.requireRecentAuth(session);
++      const body = await request.json() as Record<string, unknown>;
++      for (const forbidden of ["from", "to", "requestRef", "taskId", "chainId", "data", "valueAtomic", "privateKey", "signature", "intentId", "requestId"]) {
++        if (forbidden in body) throw new AuthError("CHAIN_INTENT_FORBIDDEN_FIELD", 400);
++      }
++      if (typeof body.resourceId !== "string" || typeof body.method !== "string"
++        || typeof body.args !== "object" || body.args === null) {
++        throw new AuthError("CHAIN_INTENT_INVALID", 400);
++      }
++      const resource = deriveChainResource(body.resourceId);
++      const method = body.method as BuildIntentInput["method"];
++      const normalizedContracts = contracts;
++      const intent = buildTransactionIntent({
++        intentId: requestId,
++        requestId,
++        requestRef: resource.requestRef,
++        from: session.walletAddress,
++        to: contractForMethod(method, normalizedContracts),
++        method,
++        args: bindMethodArguments(method, body.args as Record<string, unknown>, resource, normalizedContracts),
++        createdAt: now(),
++      } as BuildIntentInput);
++      await store.createIntent(intent);
++      return Response.json({ intent, requestId }, {
++        status: 201,
++        headers: { "cache-control": "no-store", "x-request-id": requestId },
++      });
++    } catch (error) {
++      const authError = error instanceof AuthError ? error : null;
++      const code = authError?.code ?? (error instanceof Error ? error.message : "CHAIN_SERVICE_UNAVAILABLE");
++      const status = authError?.status ?? (code === "CHAIN_INTENT_CONFLICT" ? 409
++        : code.startsWith("CHAIN_") && !["CHAIN_INTENT_NOT_PERSISTED"].includes(code) ? 400 : 503);
++      return Response.json({ error: code, requestId }, {
++        status,
++        headers: { "cache-control": "no-store", "x-request-id": requestId },
++      });
++    }
++  };
++}
++
++export async function POST(request: Request): Promise<Response> {
++  const requestId = resolveRequestId(request.headers);
++  try {
++    const runtime = getTransactionRuntime();
++    return await createIntentHandler({ auth: getAuthService(), store: runtime.store, contracts: runtime.contracts })(request);
++  } catch {
++    return Response.json({ error: "CHAIN_SERVICE_UNAVAILABLE", requestId }, {
++      status: 503,
++      headers: { "cache-control": "no-store", "x-request-id": requestId },
++    });
++  }
++}
+diff --git a/apps/transaction-engine/src/app/api/transactions/transaction-routes.test.ts b/apps/transaction-engine/src/app/api/transactions/transaction-routes.test.ts
+new file mode 100644
+index 0000000..5db7031
+--- /dev/null
++++ b/apps/transaction-engine/src/app/api/transactions/transaction-routes.test.ts
+@@ -0,0 +1,141 @@
++import { Wallet } from "ethers";
++import { describe, expect, it } from "vitest";
++
++import { MemoryAuthStore } from "../../../auth/auth-store";
++import { formatChallengeMessage } from "../../../auth/challenge";
++import { WalletAuthService } from "../../../auth/session";
++import { getTransactionMethodDefinition } from "../../../chain/intents";
++import { deriveChainResource } from "../../../chain/policy";
++import type { ChainObservation, ChainReader } from "../../../chain/reconcile";
++import { MemoryTransactionStore } from "../../../chain/transaction-store";
++import { createIntentHandler } from "./intents/route";
++import { createTransactionVerifyHandler } from "./verify/route";
++
++const now = new Date("2026-08-21T12:00:00.000Z");
++const requestId = "0191f6f8-cb6b-7f31-81ad-c497d7d90301";
++const resourceId = "0191f6f8-cb6b-7f31-81ad-c497d7d90304";
++const { requestRef, taskId } = deriveChainResource(resourceId);
++const contract = "0x2222222222222222222222222222222222222222";
++const contracts = { token: contract, escrow: contract, committee: contract, vault: contract };
++const txHash = `0x${"56".repeat(32)}`;
++const blockHash = `0x${"78".repeat(32)}`;
++
++async function authenticatedWallet() {
++  const wallet = Wallet.createRandom();
++  let id = 0;
++  const ids = [
++    "0191f6f8-cb6b-7f31-81ad-c497d7d90302",
++    "0191f6f8-cb6b-7f31-81ad-c497d7d90303",
++  ];
++  const auth = new WalletAuthService(new MemoryAuthStore(), {
++    now: () => now,
++    id: () => ids[id++]!,
++    nonce: () => "0123456789abcdef01234567",
++    sessionToken: () => "transaction-route-session",
++  });
++  const challenge = await auth.issueChallenge(wallet.address, {
++    requestId,
++    domain: "agent-market.test",
++    uri: "https://agent-market.test",
++  });
++  const message = formatChallengeMessage(challenge);
++  await auth.verifyChallenge(message, await wallet.signMessage(message));
++  return { auth, wallet, cookie: "__Host-agent_market_session=transaction-route-session" };
++}
++
++function reader(intent: { data: string; from: string }): ChainReader {
++  const definition = getTransactionMethodDefinition("createTask");
++  const event = definition.contractInterface.encodeEventLog(
++    definition.contractInterface.getEvent("TaskCreated")!,
++    [taskId, requestRef, intent.from, "6000000", 1_800_000_000],
++  );
++  const observation: ChainObservation = {
++    transaction: {
++      hash: txHash,
++      chainId: 11_155_111,
++      from: intent.from,
++      to: contract,
++      data: intent.data,
++      valueAtomic: "0",
++      blockNumber: 100,
++      blockHash,
++    },
++    receipt: {
++      status: "success",
++      blockNumber: 100,
++      blockHash,
++      logs: [{ address: contract, topics: event.topics, data: event.data }],
++    },
++    latestBlockNumber: 101,
++    canonicalBlockHash: blockHash,
++  };
++  return { async readTransaction() { return observation; } };
++}
++
++describe("transaction intent and verification routes", () => {
++  it("derives the sender from the signed session and rejects signing-material overrides", async () => {
++    const { auth, wallet, cookie } = await authenticatedWallet();
++    const store = new MemoryTransactionStore();
++    const handler = createIntentHandler({ auth, store, contracts, now: () => now });
++    const forbidden = await handler(new Request("https://agent-market.test/api/transactions/intents", {
++      method: "POST",
++      headers: { cookie, "content-type": "application/json", "x-request-id": requestId },
++      body: JSON.stringify({ resourceId, method: "createTask", args: {}, to: contract }),
++    }));
++    expect(forbidden.status).toBe(400);
++
++    const response = await handler(new Request("https://agent-market.test/api/transactions/intents", {
++      method: "POST",
++      headers: { cookie, "content-type": "application/json", "x-request-id": requestId },
++      body: JSON.stringify({
++        resourceId,
++        method: "createTask",
++        args: { taskId, budgetAtomic: "6000000", deadline: 1_800_000_000 },
++      }),
++    }));
++    const body = await response.json() as { intent: { from: string; data: string; intentId: string } };
++    expect(response.status).toBe(201);
++    expect(body.intent.from).toBe(wallet.address.toLowerCase());
++    expect(JSON.stringify(body)).not.toMatch(/privateKey|signature/u);
++  });
++
++  it("confirms a session-owned intent and returns only the public evidence projection", async () => {
++    const { auth, cookie } = await authenticatedWallet();
++    const store = new MemoryTransactionStore();
++    const createResponse = await createIntentHandler({ auth, store, contracts, now: () => now })(new Request(
++      "https://agent-market.test/api/transactions/intents",
++      {
++        method: "POST",
++        headers: { cookie, "content-type": "application/json", "x-request-id": requestId },
++        body: JSON.stringify({
++          resourceId,
++          method: "createTask",
++          args: { taskId, budgetAtomic: "6000000", deadline: 1_800_000_000 },
++        }),
++      },
++    ));
++    const created = await createResponse.json() as { intent: { intentId: string; from: string; data: string } };
++    const chainReader = reader(created.intent);
++    const response = await createTransactionVerifyHandler({
++      auth, store, rpc: chainReader, blockscout: chainReader,
++      now: () => new Date("2026-08-21T12:06:00.000Z"),
++    })(new Request("https://agent-market.test/api/transactions/verify", {
++      method: "POST",
++      headers: { cookie, "content-type": "application/json", "x-request-id": requestId },
++      body: JSON.stringify({ intentId: created.intent.intentId, txHash }),
++    }));
++    const body = await response.json() as { verification: { status: string }; evidence: Record<string, unknown> };
++    expect(response.status).toBe(200);
++    expect(body.verification.status).toBe("confirmed");
++    expect(body.evidence).toMatchObject({
++      txHash,
++      eventName: "TaskCreated",
++      requestRef,
++      blockNumber: 100,
++      confirmations: 2,
++      status: "confirmed",
++    });
++    expect(body.evidence).not.toHaveProperty("data");
++    expect(body.evidence).not.toHaveProperty("errorCode");
++  });
++});
+diff --git a/apps/transaction-engine/src/app/api/transactions/verify/route.ts b/apps/transaction-engine/src/app/api/transactions/verify/route.ts
+new file mode 100644
+index 0000000..47665d6
+--- /dev/null
++++ b/apps/transaction-engine/src/app/api/transactions/verify/route.ts
+@@ -0,0 +1,76 @@
++import { getAuthService } from "../../../../auth/runtime";
++import { AuthError, readSessionCookie, type WalletAuthService } from "../../../../auth/session";
++import { projectTransactionEvidence } from "../../../../chain/evidence";
++import { reconcileTransaction, type ChainReader } from "../../../../chain/reconcile";
++import { getTransactionRuntime } from "../../../../chain/runtime";
++import type { TransactionStore } from "../../../../chain/transaction-store";
++import { resolveRequestId } from "../../../../lib/request-context";
++
++interface VerifyHandlerDependencies {
++  auth: WalletAuthService;
++  store: TransactionStore;
++  rpc: ChainReader;
++  blockscout: ChainReader;
++  now?: () => Date;
++  minimumConfirmations?: number;
++}
++
++export function createTransactionVerifyHandler({
++  auth, store, rpc, blockscout, now = () => new Date(), minimumConfirmations = 2,
++}: VerifyHandlerDependencies) {
++  return async function POST(request: Request): Promise<Response> {
++    const requestId = resolveRequestId(request.headers);
++    try {
++      const token = readSessionCookie(request.headers);
++      if (!token) throw new AuthError("AUTH_SESSION_INVALID");
++      const session = await auth.authenticateSession(token);
++      const body = await request.json() as { intentId?: unknown; txHash?: unknown };
++      if (typeof body.intentId !== "string" || typeof body.txHash !== "string"
++        || !/^0x[a-fA-F0-9]{64}$/u.test(body.txHash)) {
++        throw new AuthError("CHAIN_VERIFY_INVALID", 400);
++      }
++      const intent = await store.findIntent(body.intentId);
++      if (!intent) throw new AuthError("CHAIN_INTENT_NOT_FOUND", 404);
++      if (intent.from !== session.walletAddress) throw new AuthError("CHAIN_INTENT_FORBIDDEN", 403);
++      const checkedAt = now().toISOString();
++      await store.recordSubmission(intent.intentId, body.txHash, checkedAt);
++      const previous = await store.findVerification(intent.intentId);
++      const previousCanonicalBlockHash = await store.findCanonicalBlockHash(intent.intentId) ?? undefined;
++      let canonicalObservation: { blockHash: string; requestRef: string } | undefined;
++      const verification = await reconcileTransaction({
++        intent, txHash: body.txHash, rpc, blockscout, minimumConfirmations, checkedAt,
++        ...(previous ? { previous } : {}),
++        ...(previousCanonicalBlockHash ? { previousCanonicalBlockHash } : {}),
++        onCanonicalObservation: (observation) => { canonicalObservation = observation; },
++      });
++      if (verification.status === "confirmed" && !canonicalObservation) throw new Error("CHAIN_CANONICAL_OBSERVATION_MISSING");
++      const persisted = await store.saveVerification(verification, canonicalObservation);
++      return Response.json({
++        verification: persisted,
++        evidence: projectTransactionEvidence(intent, persisted),
++        requestId,
++      }, { headers: { "cache-control": "no-store", "x-request-id": requestId } });
++    } catch (error) {
++      const authError = error instanceof AuthError ? error : null;
++      const code = authError?.code ?? (error instanceof Error ? error.message : "CHAIN_SERVICE_UNAVAILABLE");
++      const status = authError?.status ?? (code === "CHAIN_TRANSACTION_CONFLICT" ? 409 : 503);
++      return Response.json({ error: code, requestId }, {
++        status,
++        headers: { "cache-control": "no-store", "x-request-id": requestId },
++      });
++    }
++  };
++}
++
++export async function POST(request: Request): Promise<Response> {
++  const requestId = resolveRequestId(request.headers);
++  try {
++    const runtime = getTransactionRuntime();
++    return await createTransactionVerifyHandler({ auth: getAuthService(), ...runtime })(request);
++  } catch {
++    return Response.json({ error: "CHAIN_SERVICE_UNAVAILABLE", requestId }, {
++      status: 503,
++      headers: { "cache-control": "no-store", "x-request-id": requestId },
++    });
++  }
++}
+diff --git a/apps/transaction-engine/src/chain/evidence.test.ts b/apps/transaction-engine/src/chain/evidence.test.ts
+new file mode 100644
+index 0000000..9b174cc
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/evidence.test.ts
+@@ -0,0 +1,48 @@
++import { describe, expect, it } from "vitest";
++
++import { projectTransactionEvidence } from "./evidence";
++import { buildTransactionIntent } from "./intents";
++
++describe("public transaction evidence projection", () => {
++  it("uses an explicit public allowlist and omits signing and diagnostic material", () => {
++    const intent = buildTransactionIntent({
++      intentId: "10000000-0000-4000-8000-000000000001",
++      requestId: "20000000-0000-4000-8000-000000000002",
++      requestRef: `0x${"AB".repeat(32)}`,
++      from: "0x11111111111111111111111111111111111111AA",
++      to: "0x22222222222222222222222222222222222222BB",
++      method: "createTask",
++      args: {
++        taskId: `0x${"11".repeat(32)}`,
++        budgetAtomic: "6000000",
++        deadline: 1_800_000_000,
++      },
++      createdAt: "2026-08-21T12:00:00.000Z",
++      expiresAt: "2026-08-21T12:10:00.000Z",
++    });
++    const evidence = projectTransactionEvidence(intent, {
++      intentId: intent.intentId,
++      requestId: intent.requestId,
++      txHash: `0x${"CD".repeat(32)}`,
++      checkedAt: "2026-08-21T14:00:00.000Z",
++      status: "failed",
++      confirmations: 2,
++      blockNumber: 100,
++      errorCode: "PRIVATE_RPC_TIMEOUT cookie=secret signature=secret",
++    });
++
++    expect(evidence).toEqual({
++      from: intent.from,
++      to: intent.to,
++      txHash: `0x${"cd".repeat(32)}`,
++      eventName: null,
++      requestRef: intent.requestRef,
++      blockNumber: 100,
++      confirmations: 2,
++      status: "failed",
++      checkedAt: "2026-08-21T14:00:00.000Z",
++    });
++    expect(JSON.stringify(evidence)).not.toContain(intent.data);
++    expect(JSON.stringify(evidence)).not.toMatch(/cookie|signature|private|timeout/i);
++  });
++});
+diff --git a/apps/transaction-engine/src/chain/evidence.ts b/apps/transaction-engine/src/chain/evidence.ts
+new file mode 100644
+index 0000000..820aad9
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/evidence.ts
+@@ -0,0 +1,39 @@
++import type {
++  TransactionIntentV1,
++  TransactionVerificationV1,
++} from "@agent-market/shared-contracts";
++
++export interface PublicTransactionEvidence {
++  from: string;
++  to: string;
++  txHash: string;
++  eventName: string | null;
++  requestRef: string;
++  blockNumber: number | null;
++  confirmations: number;
++  status: TransactionVerificationV1["status"];
++  checkedAt: string;
++}
++
++export function projectTransactionEvidence(
++  intent: TransactionIntentV1,
++  verification: TransactionVerificationV1,
++): PublicTransactionEvidence {
++  if (
++    verification.intentId !== intent.intentId ||
++    verification.requestId !== intent.requestId
++  ) {
++    throw new Error("Verification does not belong to intent");
++  }
++  return {
++    from: intent.from.toLowerCase(),
++    to: intent.to.toLowerCase(),
++    txHash: verification.txHash.toLowerCase(),
++    eventName: verification.status === "confirmed" ? verification.eventName : null,
++    requestRef: intent.requestRef.toLowerCase(),
++    blockNumber: verification.blockNumber,
++    confirmations: verification.confirmations,
++    status: verification.status,
++    checkedAt: verification.checkedAt,
++  };
++}
+diff --git a/apps/transaction-engine/src/chain/intents.test.ts b/apps/transaction-engine/src/chain/intents.test.ts
+new file mode 100644
+index 0000000..419ca95
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/intents.test.ts
+@@ -0,0 +1,87 @@
++import { TransactionIntentV1Schema } from "@agent-market/shared-contracts";
++import { describe, expect, it } from "vitest";
++
++import {
++  buildTransactionIntent,
++  getTransactionMethodDefinition,
++  type BuildIntentInput,
++} from "./intents";
++
++const base = {
++  intentId: "10000000-0000-4000-8000-000000000001",
++  requestId: "20000000-0000-4000-8000-000000000002",
++  requestRef: `0x${"AB".repeat(32)}`,
++  from: "0x11111111111111111111111111111111111111AA",
++  to: "0x22222222222222222222222222222222222222BB",
++  createdAt: "2026-08-21T12:00:00.000Z",
++  expiresAt: "2026-08-21T12:10:00.000Z",
++} as const;
++
++describe("unsigned transaction intents", () => {
++  it("strictly ABI-encodes createTask and normalizes public identifiers", () => {
++    const intent = buildTransactionIntent({
++      ...base,
++      method: "createTask",
++      args: {
++        taskId: `0x${"11".repeat(32)}`,
++        budgetAtomic: "6000000",
++        deadline: 1_800_000_000,
++      },
++    });
++    const decoded = getTransactionMethodDefinition("createTask").contractInterface
++      .decodeFunctionData("createTask", intent.data);
++
++    expect(TransactionIntentV1Schema.parse(intent)).toEqual(intent);
++    expect(intent).toMatchObject({
++      chainId: 11_155_111,
++      from: base.from.toLowerCase(),
++      to: base.to.toLowerCase(),
++      requestRef: base.requestRef.toLowerCase(),
++      valueAtomic: "0",
++      createdAt: base.createdAt,
++      expiresAt: base.expiresAt,
++    });
++    expect(decoded.map(String)).toEqual([
++      `0x${"11".repeat(32)}`,
++      base.requestRef.toLowerCase(),
++      "6000000",
++      "1800000000",
++    ]);
++    expect(intent).not.toHaveProperty("privateKey");
++    expect(intent).not.toHaveProperty("signature");
++  });
++
++  it("encodes every shared TransactionMethod with its known ABI", () => {
++    const taskId = `0x${"33".repeat(32)}`;
++    const cases: BuildIntentInput[] = [
++      { ...base, method: "faucet", args: {} },
++      { ...base, method: "approve", args: { spender: base.to, amountAtomic: "9" } },
++      { ...base, method: "createTask", args: { taskId, budgetAtomic: "9", deadline: 1_800_000_000 } },
++      { ...base, method: "assignAgent", args: { taskId, agent: base.from } },
++      { ...base, method: "acceptTask", args: { taskId } },
++      { ...base, method: "submitWork", args: { taskId } },
++      { ...base, method: "acceptWork", args: { taskId } },
++      { ...base, method: "timeoutTask", args: { taskId } },
++      { ...base, method: "openDispute", args: { taskId } },
++      { ...base, method: "castVote", args: { taskId, agentWins: true } },
++      { ...base, method: "stake", args: { amountAtomic: "9" } },
++      { ...base, method: "unstake", args: { amountAtomic: "9" } },
++      { ...base, method: "claimYield", args: {} },
++    ];
++
++    expect(cases.map((entry) => buildTransactionIntent(entry).method)).toEqual(
++      cases.map((entry) => entry.method),
++    );
++  });
++
++  it("rejects an expired intent instead of producing ambiguous signing data", () => {
++    expect(() =>
++      buildTransactionIntent({
++        ...base,
++        method: "faucet",
++        args: {},
++        expiresAt: base.createdAt,
++      }),
++    ).toThrow("Intent expiry must be after creation");
++  });
++});
+diff --git a/apps/transaction-engine/src/chain/intents.ts b/apps/transaction-engine/src/chain/intents.ts
+new file mode 100644
+index 0000000..1d4a54b
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/intents.ts
+@@ -0,0 +1,197 @@
++import {
++  SEPOLIA_CHAIN_ID,
++  TransactionIntentV1Schema,
++  type TransactionIntentV1,
++} from "@agent-market/shared-contracts";
++import { Interface } from "ethers";
++import { randomUUID } from "node:crypto";
++
++const METHOD_ABI = {
++  faucet: [
++    "function faucet()",
++    "event Transfer(address indexed from,address indexed to,uint256 value)",
++  ],
++  approve: [
++    "function approve(address spender,uint256 value) returns (bool)",
++    "event Approval(address indexed owner,address indexed spender,uint256 value)",
++  ],
++  createTask: [
++    "function createTask(bytes32 taskId,bytes32 requestRef,uint256 budget,uint64 deadline)",
++    "event TaskCreated(bytes32 indexed taskId,bytes32 indexed requestRef,address indexed publisher,uint256 budget,uint64 deadline)",
++  ],
++  assignAgent: [
++    "function assignAgent(bytes32 taskId,address agent)",
++    "event AgentAssigned(bytes32 indexed taskId,bytes32 indexed requestRef,address indexed agent)",
++  ],
++  acceptTask: [
++    "function acceptTask(bytes32 taskId)",
++    "event TaskAccepted(bytes32 indexed taskId,bytes32 indexed requestRef,uint256 bond,uint64 startedAt)",
++  ],
++  submitWork: [
++    "function submitWork(bytes32 taskId)",
++    "event WorkSubmitted(bytes32 indexed taskId,bytes32 indexed requestRef)",
++  ],
++  acceptWork: [
++    "function acceptWork(bytes32 taskId)",
++    "event TaskSettled(bytes32 indexed taskId,bytes32 indexed requestRef,bool agentWins,uint256 budgetPaid,uint256 bondPaidToPlatform,uint256 yieldPaid,uint256 yieldShortfall)",
++  ],
++  timeoutTask: [
++    "function timeoutTask(bytes32 taskId)",
++    "event TaskSettled(bytes32 indexed taskId,bytes32 indexed requestRef,bool agentWins,uint256 budgetPaid,uint256 bondPaidToPlatform,uint256 yieldPaid,uint256 yieldShortfall)",
++  ],
++  openDispute: [
++    "function openDispute(bytes32 taskId)",
++    "event DisputeOpened(bytes32 indexed taskId,bytes32 indexed requestRef)",
++  ],
++  castVote: [
++    "function castVote(bytes32 taskId,bool agentWins)",
++    "event VoteCast(bytes32 indexed taskId,address indexed voter,bool agentWins)",
++  ],
++  stake: [
++    "function stake(uint256 amount)",
++    "event Staked(address indexed account,uint256 amount)",
++  ],
++  unstake: [
++    "function unstake(uint256 amount)",
++    "event Unstaked(address indexed account,uint256 amount)",
++  ],
++  claimYield: [
++    "function claimYield() returns (uint256 amount)",
++    "event YieldClaimed(address indexed account,uint256 amount)",
++  ],
++} as const;
++
++export type TransactionMethod = keyof typeof METHOD_ABI;
++
++const EVENT_BY_METHOD: Record<TransactionMethod, string> = {
++  faucet: "Transfer",
++  approve: "Approval",
++  createTask: "TaskCreated",
++  assignAgent: "AgentAssigned",
++  acceptTask: "TaskAccepted",
++  submitWork: "WorkSubmitted",
++  acceptWork: "TaskSettled",
++  timeoutTask: "TaskSettled",
++  openDispute: "DisputeOpened",
++  castVote: "VoteCast",
++  stake: "Staked",
++  unstake: "Unstaked",
++  claimYield: "YieldClaimed",
++};
++
++const INTERFACES = Object.fromEntries(
++  Object.entries(METHOD_ABI).map(([method, abi]) => [method, new Interface(abi)]),
++) as Record<TransactionMethod, Interface>;
++
++export type IntentArguments = {
++  faucet: Record<string, never>;
++  approve: { spender: string; amountAtomic: string };
++  createTask: { taskId: string; budgetAtomic: string; deadline: number | bigint };
++  assignAgent: { taskId: string; agent: string };
++  acceptTask: { taskId: string };
++  submitWork: { taskId: string };
++  acceptWork: { taskId: string };
++  timeoutTask: { taskId: string };
++  openDispute: { taskId: string };
++  castVote: { taskId: string; agentWins: boolean };
++  stake: { amountAtomic: string };
++  unstake: { amountAtomic: string };
++  claimYield: Record<string, never>;
++};
++
++type IntentBase = {
++  intentId?: string;
++  requestId: string;
++  requestRef: string;
++  from: string;
++  to: string;
++  createdAt?: Date | string;
++  expiresAt?: Date | string;
++  validityMs?: number;
++};
++
++export type BuildIntentInput = {
++  [Method in TransactionMethod]: IntentBase & {
++    method: Method;
++    args: IntentArguments[Method];
++  };
++}[TransactionMethod];
++
++export function getTransactionMethodDefinition(method: TransactionMethod): {
++  contractInterface: Interface;
++  eventName: string;
++} {
++  return {
++    contractInterface: INTERFACES[method],
++    eventName: EVENT_BY_METHOD[method],
++  };
++}
++
++function encodeArguments(input: BuildIntentInput): readonly unknown[] {
++  switch (input.method) {
++    case "faucet":
++    case "claimYield":
++      return [];
++    case "approve":
++      return [input.args.spender, input.args.amountAtomic];
++    case "createTask":
++      return [
++        input.args.taskId,
++        input.requestRef,
++        input.args.budgetAtomic,
++        input.args.deadline,
++      ];
++    case "assignAgent":
++      return [input.args.taskId, input.args.agent];
++    case "acceptTask":
++    case "submitWork":
++    case "acceptWork":
++    case "timeoutTask":
++    case "openDispute":
++      return [input.args.taskId];
++    case "castVote":
++      return [input.args.taskId, input.args.agentWins];
++    case "stake":
++    case "unstake":
++      return [input.args.amountAtomic];
++  }
++}
++
++function iso(value: Date | string): string {
++  const date = value instanceof Date ? value : new Date(value);
++  if (Number.isNaN(date.getTime())) throw new Error("Invalid intent timestamp");
++  return date.toISOString();
++}
++
++export function buildTransactionIntent(input: BuildIntentInput): TransactionIntentV1 {
++  const createdAt = iso(input.createdAt ?? new Date());
++  const validityMs = input.validityMs ?? 10 * 60 * 1_000;
++  if (!Number.isSafeInteger(validityMs) || validityMs <= 0) {
++    throw new Error("validityMs must be a positive safe integer");
++  }
++  const expiresAt = iso(
++    input.expiresAt ?? new Date(new Date(createdAt).getTime() + validityMs),
++  );
++  if (new Date(expiresAt).getTime() <= new Date(createdAt).getTime()) {
++    throw new Error("Intent expiry must be after creation");
++  }
++
++  const definition = getTransactionMethodDefinition(input.method);
++  const data = definition.contractInterface
++    .encodeFunctionData(input.method, encodeArguments(input))
++    .toLowerCase();
++
++  return TransactionIntentV1Schema.parse({
++    intentId: input.intentId ?? randomUUID(),
++    requestId: input.requestId,
++    requestRef: input.requestRef,
++    chainId: SEPOLIA_CHAIN_ID,
++    from: input.from,
++    to: input.to,
++    method: input.method,
++    data,
++    valueAtomic: "0",
++    createdAt,
++    expiresAt,
++  });
++}
+diff --git a/apps/transaction-engine/src/chain/policy.ts b/apps/transaction-engine/src/chain/policy.ts
+new file mode 100644
+index 0000000..a60c753
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/policy.ts
+@@ -0,0 +1,58 @@
++import { getAddress, id } from "ethers";
++import { validate as isUuid } from "uuid";
++
++import type { TransactionMethod } from "./intents";
++
++export interface ContractAllowlist {
++  token: string;
++  escrow: string;
++  committee: string;
++  vault: string;
++}
++
++export interface ChainResourceBinding {
++  taskId: string;
++  requestRef: string;
++}
++
++export function deriveChainResource(resourceId: string): ChainResourceBinding {
++  if (!isUuid(resourceId)) throw new Error("CHAIN_RESOURCE_INVALID");
++  return {
++    taskId: id(`agent-market:task:${resourceId}`).toLowerCase(),
++    requestRef: id(`agent-market:request:${resourceId}`).toLowerCase(),
++  };
++}
++
++export function normalizeContractAllowlist(input: ContractAllowlist): ContractAllowlist {
++  return {
++    token: getAddress(input.token).toLowerCase(),
++    escrow: getAddress(input.escrow).toLowerCase(),
++    committee: getAddress(input.committee).toLowerCase(),
++    vault: getAddress(input.vault).toLowerCase(),
++  };
++}
++
++export function contractForMethod(method: TransactionMethod, contracts: ContractAllowlist): string {
++  if (method === "faucet" || method === "approve") return contracts.token;
++  if (method === "castVote") return contracts.committee;
++  if (method === "stake" || method === "unstake" || method === "claimYield") return contracts.vault;
++  return contracts.escrow;
++}
++
++export function bindMethodArguments(
++  method: TransactionMethod,
++  args: Record<string, unknown>,
++  resource: ChainResourceBinding,
++  contracts: ContractAllowlist,
++): Record<string, unknown> {
++  const bound = { ...args };
++  if (["createTask", "assignAgent", "acceptTask", "submitWork", "acceptWork", "timeoutTask", "openDispute", "castVote"].includes(method)) {
++    bound.taskId = resource.taskId;
++  }
++  if (method === "approve") {
++    const spender = typeof bound.spender === "string" ? getAddress(bound.spender).toLowerCase() : "";
++    if (spender !== contracts.escrow && spender !== contracts.vault) throw new Error("CHAIN_SPENDER_FORBIDDEN");
++    bound.spender = spender;
++  }
++  return bound;
++}
+diff --git a/apps/transaction-engine/src/chain/readers.test.ts b/apps/transaction-engine/src/chain/readers.test.ts
+new file mode 100644
+index 0000000..ea2b2e4
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/readers.test.ts
+@@ -0,0 +1,35 @@
++import { describe, expect, it } from "vitest";
++
++import { BlockscoutMcpChainReader } from "./readers";
++
++describe("Blockscout MCP reader", () => {
++  it("uses get_block_info as the independent canonical hash and unlocks first", async () => {
++    const txHash = `0x${"12".repeat(32)}`;
++    const transactionBlockHash = `0x${"34".repeat(32)}`;
++    const canonicalBlockHash = `0x${"56".repeat(32)}`;
++    const calls: string[] = [];
++    const fetcher = async (input: string | URL | Request): Promise<Response> => {
++      const url = new URL(String(input));
++      calls.push(url.pathname);
++      if (url.pathname.endsWith("/unlock_blockchain_analysis")) return Response.json({ ok: true });
++      if (url.pathname.endsWith("/get_transaction_info")) return Response.json({ data: {
++        hash: txHash,
++        block_number: 100,
++        block_hash: transactionBlockHash,
++        status: "ok",
++        from: { hash: "0x1111111111111111111111111111111111111111" },
++        to: { hash: "0x2222222222222222222222222222222222222222" },
++        raw_input: "0x1234",
++        value: "0",
++      } });
++      if (url.pathname.endsWith("/direct_api_call")) return Response.json({ data: { items: [] } });
++      if (url.pathname.endsWith("/get_block_number")) return Response.json({ data: { block_number: 101 } });
++      if (url.pathname.endsWith("/get_block_info")) return Response.json({ data: { hash: canonicalBlockHash } });
++      return new Response(null, { status: 404 });
++    };
++    const observation = await new BlockscoutMcpChainReader(fetcher).readTransaction(txHash);
++    expect(calls[0]).toMatch(/unlock_blockchain_analysis$/u);
++    expect(observation?.transaction?.blockHash).toBe(transactionBlockHash);
++    expect(observation?.canonicalBlockHash).toBe(canonicalBlockHash);
++  });
++});
+diff --git a/apps/transaction-engine/src/chain/readers.ts b/apps/transaction-engine/src/chain/readers.ts
+new file mode 100644
+index 0000000..da16197
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/readers.ts
+@@ -0,0 +1,198 @@
++import type { ChainObservation, ChainReader } from "./reconcile";
++
++type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
++
++interface RpcEnvelope {
++  result?: unknown;
++  error?: unknown;
++}
++
++function asRecord(value: unknown): Record<string, unknown> {
++  return value !== null && typeof value === "object" && !Array.isArray(value)
++    ? value as Record<string, unknown>
++    : {};
++}
++
++function unwrap(value: unknown): Record<string, unknown> {
++  const root = asRecord(value);
++  return asRecord(root.data ?? root.result ?? root.structuredContent ?? root);
++}
++
++function hexNumber(value: unknown): number | null {
++  if (typeof value !== "string" || !/^0x[0-9a-f]+$/iu.test(value)) return null;
++  const parsed = Number.parseInt(value, 16);
++  return Number.isSafeInteger(parsed) ? parsed : null;
++}
++
++function decimalNumber(value: unknown): number | null {
++  if (typeof value === "number" && Number.isSafeInteger(value)) return value;
++  if (typeof value === "string" && /^\d+$/u.test(value)) {
++    const parsed = Number(value);
++    return Number.isSafeInteger(parsed) ? parsed : null;
++  }
++  return null;
++}
++
++function address(value: unknown): string | null {
++  if (typeof value === "string") return value.toLowerCase();
++  const nested = asRecord(value);
++  return typeof nested.hash === "string" ? nested.hash.toLowerCase() : null;
++}
++
++export class JsonRpcChainReader implements ChainReader {
++  private requestId = 0;
++
++  constructor(
++    private readonly rpcUrl: string,
++    private readonly fetcher: FetchLike = fetch,
++    private readonly timeoutMs = 8_000,
++  ) {}
++
++  private async call(method: string, params: readonly unknown[]): Promise<unknown> {
++    const response = await this.fetcher(this.rpcUrl, {
++      method: "POST",
++      headers: { "content-type": "application/json" },
++      body: JSON.stringify({ jsonrpc: "2.0", id: ++this.requestId, method, params }),
++      signal: AbortSignal.timeout(this.timeoutMs),
++    });
++    if (!response.ok) throw new Error("RPC_UNAVAILABLE");
++    const payload = await response.json() as RpcEnvelope;
++    if (payload.error) throw new Error("RPC_ERROR");
++    return payload.result;
++  }
++
++  async readTransaction(txHash: string): Promise<ChainObservation | null> {
++    const [txValue, receiptValue, latestValue, chainValue] = await Promise.all([
++      this.call("eth_getTransactionByHash", [txHash]),
++      this.call("eth_getTransactionReceipt", [txHash]),
++      this.call("eth_blockNumber", []),
++      this.call("eth_chainId", []),
++    ]);
++    if (txValue === null || receiptValue === null) return null;
++    const tx = asRecord(txValue);
++    const receipt = asRecord(receiptValue);
++    const blockNumber = hexNumber(receipt.blockNumber);
++    const latestBlockNumber = hexNumber(latestValue);
++    const chainId = hexNumber(chainValue);
++    if (blockNumber === null || latestBlockNumber === null || chainId === null
++      || typeof receipt.blockHash !== "string" || typeof tx.hash !== "string"
++      || typeof tx.from !== "string" || typeof tx.input !== "string" || typeof tx.value !== "string") return null;
++    const canonical = asRecord(await this.call("eth_getBlockByNumber", [`0x${blockNumber.toString(16)}`, false]));
++    const logs = Array.isArray(receipt.logs) ? receipt.logs.map((value) => {
++      const log = asRecord(value);
++      return {
++        address: String(log.address ?? "").toLowerCase(),
++        topics: Array.isArray(log.topics) ? log.topics.map(String).map((topic) => topic.toLowerCase()) : [],
++        data: String(log.data ?? "0x").toLowerCase(),
++      };
++    }) : [];
++    return {
++      transaction: {
++        hash: tx.hash.toLowerCase(),
++        chainId,
++        from: tx.from.toLowerCase(),
++        to: typeof tx.to === "string" ? tx.to.toLowerCase() : null,
++        data: tx.input.toLowerCase(),
++        valueAtomic: BigInt(tx.value).toString(),
++        blockNumber,
++        blockHash: String(tx.blockHash ?? receipt.blockHash).toLowerCase(),
++      },
++      receipt: {
++        status: receipt.status === "0x1" ? "success" : "failed",
++        blockNumber,
++        blockHash: receipt.blockHash.toLowerCase(),
++        logs,
++      },
++      latestBlockNumber,
++      canonicalBlockHash: typeof canonical.hash === "string" ? canonical.hash.toLowerCase() : null,
++    };
++  }
++}
++
++export class BlockscoutMcpChainReader implements ChainReader {
++  private unlockPromise?: Promise<void>;
++
++  constructor(
++    private readonly fetcher: FetchLike = fetch,
++    private readonly timeoutMs = 8_000,
++    private readonly chainId = 11_155_111,
++  ) {}
++
++  private async call(tool: string, params: Record<string, string | number> = {}): Promise<unknown> {
++    const url = new URL(`https://mcp.blockscout.com/v1/${tool}`);
++    for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
++    for (let attempt = 1; attempt <= 3; attempt += 1) {
++      const response = await this.fetcher(url, {
++        headers: { "user-agent": "Blockscout-SkillGuidedScript/0.6.0", accept: "application/json" },
++        signal: AbortSignal.timeout(this.timeoutMs),
++      });
++      if (response.ok) return response.json();
++      if (response.status < 500 || attempt === 3) throw new Error("BLOCKSCOUT_UNAVAILABLE");
++    }
++    throw new Error("BLOCKSCOUT_UNAVAILABLE");
++  }
++
++  private async unlock(): Promise<void> {
++    this.unlockPromise ??= this.call("unlock_blockchain_analysis").then(() => undefined);
++    return this.unlockPromise;
++  }
++
++  async readTransaction(txHash: string): Promise<ChainObservation | null> {
++    await this.unlock();
++    const transactionPayload = await this.call("get_transaction_info", {
++      chain_id: this.chainId,
++      hash: txHash,
++      include_raw_input: "true",
++    });
++    const tx = unwrap(transactionPayload);
++    const blockNumber = decimalNumber(tx.block_number);
++    if (blockNumber === null || typeof tx.hash !== "string") return null;
++    const [logsPayload, latestPayload, blockPayload] = await Promise.all([
++      this.call("direct_api_call", {
++        chain_id: this.chainId,
++        endpoint_path: `/api/v2/transactions/${txHash}/logs`,
++      }),
++      this.call("get_block_number", { chain_id: this.chainId }),
++      this.call("get_block_info", { chain_id: this.chainId, number_or_hash: blockNumber }),
++    ]);
++    const logsRoot = unwrap(logsPayload);
++    const logsItems = Array.isArray(logsRoot.items) ? logsRoot.items : [];
++    const logs = logsItems.map((value) => {
++      const log = asRecord(value);
++      return {
++        address: address(log.address) ?? "",
++        topics: Array.isArray(log.topics) ? log.topics.map(String).map((topic) => topic.toLowerCase()) : [],
++        data: String(log.data ?? "0x").toLowerCase(),
++      };
++    });
++    const latest = unwrap(latestPayload);
++    const block = unwrap(blockPayload);
++    const transactionBlockHash = typeof tx.block_hash === "string" ? tx.block_hash.toLowerCase() : null;
++    const canonicalBlockHash = typeof block.hash === "string" ? block.hash.toLowerCase() : null;
++    const from = address(tx.from);
++    const to = address(tx.to);
++    const rawInput = typeof tx.raw_input === "string" ? tx.raw_input.toLowerCase() : null;
++    const latestBlockNumber = decimalNumber(latest.block_number ?? latest.number);
++    if (!transactionBlockHash || !canonicalBlockHash || !from || !rawInput || latestBlockNumber === null) return null;
++    return {
++      transaction: {
++        hash: tx.hash.toLowerCase(),
++        chainId: this.chainId,
++        from,
++        to,
++        data: rawInput,
++        valueAtomic: typeof tx.value === "string" ? tx.value : "0",
++        blockNumber,
++        blockHash: transactionBlockHash,
++      },
++      receipt: {
++        status: tx.status === "ok" || tx.status === "success" ? "success" : "failed",
++        blockNumber,
++        blockHash: transactionBlockHash,
++        logs,
++      },
++      latestBlockNumber,
++      canonicalBlockHash,
++    };
++  }
++}
+diff --git a/apps/transaction-engine/src/chain/reconcile.test.ts b/apps/transaction-engine/src/chain/reconcile.test.ts
+new file mode 100644
+index 0000000..fa27320
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/reconcile.test.ts
+@@ -0,0 +1,218 @@
++import type { TransactionVerificationV1 } from "@agent-market/shared-contracts";
++import { describe, expect, it } from "vitest";
++
++import { buildTransactionIntent, getTransactionMethodDefinition } from "./intents";
++import {
++  reconcileTransaction,
++  type ChainObservation,
++  type ChainReader,
++} from "./reconcile";
++
++const txHash = `0x${"CD".repeat(32)}`;
++const blockHash = `0x${"EF".repeat(32)}`;
++const taskId = `0x${"12".repeat(32)}`;
++const requestRef = `0x${"34".repeat(32)}`;
++const from = "0x1111111111111111111111111111111111111111";
++const to = "0x2222222222222222222222222222222222222222";
++const checkedAt = "2026-08-21T14:00:00.000Z";
++
++const intent = buildTransactionIntent({
++  intentId: "10000000-0000-4000-8000-000000000001",
++  requestId: "20000000-0000-4000-8000-000000000002",
++  requestRef,
++  from,
++  to,
++  method: "createTask",
++  args: { taskId, budgetAtomic: "6000000", deadline: 1_800_000_000 },
++  createdAt: "2026-08-21T12:00:00.000Z",
++  expiresAt: "2026-08-21T12:10:00.000Z",
++});
++
++function observation(overrides: {
++  transaction?: Partial<NonNullable<ChainObservation["transaction"]>>;
++  receipt?: Partial<NonNullable<ChainObservation["receipt"]>>;
++  latestBlockNumber?: number | null;
++  canonicalBlockHash?: string | null;
++  eventRequestRef?: string;
++    eventBudget?: string;
++    eventDeadline?: number;
++} = {}): ChainObservation {
++  const definition = getTransactionMethodDefinition("createTask");
++  const encoded = definition.contractInterface.encodeEventLog(
++    definition.contractInterface.getEvent("TaskCreated")!,
++    [
++      taskId,
++      overrides.eventRequestRef ?? requestRef,
++      from,
++      overrides.eventBudget ?? "6000000",
++      overrides.eventDeadline ?? 1_800_000_000,
++    ],
++  );
++  return {
++    transaction: {
++      hash: txHash,
++      chainId: 11_155_111,
++      from,
++      to,
++      data: intent.data,
++      valueAtomic: "0",
++      blockNumber: 100,
++      blockHash,
++      ...overrides.transaction,
++    },
++    receipt: {
++      status: "success",
++      blockNumber: 100,
++      blockHash,
++      logs: [{ address: to, topics: encoded.topics, data: encoded.data }],
++      ...overrides.receipt,
++    },
++    latestBlockNumber: overrides.latestBlockNumber === undefined ? 101 : overrides.latestBlockNumber,
++    canonicalBlockHash:
++      overrides.canonicalBlockHash === undefined ? blockHash : overrides.canonicalBlockHash,
++  };
++}
++
++const reader = (value: ChainObservation | null): ChainReader => ({
++  async readTransaction() {
++    return value;
++  },
++});
++
++async function reconcile(
++  rpcObservation: ChainObservation | null,
++  blockscoutObservation: ChainObservation | null = rpcObservation,
++  extra: Partial<Parameters<typeof reconcileTransaction>[0]> = {},
++) {
++  return reconcileTransaction({
++    intent,
++    txHash,
++    rpc: reader(rpcObservation),
++    blockscout: reader(blockscoutObservation),
++    checkedAt,
++    minimumConfirmations: 2,
++    ...extra,
++  });
++}
++
++describe("dual-source transaction reconciliation", () => {
++  it("confirms only with canonical receipt, exact event, block number, and correct confirmations", async () => {
++    await expect(reconcile(observation())).resolves.toEqual({
++      intentId: intent.intentId,
++      requestId: intent.requestId,
++      txHash: txHash.toLowerCase(),
++      checkedAt,
++      status: "confirmed",
++      confirmations: 2,
++      blockNumber: 100,
++      eventName: "TaskCreated",
++    });
++  });
++
++  it.each([
++    ["wrong chain", { transaction: { chainId: 1 } }, "WRONG_CHAIN"],
++    ["wrong target", { transaction: { to: from } }, "WRONG_TO"],
++    ["wrong sender", { transaction: { from: to } }, "WRONG_SENDER"],
++    ["wrong amount", { transaction: { valueAtomic: "1" } }, "WRONG_AMOUNT"],
++    ["wrong selector", { transaction: { data: `0xdeadbeef${intent.data.slice(10)}` } }, "WRONG_SELECTOR"],
++  ])("fails a transaction with %s", async (_name, overrides, errorCode) => {
++    const changed = observation(overrides as Parameters<typeof observation>[0]);
++    await expect(reconcile(changed, changed)).resolves.toMatchObject({ status: "failed", errorCode });
++  });
++
++  it("detects a wrong calldata requestRef", async () => {
++    const wrongData = getTransactionMethodDefinition("createTask").contractInterface.encodeFunctionData(
++      "createTask",
++      [taskId, `0x${"56".repeat(32)}`, "6000000", 1_800_000_000],
++    );
++    const changed = observation({ transaction: { data: wrongData } });
++    await expect(reconcile(changed, changed)).resolves.toMatchObject({
++      status: "failed",
++      errorCode: "WRONG_REQUEST_REF",
++    });
++  });
++
++  it("detects wrong event requestRef and amount", async () => {
++    const wrongRef = observation({ eventRequestRef: `0x${"56".repeat(32)}` });
++    const wrongAmount = observation({ eventBudget: "7" });
++    await expect(reconcile(wrongRef, wrongRef)).resolves.toMatchObject({
++      status: "failed",
++      errorCode: "WRONG_REQUEST_REF",
++    });
++    await expect(reconcile(wrongAmount, wrongAmount)).resolves.toMatchObject({
++      status: "failed",
++      errorCode: "WRONG_AMOUNT",
++    });
++  });
++
++  it("rejects a TaskCreated event with a different deadline", async () => {
++    const changed = observation({ eventDeadline: 1_800_000_001 });
++    await expect(reconcile(changed, changed)).resolves.toMatchObject({
++      status: "failed",
++      errorCode: "EVENT_MISMATCH",
++    });
++  });
++
++  it("marks a failed receipt as failed", async () => {
++    const changed = observation({ receipt: { status: "failed" } });
++    await expect(reconcile(changed, changed)).resolves.toMatchObject({
++      status: "failed",
++      errorCode: "FAILED_RECEIPT",
++    });
++  });
++
++  it("keeps insufficient confirmations in verifying", async () => {
++    await expect(reconcile(observation({ latestBlockNumber: 100 }))).resolves.toMatchObject({
++      status: "verifying",
++      confirmations: 1,
++      blockNumber: 100,
++    });
++  });
++
++  it("keeps timeout, missing source data, and source disagreement in verifying", async () => {
++    const timeout: ChainReader = {
++      async readTransaction() {
++        throw new Error("RPC timeout");
++      },
++    };
++    await expect(
++      reconcileTransaction({ intent, txHash, rpc: timeout, blockscout: reader(observation()), checkedAt }),
++    ).resolves.toMatchObject({ status: "verifying", blockNumber: null });
++    await expect(reconcile(observation(), null)).resolves.toMatchObject({ status: "verifying" });
++    await expect(reconcile(observation(), observation({ transaction: { chainId: 1 } }))).resolves.toMatchObject({
++      status: "verifying",
++    });
++  });
++
++  it("detects a non-canonical block and a changed previously confirmed block", async () => {
++    await expect(
++      reconcile(observation({ canonicalBlockHash: `0x${"99".repeat(32)}` })),
++    ).resolves.toMatchObject({ status: "reorged", confirmations: 0, errorCode: "CHAIN_REORG" });
++
++    const previous: TransactionVerificationV1 = {
++      intentId: intent.intentId,
++      requestId: intent.requestId,
++      txHash: txHash.toLowerCase(),
++      checkedAt,
++      status: "confirmed",
++      confirmations: 2,
++      blockNumber: 100,
++      eventName: "TaskCreated",
++    };
++    await expect(
++      reconcile(observation(), observation(), {
++        previous,
++        previousCanonicalBlockHash: `0x${"88".repeat(32)}`,
++      }),
++    ).resolves.toMatchObject({ status: "reorged", errorCode: "CHAIN_REORG" });
++  });
++
++  it("reconciles a duplicate confirmation idempotently", async () => {
++    const first = await reconcile(observation());
++    const second = await reconcile(observation(), observation(), {
++      previous: first,
++      previousCanonicalBlockHash: blockHash,
++    });
++    expect(second).toEqual(first);
++  });
++});
+diff --git a/apps/transaction-engine/src/chain/reconcile.ts b/apps/transaction-engine/src/chain/reconcile.ts
+new file mode 100644
+index 0000000..bf6f888
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/reconcile.ts
+@@ -0,0 +1,376 @@
++import {
++  TransactionVerificationV1Schema,
++  type TransactionIntentV1,
++  type TransactionVerificationV1,
++} from "@agent-market/shared-contracts";
++import { ZeroAddress } from "ethers";
++
++import {
++  getTransactionMethodDefinition,
++  type TransactionMethod,
++} from "./intents";
++
++export interface ChainLog {
++  address: string;
++  topics: readonly string[];
++  data: string;
++}
++
++export interface ChainTransaction {
++  hash: string;
++  chainId: number;
++  from: string;
++  to: string | null;
++  data: string;
++  valueAtomic: string;
++  blockNumber: number;
++  blockHash: string;
++}
++
++export interface ChainReceipt {
++  status: "success" | "failed";
++  blockNumber: number;
++  blockHash: string;
++  logs: readonly ChainLog[];
++}
++
++export interface ChainObservation {
++  transaction: ChainTransaction | null;
++  receipt: ChainReceipt | null;
++  latestBlockNumber: number | null;
++  canonicalBlockHash: string | null;
++}
++
++export interface ChainReader {
++  readTransaction(txHash: string): Promise<ChainObservation | null>;
++}
++
++export interface ReconcileInput {
++  intent: TransactionIntentV1;
++  txHash: string;
++  rpc: ChainReader;
++  blockscout: ChainReader;
++  minimumConfirmations?: number;
++  checkedAt?: Date | string;
++  previous?: TransactionVerificationV1;
++  previousCanonicalBlockHash?: string;
++  onCanonicalObservation?: (observation: { blockHash: string; requestRef: string }) => void;
++}
++
++type ErrorCode =
++  | "FAILED_RECEIPT"
++  | "WRONG_CHAIN"
++  | "WRONG_TO"
++  | "WRONG_SENDER"
++  | "WRONG_SELECTOR"
++  | "WRONG_REQUEST_REF"
++  | "WRONG_AMOUNT"
++  | "TRANSACTION_DATA_MISMATCH"
++  | "EVENT_MISMATCH";
++
++const lower = (value: string): string => value.toLowerCase();
++
++function checkedAt(value: Date | string | undefined): string {
++  const date = value instanceof Date ? value : new Date(value ?? Date.now());
++  if (Number.isNaN(date.getTime())) throw new Error("Invalid checkedAt timestamp");
++  return date.toISOString();
++}
++
++function verifying(
++  input: ReconcileInput,
++  at: string,
++  confirmations = 0,
++  blockNumber: number | null = null,
++): TransactionVerificationV1 {
++  return TransactionVerificationV1Schema.parse({
++    intentId: input.intent.intentId,
++    requestId: input.intent.requestId,
++    txHash: input.txHash,
++    checkedAt: at,
++    status: "verifying",
++    confirmations,
++    blockNumber,
++  });
++}
++
++function failed(
++  input: ReconcileInput,
++  at: string,
++  errorCode: ErrorCode,
++  confirmations: number,
++  blockNumber: number,
++): TransactionVerificationV1 {
++  return TransactionVerificationV1Schema.parse({
++    intentId: input.intent.intentId,
++    requestId: input.intent.requestId,
++    txHash: input.txHash,
++    checkedAt: at,
++    status: "failed",
++    confirmations,
++    blockNumber,
++    errorCode,
++  });
++}
++
++function coreTransactionEqual(a: ChainObservation, b: ChainObservation): boolean {
++  const left = a.transaction!;
++  const right = b.transaction!;
++  return (
++    lower(left.hash) === lower(right.hash) &&
++    left.chainId === right.chainId &&
++    lower(left.from) === lower(right.from) &&
++    lower(left.to ?? "") === lower(right.to ?? "") &&
++    lower(left.data) === lower(right.data) &&
++    left.valueAtomic === right.valueAtomic &&
++    left.blockNumber === right.blockNumber &&
++    lower(left.blockHash) === lower(right.blockHash)
++  );
++}
++
++function receiptsEqual(a: ChainReceipt, b: ChainReceipt): boolean {
++  return (
++    a.status === b.status &&
++    a.blockNumber === b.blockNumber &&
++    lower(a.blockHash) === lower(b.blockHash)
++  );
++}
++
++function normalizedArgument(value: unknown): string {
++  if (typeof value === "string") return lower(value);
++  if (typeof value === "bigint") return value.toString();
++  return String(value);
++}
++
++function calldataError(intent: TransactionIntentV1, actualData: string): ErrorCode | null {
++  const expected = lower(intent.data);
++  const actual = lower(actualData);
++  if (expected === actual) return null;
++  if (expected.slice(0, 10) !== actual.slice(0, 10)) return "WRONG_SELECTOR";
++
++  const { contractInterface } = getTransactionMethodDefinition(
++    intent.method as TransactionMethod,
++  );
++  try {
++    const expectedArgs = contractInterface.decodeFunctionData(intent.method, expected);
++    const actualArgs = contractInterface.decodeFunctionData(intent.method, actual);
++    if (
++      intent.method === "createTask" &&
++      normalizedArgument(expectedArgs[1]) !== normalizedArgument(actualArgs[1])
++    ) {
++      return "WRONG_REQUEST_REF";
++    }
++    const amountIndex =
++      intent.method === "approve" ||
++      intent.method === "stake" ||
++      intent.method === "unstake"
++        ? intent.method === "approve"
++          ? 1
++          : 0
++        : intent.method === "createTask"
++          ? 2
++          : null;
++    if (
++      amountIndex !== null &&
++      normalizedArgument(expectedArgs[amountIndex]) !==
++        normalizedArgument(actualArgs[amountIndex])
++    ) {
++      return "WRONG_AMOUNT";
++    }
++  } catch {
++    return "TRANSACTION_DATA_MISMATCH";
++  }
++  return "TRANSACTION_DATA_MISMATCH";
++}
++
++function matchingEvent(
++  intent: TransactionIntentV1,
++  receipt: ChainReceipt,
++): { log: ChainLog; args: readonly unknown[] } | null {
++  const { contractInterface, eventName } = getTransactionMethodDefinition(
++    intent.method as TransactionMethod,
++  );
++  for (const log of receipt.logs) {
++    if (lower(log.address) !== lower(intent.to)) continue;
++    try {
++      const parsed = contractInterface.parseLog({ topics: [...log.topics], data: log.data });
++      if (parsed?.name === eventName) return { log, args: parsed.args };
++    } catch {
++      // A receipt may contain unrelated logs from token transfers or nested calls.
++    }
++  }
++  return null;
++}
++
++function eventError(
++  intent: TransactionIntentV1,
++  args: readonly unknown[],
++): ErrorCode | null {
++  const { contractInterface } = getTransactionMethodDefinition(
++    intent.method as TransactionMethod,
++  );
++  const callArgs = contractInterface.decodeFunctionData(intent.method, intent.data);
++  const eq = (left: unknown, right: unknown): boolean =>
++    normalizedArgument(left) === normalizedArgument(right);
++
++  switch (intent.method) {
++    case "faucet":
++      return eq(args[0], ZeroAddress) && eq(args[1], intent.from) && BigInt(String(args[2])) > 0n
++        ? null
++        : "EVENT_MISMATCH";
++    case "approve":
++      if (!eq(args[0], intent.from) || !eq(args[1], callArgs[0])) return "EVENT_MISMATCH";
++      return eq(args[2], callArgs[1]) ? null : "WRONG_AMOUNT";
++    case "createTask":
++      if (!eq(args[1], intent.requestRef)) return "WRONG_REQUEST_REF";
++      if (!eq(args[0], callArgs[0]) || !eq(args[2], intent.from)) return "EVENT_MISMATCH";
++      if (!eq(args[3], callArgs[2])) return "WRONG_AMOUNT";
++      return eq(args[4], callArgs[3]) ? null : "EVENT_MISMATCH";
++    case "assignAgent":
++      if (!eq(args[1], intent.requestRef)) return "WRONG_REQUEST_REF";
++      return eq(args[0], callArgs[0]) && eq(args[2], callArgs[1])
++        ? null
++        : "EVENT_MISMATCH";
++    case "acceptTask":
++      if (!eq(args[1], intent.requestRef) || !eq(args[0], callArgs[0])) return "EVENT_MISMATCH";
++      return BigInt(String(args[2])) > 0n ? null : "WRONG_AMOUNT";
++    case "submitWork":
++    case "openDispute":
++      if (!eq(args[1], intent.requestRef)) return "WRONG_REQUEST_REF";
++      return eq(args[0], callArgs[0]) ? null : "EVENT_MISMATCH";
++    case "acceptWork":
++    case "timeoutTask":
++      if (!eq(args[1], intent.requestRef) || !eq(args[0], callArgs[0])) return "EVENT_MISMATCH";
++      if (typeof args[2] !== "boolean") return "EVENT_MISMATCH";
++      return BigInt(String(args[3])) > 0n && BigInt(String(args[4])) > 0n
++        && BigInt(String(args[5])) >= 0n && BigInt(String(args[6])) >= 0n
++        ? null : "WRONG_AMOUNT";
++    case "castVote":
++      return eq(args[0], callArgs[0]) && eq(args[1], intent.from) && eq(args[2], callArgs[1])
++        ? null
++        : "EVENT_MISMATCH";
++    case "stake":
++    case "unstake":
++      if (!eq(args[0], intent.from)) return "EVENT_MISMATCH";
++      return eq(args[1], callArgs[0]) ? null : "WRONG_AMOUNT";
++    case "claimYield":
++      return eq(args[0], intent.from) && BigInt(String(args[1])) > 0n ? null : "EVENT_MISMATCH";
++  }
++}
++
++export async function reconcileTransaction(
++  input: ReconcileInput,
++): Promise<TransactionVerificationV1> {
++  const at = checkedAt(input.checkedAt);
++  const minimumConfirmations = input.minimumConfirmations ?? 2;
++  if (!Number.isSafeInteger(minimumConfirmations) || minimumConfirmations < 1) {
++    throw new Error("minimumConfirmations must be a positive safe integer");
++  }
++
++  const txHash = lower(input.txHash);
++  let rpc: ChainObservation | null;
++  let blockscout: ChainObservation | null;
++  try {
++    [rpc, blockscout] = await Promise.all([
++      input.rpc.readTransaction(txHash),
++      input.blockscout.readTransaction(txHash),
++    ]);
++  } catch {
++    return verifying(input, at);
++  }
++
++  if (
++    !rpc?.transaction ||
++    !rpc.receipt ||
++    rpc.latestBlockNumber === null ||
++    !rpc.canonicalBlockHash ||
++    !blockscout?.transaction ||
++    !blockscout.receipt ||
++    blockscout.latestBlockNumber === null ||
++    !blockscout.canonicalBlockHash
++  ) {
++    return verifying(input, at);
++  }
++
++  if (!coreTransactionEqual(rpc, blockscout) || !receiptsEqual(rpc.receipt, blockscout.receipt)) {
++    return verifying(input, at);
++  }
++
++  const transaction = rpc.transaction;
++  const receipt = rpc.receipt;
++  const confirmations = Math.max(
++    0,
++    Math.min(rpc.latestBlockNumber, blockscout.latestBlockNumber) - receipt.blockNumber + 1,
++  );
++
++  const currentBlockHash = lower(receipt.blockHash);
++  const priorBlockHash = input.previousCanonicalBlockHash?.toLowerCase();
++  if (
++    (input.previous?.status === "confirmed" && priorBlockHash && priorBlockHash !== currentBlockHash) ||
++    lower(transaction.blockHash) !== currentBlockHash ||
++    transaction.blockNumber !== receipt.blockNumber ||
++    lower(rpc.canonicalBlockHash) !== currentBlockHash ||
++    lower(blockscout.canonicalBlockHash) !== currentBlockHash
++  ) {
++    return TransactionVerificationV1Schema.parse({
++      intentId: input.intent.intentId,
++      requestId: input.intent.requestId,
++      txHash,
++      checkedAt: at,
++      status: "reorged",
++      confirmations: 0,
++      blockNumber: receipt.blockNumber,
++      errorCode: "CHAIN_REORG",
++    });
++  }
++
++  const deterministicError =
++    (transaction.chainId !== input.intent.chainId && "WRONG_CHAIN") ||
++    (lower(transaction.to ?? "") !== lower(input.intent.to) && "WRONG_TO") ||
++    (lower(transaction.from) !== lower(input.intent.from) && "WRONG_SENDER") ||
++    (transaction.valueAtomic !== input.intent.valueAtomic && "WRONG_AMOUNT") ||
++    calldataError(input.intent, transaction.data);
++  if (deterministicError) {
++    return failed(
++      input,
++      at,
++      deterministicError as ErrorCode,
++      confirmations,
++      receipt.blockNumber,
++    );
++  }
++  if (receipt.status === "failed") {
++    return failed(input, at, "FAILED_RECEIPT", confirmations, receipt.blockNumber);
++  }
++
++  const rpcEvent = matchingEvent(input.intent, rpc.receipt);
++  const blockscoutEvent = matchingEvent(input.intent, blockscout.receipt);
++  if (!rpcEvent || !blockscoutEvent) {
++    return failed(input, at, "EVENT_MISMATCH", confirmations, receipt.blockNumber);
++  }
++  if (
++    lower(rpcEvent.log.address) !== lower(blockscoutEvent.log.address) ||
++    lower(rpcEvent.log.data) !== lower(blockscoutEvent.log.data) ||
++    rpcEvent.log.topics.map(lower).join(":") !== blockscoutEvent.log.topics.map(lower).join(":")
++  ) {
++    return verifying(input, at, confirmations, receipt.blockNumber);
++  }
++  const invalidEvent = eventError(input.intent, rpcEvent.args);
++  if (invalidEvent) {
++    return failed(input, at, invalidEvent, confirmations, receipt.blockNumber);
++  }
++  input.onCanonicalObservation?.({ blockHash: currentBlockHash, requestRef: input.intent.requestRef });
++  if (confirmations < minimumConfirmations) {
++    return verifying(input, at, confirmations, receipt.blockNumber);
++  }
++
++  return TransactionVerificationV1Schema.parse({
++    intentId: input.intent.intentId,
++    requestId: input.intent.requestId,
++    txHash,
++    checkedAt: at,
++    status: "confirmed",
++    confirmations,
++    blockNumber: receipt.blockNumber,
++    eventName: getTransactionMethodDefinition(input.intent.method as TransactionMethod).eventName,
++  });
++}
+diff --git a/apps/transaction-engine/src/chain/runtime.ts b/apps/transaction-engine/src/chain/runtime.ts
+new file mode 100644
+index 0000000..e4d7aa8
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/runtime.ts
+@@ -0,0 +1,39 @@
++import type { ChainReader } from "./reconcile";
++import { BlockscoutMcpChainReader, JsonRpcChainReader } from "./readers";
++import { normalizeContractAllowlist, type ContractAllowlist } from "./policy";
++import { PostgresTransactionStore, type TransactionStore } from "./transaction-store";
++
++export interface TransactionRuntime {
++  store: TransactionStore;
++  rpc: ChainReader;
++  blockscout: ChainReader;
++  contracts: ContractAllowlist;
++}
++
++let testRuntime: TransactionRuntime | undefined;
++let productionRuntime: TransactionRuntime | undefined;
++
++export function setTransactionRuntimeForTests(runtime: TransactionRuntime | undefined): void {
++  testRuntime = runtime;
++}
++
++export function getTransactionRuntime(): TransactionRuntime {
++  if (testRuntime) return testRuntime;
++  if (productionRuntime) return productionRuntime;
++  const databaseUrl = process.env.DATABASE_URL?.trim();
++  const rpcUrl = process.env.SEPOLIA_RPC_URL?.trim();
++  const token = process.env.AGENT_MARKET_YD_TOKEN_ADDRESS?.trim();
++  const escrow = process.env.AGENT_MARKET_ESCROW_ADDRESS?.trim();
++  const committee = process.env.AGENT_MARKET_COMMITTEE_ADDRESS?.trim();
++  const vault = process.env.AGENT_MARKET_VAULT_ADDRESS?.trim();
++  if (!databaseUrl || !rpcUrl || !/^https:\/\//u.test(rpcUrl) || !token || !escrow || !committee || !vault) {
++    throw new Error("CHAIN_RUNTIME_NOT_CONFIGURED");
++  }
++  productionRuntime = {
++    store: PostgresTransactionStore.connect(databaseUrl),
++    rpc: new JsonRpcChainReader(rpcUrl),
++    blockscout: new BlockscoutMcpChainReader(),
++    contracts: normalizeContractAllowlist({ token, escrow, committee, vault }),
++  };
++  return productionRuntime;
++}
+diff --git a/apps/transaction-engine/src/chain/transaction-store.integration.test.ts b/apps/transaction-engine/src/chain/transaction-store.integration.test.ts
+new file mode 100644
+index 0000000..ca5c141
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/transaction-store.integration.test.ts
+@@ -0,0 +1,95 @@
++import { readFileSync } from "node:fs";
++import { fileURLToPath } from "node:url";
++
++import postgres from "postgres";
++import { describe, expect, it } from "vitest";
++
++import { PostgresTransactionStore } from "./transaction-store";
++
++const databaseUrl = process.env.TEST_DATABASE_URL;
++const integration = databaseUrl ? describe : describe.skip;
++
++function assertDedicatedLocalTestDatabase(value: string): void {
++  const url = new URL(value);
++  const name = decodeURIComponent(url.pathname.replace(/^\//u, ""));
++  if (process.env.TEST_DATABASE_DESTRUCTIVE !== "agent-market-ephemeral-only"
++    || !new Set(["127.0.0.1", "localhost", "::1"]).has(url.hostname)
++    || !/^agent_market_chain_test_[a-z0-9_]+$/u.test(name)) throw new Error("UNSAFE_TEST_DATABASE");
++}
++
++function migration(name: string): string {
++  return readFileSync(fileURLToPath(new URL(`../../../../database/migrations/${name}`, import.meta.url)), "utf8")
++    .replace(/^\s*BEGIN;\s*$/gimu, "")
++    .replace(/^\s*COMMIT;\s*$/gimu, "");
++}
++
++const intent = {
++  intentId: "0191f6f8-cb6b-7f31-81ad-c497d7d90401",
++  requestId: "0191f6f8-cb6b-7f31-81ad-c497d7d90402",
++  requestRef: `0x${"12".repeat(32)}`,
++  chainId: 11_155_111 as const,
++  from: "0x1111111111111111111111111111111111111111",
++  to: "0x2222222222222222222222222222222222222222",
++  method: "createTask" as const,
++  data: "0x1234",
++  valueAtomic: "0",
++  createdAt: "2026-08-21T12:00:00.000Z",
++  expiresAt: "2026-08-21T12:10:00.000Z",
++};
++
++integration.sequential("PostgreSQL transaction store", () => {
++  it("atomically protects confirmed state, persists reorg, and rejects missing intents", async () => {
++    assertDedicatedLocalTestDatabase(databaseUrl!);
++    const sql = postgres(databaseUrl!, { max: 4, prepare: false });
++    try {
++      await sql.unsafe(migration("0001_agent_market_core.sql")
++        .replace("CREATE EXTENSION IF NOT EXISTS vector;", "")
++        .replace("embedding vector(384)", "embedding double precision[]"));
++      await sql.unsafe(migration("0002_performance_observability.sql"));
++      await sql.unsafe(migration("0003_phase2_lifecycle.sql"));
++      await sql.unsafe(migration("0004_chain_reconciliation.sql"));
++      const store = new PostgresTransactionStore(sql);
++      await store.createIntent(intent);
++      await store.recordSubmission(intent.intentId, `0x${"34".repeat(32)}`, intent.createdAt);
++      const confirmed = {
++        intentId: intent.intentId,
++        requestId: intent.requestId,
++        txHash: `0x${"34".repeat(32)}`,
++        status: "confirmed" as const,
++        confirmations: 2,
++        blockNumber: 100,
++        eventName: "TaskCreated",
++        checkedAt: "2026-08-21T12:02:00.000Z",
++      };
++      await store.saveVerification(confirmed, { blockHash: `0x${"56".repeat(32)}`, requestRef: intent.requestRef });
++      const stale = await store.saveVerification({
++        intentId: intent.intentId,
++        requestId: intent.requestId,
++        txHash: confirmed.txHash,
++        status: "verifying",
++        confirmations: 1,
++        blockNumber: 100,
++        checkedAt: "2026-08-21T12:03:00.000Z",
++      });
++      expect(stale.status).toBe("confirmed");
++      const reorged = await store.saveVerification({
++        intentId: intent.intentId,
++        requestId: intent.requestId,
++        txHash: confirmed.txHash,
++        status: "reorged",
++        confirmations: 0,
++        blockNumber: 100,
++        errorCode: "CHAIN_REORG",
++        checkedAt: "2026-08-21T12:04:00.000Z",
++      });
++      expect(reorged.status).toBe("reorged");
++      expect(await store.findCanonicalBlockHash(intent.intentId)).toBe(`0x${"56".repeat(32)}`);
++      await expect(store.saveVerification({ ...confirmed, intentId: "0191f6f8-cb6b-7f31-81ad-c497d7d90409" }, {
++        blockHash: `0x${"56".repeat(32)}`, requestRef: intent.requestRef,
++      })).rejects.toThrow("CHAIN_INTENT_NOT_FOUND");
++    } finally {
++      await sql.unsafe("DROP SCHEMA IF EXISTS agent_market CASCADE");
++      await sql.end({ timeout: 5 });
++    }
++  }, 30_000);
++});
+diff --git a/apps/transaction-engine/src/chain/transaction-store.test.ts b/apps/transaction-engine/src/chain/transaction-store.test.ts
+new file mode 100644
+index 0000000..f909a2e
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/transaction-store.test.ts
+@@ -0,0 +1,55 @@
++import { describe, expect, it } from "vitest";
++
++import { MemoryTransactionStore } from "./transaction-store";
++
++const intent = {
++  intentId: "0191f6f8-cb6b-7f31-81ad-c497d7d90201",
++  requestId: "0191f6f8-cb6b-7f31-81ad-c497d7d90202",
++  requestRef: `0x${"12".repeat(32)}`,
++  chainId: 11_155_111 as const,
++  from: "0x1111111111111111111111111111111111111111",
++  to: "0x2222222222222222222222222222222222222222",
++  method: "createTask" as const,
++  data: "0x1234",
++  valueAtomic: "0",
++  createdAt: "2026-08-21T12:00:00.000Z",
++  expiresAt: "2026-08-21T12:05:00.000Z",
++};
++
++describe("transaction store", () => {
++  it("creates intents idempotently and rejects a conflicting transaction hash", async () => {
++    const store = new MemoryTransactionStore();
++    expect(await store.createIntent(intent)).toEqual(intent);
++    expect(await store.createIntent(intent)).toEqual(intent);
++    await store.recordSubmission(intent.intentId, `0x${"34".repeat(32)}`, intent.createdAt);
++    await expect(store.recordSubmission(intent.intentId, `0x${"56".repeat(32)}`, intent.createdAt))
++      .rejects.toThrow("CHAIN_TRANSACTION_CONFLICT");
++  });
++
++  it("does not downgrade a confirmed verification on duplicate reconciliation", async () => {
++    const store = new MemoryTransactionStore();
++    await store.createIntent(intent);
++    const confirmed = {
++      intentId: intent.intentId,
++      requestId: intent.requestId,
++      txHash: `0x${"34".repeat(32)}`,
++      status: "confirmed" as const,
++      confirmations: 2,
++      blockNumber: 9_000_000,
++      eventName: "TaskCreated",
++      checkedAt: "2026-08-21T12:06:00.000Z",
++    };
++    expect(await store.saveVerification(confirmed, { blockHash: `0x${"78".repeat(32)}`, requestRef: intent.requestRef })).toEqual(confirmed);
++    const later = await store.saveVerification({
++      intentId: confirmed.intentId,
++      requestId: confirmed.requestId,
++      txHash: confirmed.txHash,
++      status: "reorged",
++      confirmations: 0,
++      blockNumber: null,
++      errorCode: "CHAIN_REORG",
++      checkedAt: "2026-08-21T12:07:00.000Z",
++    });
++    expect(later.status).toBe("reorged");
++  });
++});
+diff --git a/apps/transaction-engine/src/chain/transaction-store.ts b/apps/transaction-engine/src/chain/transaction-store.ts
+new file mode 100644
+index 0000000..30a2fab
+--- /dev/null
++++ b/apps/transaction-engine/src/chain/transaction-store.ts
+@@ -0,0 +1,237 @@
++import postgres, { type Sql } from "postgres";
++
++import {
++  TransactionIntentV1Schema,
++  TransactionVerificationV1Schema,
++  type TransactionIntentV1,
++  type TransactionVerificationV1,
++} from "@agent-market/shared-contracts";
++
++export interface TransactionStore {
++  createIntent(intent: TransactionIntentV1): Promise<TransactionIntentV1>;
++  findIntent(intentId: string): Promise<TransactionIntentV1 | null>;
++  recordSubmission(intentId: string, txHash: string, submittedAt: string): Promise<void>;
++  saveVerification(
++    verification: TransactionVerificationV1,
++    observation?: { blockHash: string; requestRef: string },
++  ): Promise<TransactionVerificationV1>;
++  findVerification(intentId: string): Promise<TransactionVerificationV1 | null>;
++  findCanonicalBlockHash(intentId: string): Promise<string | null>;
++}
++
++interface StoredTransaction {
++  intent: TransactionIntentV1;
++  txHash?: string;
++  verification?: TransactionVerificationV1;
++  blockHash?: string;
++}
++
++export class MemoryTransactionStore implements TransactionStore {
++  private readonly records = new Map<string, StoredTransaction>();
++
++  async createIntent(input: TransactionIntentV1): Promise<TransactionIntentV1> {
++    const intent = TransactionIntentV1Schema.parse(input);
++    const existing = this.records.get(intent.intentId);
++    if (existing) {
++      if (JSON.stringify(existing.intent) !== JSON.stringify(intent)) throw new Error("CHAIN_INTENT_CONFLICT");
++      return existing.intent;
++    }
++    this.records.set(intent.intentId, { intent });
++    return intent;
++  }
++
++  async findIntent(intentId: string): Promise<TransactionIntentV1 | null> {
++    return this.records.get(intentId)?.intent ?? null;
++  }
++
++  async recordSubmission(intentId: string, txHash: string, _submittedAt: string): Promise<void> {
++    const record = this.records.get(intentId);
++    if (!record) throw new Error("CHAIN_INTENT_NOT_FOUND");
++    const normalized = txHash.toLowerCase();
++    if (record.txHash && record.txHash !== normalized) throw new Error("CHAIN_TRANSACTION_CONFLICT");
++    record.txHash = normalized;
++  }
++
++  async saveVerification(
++    input: TransactionVerificationV1,
++    observation?: { blockHash: string; requestRef: string },
++  ): Promise<TransactionVerificationV1> {
++    const verification = TransactionVerificationV1Schema.parse(input);
++    const record = this.records.get(verification.intentId);
++    if (!record) throw new Error("CHAIN_INTENT_NOT_FOUND");
++    if (record.txHash && record.txHash !== verification.txHash) throw new Error("CHAIN_TRANSACTION_CONFLICT");
++    if (record.verification?.status === "confirmed" && verification.status !== "reorged") return record.verification;
++    if (verification.status === "confirmed" && !observation) throw new Error("CHAIN_CANONICAL_OBSERVATION_REQUIRED");
++    record.txHash = verification.txHash;
++    record.verification = verification;
++    if (observation) record.blockHash = observation.blockHash.toLowerCase();
++    return verification;
++  }
++
++  async findVerification(intentId: string): Promise<TransactionVerificationV1 | null> {
++    return this.records.get(intentId)?.verification ?? null;
++  }
++
++  async findCanonicalBlockHash(intentId: string): Promise<string | null> {
++    return this.records.get(intentId)?.blockHash ?? null;
++  }
++}
++
++interface ChainTransactionRow {
++  intent_id: string;
++  request_id: string;
++  request_ref: string;
++  chain_id: string;
++  actor_wallet: string;
++  contract_address: string;
++  method: TransactionIntentV1["method"];
++  call_data: string | null;
++  expected_value_atomic: string;
++  created_at: string;
++  expires_at: string | null;
++  transaction_hash: string | null;
++  status: TransactionVerificationV1["status"] | "created" | "submitted";
++  block_number: string | null;
++  confirmations: number;
++  error_code: string | null;
++  event_name: string | null;
++  checked_at: string | null;
++  block_hash: string | null;
++}
++
++export class PostgresTransactionStore implements TransactionStore {
++  constructor(private readonly sql: Sql) {}
++
++  static connect(databaseUrl: string): PostgresTransactionStore {
++    return new PostgresTransactionStore(postgres(databaseUrl, { max: 8, prepare: false }));
++  }
++
++  async createIntent(input: TransactionIntentV1): Promise<TransactionIntentV1> {
++    const intent = TransactionIntentV1Schema.parse(input);
++    await this.sql`
++      INSERT INTO agent_market.chain_transactions (
++        id, intent_id, request_id, request_ref, chain_id, actor_wallet,
++        contract_address, method, call_data, expected_value_atomic,
++        status, created_at, expires_at
++      ) VALUES (
++        ${intent.intentId}, ${intent.intentId}, ${intent.requestId},
++        decode(${intent.requestRef.slice(2)}, 'hex'), ${intent.chainId}, ${intent.from},
++        ${intent.to}, ${intent.method}, ${intent.data.toLowerCase()}, ${intent.valueAtomic},
++        'created', ${intent.createdAt}, ${intent.expiresAt}
++      )
++      ON CONFLICT (intent_id) DO NOTHING
++    `;
++    const persisted = await this.findIntent(intent.intentId);
++    if (!persisted) throw new Error("CHAIN_INTENT_NOT_PERSISTED");
++    if (JSON.stringify(persisted) !== JSON.stringify(intent)) throw new Error("CHAIN_INTENT_CONFLICT");
++    return persisted;
++  }
++
++  async findIntent(intentId: string): Promise<TransactionIntentV1 | null> {
++    const rows = await this.sql<ChainTransactionRow[]>`
++      SELECT intent_id, request_id, encode(request_ref, 'hex') AS request_ref,
++        chain_id::text, actor_wallet, contract_address, method, call_data,
++        expected_value_atomic::text, created_at::text, expires_at::text,
++        transaction_hash, status, block_number::text, confirmations,
++        error_code, event_name, checked_at::text, block_hash
++      FROM agent_market.chain_transactions WHERE intent_id = ${intentId} LIMIT 1
++    `;
++    const row = rows[0];
++    if (!row?.call_data || !row.expires_at) return null;
++    return TransactionIntentV1Schema.parse({
++      intentId: row.intent_id,
++      requestId: row.request_id,
++      requestRef: `0x${row.request_ref}`,
++      chainId: Number(row.chain_id),
++      from: row.actor_wallet,
++      to: row.contract_address,
++      method: row.method,
++      data: row.call_data,
++      valueAtomic: row.expected_value_atomic,
++      createdAt: new Date(row.created_at).toISOString(),
++      expiresAt: new Date(row.expires_at).toISOString(),
++    });
++  }
++
++  async recordSubmission(intentId: string, txHash: string, submittedAt: string): Promise<void> {
++    const normalized = txHash.toLowerCase();
++    const rows = await this.sql<{ intent_id: string }[]>`
++      UPDATE agent_market.chain_transactions
++      SET transaction_hash = ${normalized}, status = 'submitted', submitted_at = ${submittedAt}
++      WHERE intent_id = ${intentId}
++        AND (transaction_hash IS NULL OR transaction_hash = ${normalized})
++      RETURNING intent_id
++    `;
++    if (rows.length === 0) {
++      if (!await this.findIntent(intentId)) throw new Error("CHAIN_INTENT_NOT_FOUND");
++      throw new Error("CHAIN_TRANSACTION_CONFLICT");
++    }
++  }
++
++  async saveVerification(
++    input: TransactionVerificationV1,
++    observation?: { blockHash: string; requestRef: string },
++  ): Promise<TransactionVerificationV1> {
++    const verification = TransactionVerificationV1Schema.parse(input);
++    if (verification.status === "confirmed" && !observation) throw new Error("CHAIN_CANONICAL_OBSERVATION_REQUIRED");
++    const eventName = verification.status === "confirmed" ? verification.eventName : null;
++    const errorCode = verification.status === "failed" || verification.status === "reorged"
++      ? verification.errorCode
++      : null;
++    const rows = await this.sql<{ intent_id: string }[]>`
++      UPDATE agent_market.chain_transactions SET
++        transaction_hash = ${verification.txHash}, status = ${verification.status},
++        block_number = ${verification.blockNumber}, confirmations = ${verification.confirmations},
++        error_code = ${errorCode}, event_name = ${eventName},
++        block_hash = COALESCE(${observation?.blockHash.toLowerCase() ?? null}, block_hash),
++        event_request_ref = COALESCE(${observation ? this.sql`decode(${observation.requestRef.slice(2)}, 'hex')` : null}, event_request_ref),
++        checked_at = ${verification.checkedAt},
++        confirmed_at = ${verification.status === "confirmed" ? verification.checkedAt : null}
++      WHERE intent_id = ${verification.intentId}
++        AND (transaction_hash IS NULL OR transaction_hash = ${verification.txHash})
++        AND (status != 'confirmed' OR ${verification.status} = 'reorged')
++      RETURNING intent_id
++    `;
++    if (rows.length === 0) {
++      const existing = await this.findVerification(verification.intentId);
++      if (existing?.status === "confirmed" && verification.status !== "reorged") return existing;
++      if (!await this.findIntent(verification.intentId)) throw new Error("CHAIN_INTENT_NOT_FOUND");
++      throw new Error("CHAIN_TRANSACTION_CONFLICT");
++    }
++    return await this.findVerification(verification.intentId) ?? verification;
++  }
++
++  async findVerification(intentId: string): Promise<TransactionVerificationV1 | null> {
++    const rows = await this.sql<ChainTransactionRow[]>`
++      SELECT intent_id, request_id, encode(request_ref, 'hex') AS request_ref,
++        chain_id::text, actor_wallet, contract_address, method, call_data,
++        expected_value_atomic::text, created_at::text, expires_at::text,
++        transaction_hash, status, block_number::text, confirmations,
++        error_code, event_name, checked_at::text, block_hash
++      FROM agent_market.chain_transactions WHERE intent_id = ${intentId} LIMIT 1
++    `;
++    const row = rows[0];
++    if (!row?.transaction_hash || !row.checked_at || !["verifying", "confirmed", "failed", "reorged"].includes(row.status)) return null;
++    const base = {
++      intentId: row.intent_id,
++      requestId: row.request_id,
++      txHash: row.transaction_hash,
++      status: row.status,
++      confirmations: row.confirmations,
++      blockNumber: row.block_number === null ? null : Number(row.block_number),
++      checkedAt: new Date(row.checked_at).toISOString(),
++    };
++    return TransactionVerificationV1Schema.parse(row.status === "confirmed"
++      ? { ...base, eventName: row.event_name }
++      : row.status === "failed" || row.status === "reorged"
++        ? { ...base, errorCode: row.error_code }
++        : base);
++  }
++
++  async findCanonicalBlockHash(intentId: string): Promise<string | null> {
++    const rows = await this.sql<{ block_hash: string | null }[]>`
++      SELECT block_hash FROM agent_market.chain_transactions WHERE intent_id = ${intentId} LIMIT 1
++    `;
++    return rows[0]?.block_hash?.toLowerCase() ?? null;
++  }
++}
+diff --git a/apps/transaction-engine/src/persistence/schema.integration.test.ts b/apps/transaction-engine/src/persistence/schema.integration.test.ts
+new file mode 100644
+index 0000000..524a1df
+--- /dev/null
++++ b/apps/transaction-engine/src/persistence/schema.integration.test.ts
+@@ -0,0 +1,54 @@
++import { readFileSync } from "node:fs";
++import { fileURLToPath } from "node:url";
++
++import { PGlite } from "@electric-sql/pglite";
++import { describe, expect, it } from "vitest";
++
++function migration(name: string): string {
++  return readFileSync(
++    fileURLToPath(new URL(`../../../../database/migrations/${name}`, import.meta.url)),
++    "utf8",
++  );
++}
++
++describe("PostgreSQL phase 2 migration", () => {
++  it("upgrades the V1 schema and can be safely applied again", async () => {
++    const database = new PGlite();
++    const pgliteCore = migration("0001_agent_market_core.sql")
++      .replace("CREATE EXTENSION IF NOT EXISTS vector;", "")
++      .replace("embedding vector(384)", "embedding text");
++    await database.exec(pgliteCore);
++    await database.exec(migration("0002_performance_observability.sql"));
++    await database.exec(migration("0003_phase2_lifecycle.sql"));
++    await database.exec(migration("0003_phase2_lifecycle.sql"));
++    await database.exec(migration("0004_chain_reconciliation.sql"));
++    await database.exec(migration("0004_chain_reconciliation.sql"));
++
++    const tables = await database.query<{ table_name: string }>(`
++      SELECT table_name
++      FROM information_schema.tables
++      WHERE table_schema = 'agent_market'
++      ORDER BY table_name
++    `);
++    const names = tables.rows.map(({ table_name }) => table_name);
++    expect(names).toContain("wallet_challenges");
++    expect(names).toContain("wallet_sessions");
++    expect(names).toContain("chain_transactions");
++    expect(names).toContain("model_versions");
++
++    await expect(database.exec(`
++      INSERT INTO agent_market.wallet_challenges (
++        id, request_id, wallet_address, chain_id, nonce_hash,
++        domain, uri, issued_at, expires_at
++      ) VALUES (
++        '0191f6f8-cb6b-7f31-81ad-c497d7d90101',
++        '0191f6f8-cb6b-7f31-81ad-c497d7d90102',
++        '0xAA11111111111111111111111111111111111111',
++        11155111, decode('12', 'hex'), 'example.test', 'https://example.test',
++        now(), now() + interval '5 minutes'
++      )
++    `)).rejects.toThrow();
++
++    await database.close();
++  });
++});
+diff --git a/database/migrations/0004_chain_reconciliation.sql b/database/migrations/0004_chain_reconciliation.sql
+new file mode 100644
+index 0000000..26b1549
+--- /dev/null
++++ b/database/migrations/0004_chain_reconciliation.sql
+@@ -0,0 +1,67 @@
++BEGIN;
++
++CREATE SCHEMA IF NOT EXISTS agent_market;
++SET LOCAL search_path TO agent_market, public;
++
++ALTER TABLE chain_transactions
++  ADD COLUMN IF NOT EXISTS call_data text,
++  ADD COLUMN IF NOT EXISTS expires_at timestamptz,
++  ADD COLUMN IF NOT EXISTS block_hash text,
++  ADD COLUMN IF NOT EXISTS event_name text,
++  ADD COLUMN IF NOT EXISTS event_request_ref bytea,
++  ADD COLUMN IF NOT EXISTS submitted_at timestamptz;
++
++ALTER TABLE chain_transactions
++  DROP CONSTRAINT IF EXISTS chain_transactions_request_ref_key;
++
++CREATE INDEX IF NOT EXISTS idx_chain_transactions_request_ref
++  ON chain_transactions (request_ref, created_at);
++
++DO $$
++BEGIN
++  IF NOT EXISTS (
++    SELECT 1 FROM pg_constraint
++    WHERE conname = 'chain_transactions_call_data_format'
++      AND conrelid = 'agent_market.chain_transactions'::regclass
++  ) THEN
++    ALTER TABLE chain_transactions
++      ADD CONSTRAINT chain_transactions_call_data_format
++      CHECK (call_data IS NULL OR call_data ~ '^0x([0-9a-f]{2})+$');
++  END IF;
++
++  IF NOT EXISTS (
++    SELECT 1 FROM pg_constraint
++    WHERE conname = 'chain_transactions_block_hash_format'
++      AND conrelid = 'agent_market.chain_transactions'::regclass
++  ) THEN
++    ALTER TABLE chain_transactions
++      ADD CONSTRAINT chain_transactions_block_hash_format
++      CHECK (block_hash IS NULL OR block_hash ~ '^0x[0-9a-f]{64}$');
++  END IF;
++
++  IF NOT EXISTS (
++    SELECT 1 FROM pg_constraint
++    WHERE conname = 'chain_transactions_event_request_ref_length'
++      AND conrelid = 'agent_market.chain_transactions'::regclass
++  ) THEN
++    ALTER TABLE chain_transactions
++      ADD CONSTRAINT chain_transactions_event_request_ref_length
++      CHECK (event_request_ref IS NULL OR octet_length(event_request_ref) = 32);
++  END IF;
++
++  IF NOT EXISTS (
++    SELECT 1 FROM pg_constraint
++    WHERE conname = 'chain_transactions_confirmed_observation'
++      AND conrelid = 'agent_market.chain_transactions'::regclass
++  ) THEN
++    ALTER TABLE chain_transactions
++      ADD CONSTRAINT chain_transactions_confirmed_observation
++      CHECK (status != 'confirmed' OR (block_hash IS NOT NULL AND event_request_ref IS NOT NULL));
++  END IF;
++END $$;
++
++CREATE INDEX IF NOT EXISTS idx_chain_transactions_hash_status
++  ON chain_transactions (transaction_hash, status)
++  WHERE transaction_hash IS NOT NULL;
++
++COMMIT;
+diff --git a/scripts/blockchain/readback-agent-market.mjs b/scripts/blockchain/readback-agent-market.mjs
+new file mode 100644
+index 0000000..e5f2db3
+--- /dev/null
++++ b/scripts/blockchain/readback-agent-market.mjs
+@@ -0,0 +1,109 @@
++#!/usr/bin/env node
++
++const MCP_BASE = "https://mcp.blockscout.com/v1";
++const USER_AGENT = "Blockscout-SkillGuidedScript/0.6.0";
++const TX_HASH = /^0x[0-9a-fA-F]{64}$/u;
++
++function usage() {
++  console.error("Usage: node scripts/blockchain/readback-agent-market.mjs <tx-hash> [chain-id]");
++  process.exitCode = 2;
++}
++
++async function call(tool, params = {}) {
++  const url = new URL(`${MCP_BASE}/${tool}`);
++  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
++  for (let attempt = 1; attempt <= 3; attempt += 1) {
++    const response = await fetch(url, {
++      headers: { "user-agent": USER_AGENT, accept: "application/json" },
++      signal: AbortSignal.timeout(8_000),
++    });
++    if (response.ok) return response.json();
++    if (response.status < 500 || attempt === 3) {
++      throw new Error(`BLOCKSCOUT_${tool.toUpperCase()}_${response.status}`);
++    }
++  }
++  throw new Error(`BLOCKSCOUT_${tool.toUpperCase()}_UNAVAILABLE`);
++}
++
++function object(value) {
++  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
++}
++
++function unwrap(payload) {
++  const root = object(payload);
++  return object(root.data ?? root.result ?? root.structuredContent ?? root);
++}
++
++function address(value) {
++  if (typeof value === "string") return value.toLowerCase();
++  const nested = object(value);
++  return typeof nested.hash === "string" ? nested.hash.toLowerCase() : null;
++}
++
++function compactTransaction(payload, txHash) {
++  const tx = unwrap(payload);
++  const rawInput = typeof tx.raw_input === "string" ? tx.raw_input.toLowerCase() : null;
++  const observedHash = typeof tx.hash === "string" ? tx.hash.toLowerCase() : null;
++  const blockNumber = Number.isSafeInteger(tx.block_number)
++    ? tx.block_number
++    : typeof tx.block_number === "string" && /^\d+$/u.test(tx.block_number) ? Number(tx.block_number) : null;
++  const confirmations = Number.isSafeInteger(tx.confirmations)
++    ? tx.confirmations
++    : typeof tx.confirmations === "string" && /^\d+$/u.test(tx.confirmations) ? Number(tx.confirmations) : null;
++  const from = address(tx.from);
++  const to = address(tx.to);
++  if (observedHash !== txHash || blockNumber === null || confirmations === null || !from || !to || !rawInput) {
++    throw new Error("BLOCKSCOUT_TRANSACTION_SCHEMA_INCOMPLETE");
++  }
++  return {
++    txHash: observedHash,
++    status: typeof tx.status === "string" ? tx.status : null,
++    blockNumber,
++    confirmations,
++    from,
++    to,
++    valueAtomic: typeof tx.value === "string" ? tx.value : null,
++    selector: rawInput?.slice(0, 10) ?? null,
++  };
++}
++
++function compactLogs(payload) {
++  const root = unwrap(payload);
++  const items = Array.isArray(root.items) ? root.items : Array.isArray(root) ? root : [];
++  return items.slice(0, 20).map((entry) => {
++    const log = object(entry);
++    const topics = Array.isArray(log.topics)
++      ? log.topics.filter((topic) => typeof topic === "string").slice(0, 4).map((topic) => topic.toLowerCase())
++      : [];
++    return {
++      address: address(log.address),
++      logIndex: Number.isSafeInteger(log.index) ? log.index : null,
++      eventTopic: topics[0] ?? null,
++      taskId: topics[1] ?? null,
++      requestRef: topics[2] ?? null,
++    };
++  });
++}
++
++const [txHashInput, chainIdInput = "11155111"] = process.argv.slice(2);
++if (!txHashInput || !TX_HASH.test(txHashInput) || !/^\d+$/u.test(chainIdInput)) {
++  usage();
++} else {
++  const txHash = txHashInput.toLowerCase();
++  const chainId = Number(chainIdInput);
++  await call("unlock_blockchain_analysis");
++  const [transaction, logs] = await Promise.all([
++    call("get_transaction_info", { chain_id: chainId, hash: txHash, include_raw_input: true }),
++    call("direct_api_call", {
++      chain_id: chainId,
++      endpoint_path: `/api/v2/transactions/${txHash}/logs`,
++    }),
++  ]);
++  process.stdout.write(`${JSON.stringify({
++    schemaVersion: 1,
++    source: "blockscout-mcp",
++    chainId,
++    transaction: compactTransaction(transaction, txHash),
++    logs: compactLogs(logs),
++  }, null, 2)}\n`);
++}

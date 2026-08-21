@@ -29,14 +29,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
+          package-manager-cache: false
+
+      - name: Enable pinned pnpm
+        run: corepack enable && corepack prepare pnpm@11.17.0 --activate
 
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile

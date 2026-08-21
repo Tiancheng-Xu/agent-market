@@ -1,0 +1,50 @@
+{
+  "task": "T8",
+  "status": "verified_local_external_pending",
+  "generatedAt": "2026-08-21T21:14:54.496Z",
+  "externalActions": {
+    "aws": false,
+    "sepolia": false,
+    "cloudflare": false,
+    "commit": false,
+    "push": false
+  },
+  "verifiedLocal": [
+    {
+      "command": "pnpm verify",
+      "exitCode": 0,
+      "summary": "Web 27, shared contracts 4, Solidity 13, transaction engine 86, Python 33; typechecks and production builds passed."
+    },
+    {
+      "command": "node --test infra/aws/*.test.mjs scripts/aws/*.test.mjs scripts/*.test.mjs",
+      "exitCode": 0,
+      "summary": "42/42 specialized IaC, lifecycle, repository and Evidence tests passed."
+    },
+    {
+      "command": "docker build -t agent-market-trainer:phase2-final services/trainer",
+      "exitCode": 0,
+      "summary": "Immutable Python dependencies installed and 33/33 tests passed inside the image; local image removed after verification."
+    },
+    {
+      "command": "T7_POSTGRES_ADMIN_URL=<local-redacted> vitest run postgres-replay-ledger.integration.test.ts",
+      "exitCode": 0,
+      "summary": "Ephemeral local PostgreSQL 16 gate passed 3/3; container removed after verification."
+    },
+    {
+      "command": "local Evidence browser QA",
+      "exitCode": 0,
+      "summary": "zh-CN architecture and four real screenshots loaded; 375/390/430/1440 had no root overflow, minimum button size 44x44, and no broken images."
+    }
+  ],
+  "independentReview": {
+    "verdict": "pass",
+    "p0": 0,
+    "p1": 0
+  },
+  "notVerified": [
+    "No fresh V2 AWS deployment or runtime readback was performed.",
+    "No fresh V2 Sepolia deployment, transaction receipt or independent readback was performed.",
+    "No V2 Cloudflare deployment has occurred yet; it remains gated on pushed GitHub Actions.",
+    "The Graph remains deferred."
+  ]
+}

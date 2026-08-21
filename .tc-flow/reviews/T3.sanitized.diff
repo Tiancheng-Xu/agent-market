@@ -1,0 +1,1401 @@
+diff --git a/apps/transaction-engine/package.json b/apps/transaction-engine/package.json
+index 001d8fd..3dedd56 100644
+--- a/apps/transaction-engine/package.json
++++ b/apps/transaction-engine/package.json
+@@ -11,12 +11,15 @@
+   },
+   "dependencies": {
+     "@agent-market/shared-contracts": "workspace:*",
++    "ethers": "6.17.0",
+     "next": "16.3.1",
++    "postgres": "^3.4.9",
+     "react": "19.2.8",
+     "react-dom": "19.2.8",
+     "uuid": "14.0.2"
+   },
+   "devDependencies": {
++    "@electric-sql/pglite": "0.5.5",
+     "@types/node": "26.2.0",
+     "@types/react": "19.2.18",
+     "@types/react-dom": "19.2.4",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 73e55df..096381a 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -17,9 +17,15 @@ importers:
+       '@agent-market/shared-contracts':
+         specifier: workspace:*
+         version: link:../../packages/shared-contracts
++      ethers:
++        specifier: 6.17.0
++        version: 6.17.0
+       next:
+         specifier: 16.3.1
+         version: 16.3.1(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
++      postgres:
++        specifier: ^3.4.9
++        version: 3.4.9
+       react:
+         specifier: 19.2.8
+         version: 19.2.8
+@@ -30,6 +36,9 @@ importers:
+         specifier: 14.0.2
+         version: 14.0.2
+     devDependencies:
++      '@electric-sql/pglite':
++        specifier: 0.5.5
++        version: 0.5.5
+       '@types/node':
+         specifier: 26.2.0
+         version: 26.2.0
+@@ -229,6 +238,9 @@ packages:
+     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
+     engines: {node: '>=12'}
+
++  '@electric-sql/pglite@0.5.5':
++    resolution: {integrity: sha512-QeZ+oB7QaU4EJj2awrB8hwFZ5TXxLRBQ9Gfq0dQauYDdWsRtuWRCERgtri35vRfL07KQHlVlc/4Qxvn7a5AXeA==}
++
+   '@emnapi/runtime@1.11.3':
+     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
+
+@@ -2949,6 +2961,10 @@ packages:
+     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
+     engines: {node: ^10 || ^12 || >=14}
+
++  postgres@3.4.9:
++    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
++    engines: {node: '>=12'}
++
+   prelude-ls@1.1.2:
+     resolution: {integrity: sha512-ESF23V4SKG6lVSGZgYNpbsiaAkdab6ZgOxe52p7+Kid3W3u3bxR4Vfd/o21dmN7jSt0IwgZ4v5MUd26FEtXE9w==}
+     engines: {node: '>= 0.8.0'}
+@@ -3858,6 +3874,8 @@ snapshots:
+     dependencies:
+       '@jridgewell/trace-mapping': 0.3.9
+
++  '@electric-sql/pglite@0.5.5': {}
++
+   '@emnapi/runtime@1.11.3':
+     dependencies:
+       tslib: 2.8.1
+@@ -4421,7 +4439,7 @@ snapshots:
+       '@nomicfoundation/solidity-analyzer': 0.1.2
+       cbor: 9.0.2
+       debug: 4.4.3(supports-color@8.1.1)
+-      ethers: 6.17.0
++      ethers: 6.15.0
+       fs-extra: 10.1.0
+       immer: 10.0.2
+       lodash: 4.17.21
+@@ -6442,6 +6460,8 @@ snapshots:
+       picocolors: 1.1.1
+       source-map-js: 1.2.1
+
++  postgres@3.4.9: {}
++
+   prelude-ls@1.1.2: {}
+
+   prettier@2.8.8: {}
+diff --git a/apps/transaction-engine/src/app/api/auth/auth-routes.test.ts b/apps/transaction-engine/src/app/api/auth/auth-routes.test.ts
+new file mode 100644
+index 0000000..017a671
+--- /dev/null
++++ b/apps/transaction-engine/src/app/api/auth/auth-routes.test.ts
+@@ -0,0 +1,109 @@
++import { Wallet } from "ethers";
++import { describe, expect, it } from "vitest";
++
++import { MemoryAuthStore, type AuthStore } from "../../../auth/auth-store";
++import { WalletAuthService } from "../../../auth/session";
++import { createChallengeHandler } from "./challenge/route";
++import { createLogoutHandler } from "./logout/route";
++import { createVerifyHandler } from "./verify/route";
++
++function service(): WalletAuthService {
++  let id = 0;
++  const ids = ["0191f6f8-cb6b-7f31-81ad-c497d7d90101", "0191f6f8-cb6b-7f31-81ad-c497d7d90103"];
++  return new WalletAuthService(new MemoryAuthStore(), {
++    now: () => new Date("2026-08-21T12:00:00.000Z"),
++    id: () => ids[id++]!,
++    nonce: () => "0123456789abcdef01234567",
++    sessionToken: () => "raw-session-cookie-only",
++  });
++}
++
++describe("wallet auth routes", () => {
++  it("sets a secure HttpOnly cookie without returning its raw value", async () => {
++    const auth = service();
++    const wallet = Wallet.createRandom();
++    const challengeResponse = await createChallengeHandler(auth, new URL("https://agent-market.test"))(new Request("https://agent-market.test/api/auth/challenge", {
++      method: "POST",
++      headers: { "content-type": "application/json", origin: "https://agent-market.test", "x-request-id": "0191f6f8-cb6b-7f31-81ad-c497d7d90102" },
++      body: JSON.stringify({ address: wallet.address }),
++    }));
++    const challengeBody = await challengeResponse.json() as { message: string };
++    const signature = await wallet.signMessage(challengeBody.message);
++    const response = await createVerifyHandler(auth)(new Request("https://agent-market.test/api/auth/verify", {
++      method: "POST",
++      headers: { "content-type": "application/json" },
++      body: JSON.stringify({ message: challengeBody.message, signature }),
++    }));
++    const body = JSON.stringify(await response.json());
++    const cookie = response.headers.get("set-cookie") ?? "";
++    expect(response.status).toBe(200);
++    expect(cookie).toContain("__Host-agent_market_session=raw-session-cookie-only");
++    expect(cookie).toContain("HttpOnly");
++    expect(cookie).toContain("Secure");
++    expect(cookie).toContain("SameSite=Lax");
++    expect(cookie).toContain("Path=/");
++    expect(body).not.toContain("raw-session-cookie-only");
++  });
++
++  it("revokes idempotently and clears the cookie", async () => {
++    const response = await createLogoutHandler(service())(new Request("https://agent-market.test/api/auth/logout", {
++      method: "POST",
++      headers: { cookie: "__Host-agent_market_session=unknown" },
++    }));
++    expect(response.status).toBe(204);
++    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
++  });
++
++  it("rejects spoofed request and forwarded hosts", async () => {
++    const auth = service();
++    const wallet = Wallet.createRandom();
++    const body = JSON.stringify({ address: wallet.address });
++    const handler = createChallengeHandler(auth, new URL("https://agent-market.test"));
++    const spoofed = await handler(new Request("https://evil.test/api/auth/challenge", {
++      method: "POST", headers: { origin: "https://agent-market.test" }, body,
++    }));
++    const forwarded = await handler(new Request("https://agent-market.test/api/auth/challenge", {
++      method: "POST", headers: { origin: "https://agent-market.test", "x-forwarded-host": "evil.test" }, body,
++    }));
++    expect(spoofed.status).toBe(403);
++    expect(forwarded.status).toBe(403);
++  });
++
++  it("maps store failures to 503, preserves retryable cookies, and clears malformed cookies", async () => {
++    const fail = async (): Promise<never> => { throw new Error("DATABASE_UNAVAILABLE"); };
++    const store: AuthStore = {
++      createChallenge: fail,
++      findChallenge: fail,
++      consumeChallengeAndCreateSession: fail,
++      findActiveSession: fail,
++      revokeSession: fail,
++    };
++    const auth = new WalletAuthService(store);
++    const wallet = Wallet.createRandom();
++    const challengeResponse = await createChallengeHandler(auth, new URL("https://agent-market.test"))(new Request("https://agent-market.test/api/auth/challenge", {
++      method: "POST", headers: { origin: "https://agent-market.test", "content-type": "application/json" }, body: JSON.stringify({ address: wallet.address }),
++    }));
++    const healthy = service();
++    const healthyChallengeResponse = await createChallengeHandler(healthy, new URL("https://agent-market.test"))(new Request("https://agent-market.test/api/auth/challenge", {
++      method: "POST", headers: { origin: "https://agent-market.test", "content-type": "application/json" }, body: JSON.stringify({ address: wallet.address }),
++    }));
++    const healthyChallenge = await healthyChallengeResponse.json() as { message: string };
++    const verifyResponse = await createVerifyHandler(auth)(new Request("https://agent-market.test/api/auth/verify", {
++      method: "POST", headers: { "content-type": "application/json" },
++      body: JSON.stringify({ message: healthyChallenge.message, signature: await wallet.signMessage(healthyChallenge.message) }),
++    }));
++    const failedLogoutResponse = await createLogoutHandler(auth)(new Request("https://agent-market.test/api/auth/logout", {
++      method: "POST", headers: { cookie: "__Host-agent_market_session=retryable", "x-request-id": "0191f6f8-cb6b-7f31-81ad-c497d7d90102" },
++    }));
++    const malformedLogoutResponse = await createLogoutHandler(auth)(new Request("https://agent-market.test/api/auth/logout", {
++      method: "POST", headers: { cookie: "__Host-agent_market_session=%E0%A4%A" },
++    }));
++    expect(challengeResponse.status).toBe(503);
++    expect(verifyResponse.status).toBe(503);
++    expect(failedLogoutResponse.status).toBe(503);
++    expect(failedLogoutResponse.headers.get("set-cookie")).toBeNull();
++    expect(failedLogoutResponse.headers.get("x-request-id")).toBe("0191f6f8-cb6b-7f31-81ad-c497d7d90102");
++    expect(malformedLogoutResponse.status).toBe(204);
++    expect(malformedLogoutResponse.headers.get("set-cookie")).toContain("Max-Age=0");
++  });
++});
+diff --git a/apps/transaction-engine/src/app/api/auth/challenge/route.ts b/apps/transaction-engine/src/app/api/auth/challenge/route.ts
+new file mode 100644
+index 0000000..20bc26c
+--- /dev/null
++++ b/apps/transaction-engine/src/app/api/auth/challenge/route.ts
+@@ -0,0 +1,54 @@
++import { resolveRequestId } from "../../../../lib/request-context";
++import { WalletAddressSchema } from "@agent-market/shared-contracts";
++import { formatChallengeMessage } from "../../../../auth/challenge";
++import { getAuthOrigin, getAuthService } from "../../../../auth/runtime";
++import type { WalletAuthService } from "../../../../auth/session";
++
++function jsonError(error: string, requestId: string, status: number): Response {
++  return Response.json({ error, requestId }, {
++    status,
++    headers: { "cache-control": "no-store", "x-request-id": requestId },
++  });
++}
++
++export function createChallengeHandler(service: WalletAuthService, authOrigin: URL) {
++  return async function POST(request: Request): Promise<Response> {
++    const requestId = resolveRequestId(request.headers);
++    const requestUrl = new URL(request.url);
++    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",", 1)[0]?.trim();
++    if (
++      request.headers.get("origin") !== authOrigin.origin
++      || requestUrl.origin !== authOrigin.origin
++      || (forwardedHost !== undefined && forwardedHost !== authOrigin.host)
++    ) return jsonError("AUTH_ORIGIN_MISMATCH", requestId, 403);
++    let address: string;
++    try {
++      const body = await request.json() as { address?: unknown };
++      address = WalletAddressSchema.parse(body.address);
++    } catch {
++      return jsonError("AUTH_CHALLENGE_INVALID", requestId, 400);
++    }
++    try {
++      const challenge = await service.issueChallenge(address, {
++        requestId,
++        domain: authOrigin.hostname,
++        uri: authOrigin.origin,
++      });
++      return Response.json({ challenge, message: formatChallengeMessage(challenge), requestId }, {
++        status: 201,
++        headers: { "cache-control": "no-store", "x-request-id": requestId },
++      });
++    } catch {
++      return jsonError("AUTH_STORE_UNAVAILABLE", requestId, 503);
++    }
++  };
++}
++
++export async function POST(request: Request): Promise<Response> {
++  const requestId = resolveRequestId(request.headers);
++  try {
++    return await createChallengeHandler(getAuthService(), getAuthOrigin())(request);
++  } catch {
++    return jsonError("AUTH_STORE_UNAVAILABLE", requestId, 503);
++  }
++}
+diff --git a/apps/transaction-engine/src/app/api/auth/logout/route.ts b/apps/transaction-engine/src/app/api/auth/logout/route.ts
+new file mode 100644
+index 0000000..63b01a4
+--- /dev/null
++++ b/apps/transaction-engine/src/app/api/auth/logout/route.ts
+@@ -0,0 +1,37 @@
++import { resolveRequestId } from "../../../../lib/request-context";
++import { getAuthService } from "../../../../auth/runtime";
++import { clearSessionCookie, readSessionCookie, type WalletAuthService } from "../../../../auth/session";
++
++export function createLogoutHandler(service: WalletAuthService) {
++  return async function POST(request: Request): Promise<Response> {
++    const requestId = resolveRequestId(request.headers);
++    const token = readSessionCookie(request.headers);
++    try {
++      if (token) await service.revokeSession(token);
++    } catch {
++      return Response.json({ error: "AUTH_STORE_UNAVAILABLE", requestId }, {
++        status: 503,
++        headers: { "cache-control": "no-store", "x-request-id": requestId },
++      });
++    }
++    return new Response(null, {
++      status: 204,
++      headers: { "cache-control": "no-store", "set-cookie": clearSessionCookie() },
++    });
++  };
++}
++
++export async function POST(request: Request): Promise<Response> {
++  const requestId = resolveRequestId(request.headers);
++  const token = readSessionCookie(request.headers);
++  try {
++    return await createLogoutHandler(getAuthService())(request);
++  } catch {
++    const headers: Record<string, string> = { "cache-control": "no-store", "x-request-id": requestId };
++    if (!token) headers["set-cookie"] = clearSessionCookie();
++    return Response.json({ error: "AUTH_STORE_UNAVAILABLE", requestId }, {
++      status: 503,
++      headers,
++    });
++  }
++}
+diff --git a/apps/transaction-engine/src/app/api/auth/verify/route.ts b/apps/transaction-engine/src/app/api/auth/verify/route.ts
+new file mode 100644
+index 0000000..1a88189
+--- /dev/null
++++ b/apps/transaction-engine/src/app/api/auth/verify/route.ts
+@@ -0,0 +1,50 @@
++import { resolveRequestId } from "../../../../lib/request-context";
++import { getAuthService } from "../../../../auth/runtime";
++import { AuthError, serializeSessionCookie, type WalletAuthService } from "../../../../auth/session";
++
++export function createVerifyHandler(service: WalletAuthService) {
++  return async function POST(request: Request): Promise<Response> {
++    const requestId = resolveRequestId(request.headers);
++    let message: string;
++    let signature: string;
++    try {
++      const body = await request.json() as { message?: unknown; signature?: unknown };
++      if (typeof body.message !== "string" || typeof body.signature !== "string") throw new AuthError("AUTH_VERIFY_INVALID", 400);
++      message = body.message;
++      signature = body.signature;
++    } catch {
++      return Response.json({ error: "AUTH_VERIFY_INVALID", requestId }, {
++        status: 400,
++        headers: { "cache-control": "no-store", "x-request-id": requestId },
++      });
++    }
++    try {
++      const verified = await service.verifyChallenge(message, signature);
++      return Response.json({ session: verified.session, requestId }, {
++        headers: {
++          "cache-control": "no-store",
++          "x-request-id": requestId,
++          "set-cookie": serializeSessionCookie(verified.sessionToken),
++        },
++      });
++    } catch (error) {
++      const authError = error instanceof AuthError ? error : new AuthError("AUTH_STORE_UNAVAILABLE", 503);
++      return Response.json({ error: authError.code, requestId }, {
++        status: authError.status,
++        headers: { "cache-control": "no-store", "x-request-id": requestId },
++      });
++    }
++  };
++}
++
++export async function POST(request: Request): Promise<Response> {
++  const requestId = resolveRequestId(request.headers);
++  try {
++    return await createVerifyHandler(getAuthService())(request);
++  } catch {
++    return Response.json({ error: "AUTH_STORE_UNAVAILABLE", requestId }, {
++      status: 503,
++      headers: { "cache-control": "no-store", "x-request-id": requestId },
++    });
++  }
++}
+diff --git a/apps/transaction-engine/src/auth/auth-store.integration.test.ts b/apps/transaction-engine/src/auth/auth-store.integration.test.ts
+new file mode 100644
+index 0000000..a6a7129
+--- /dev/null
++++ b/apps/transaction-engine/src/auth/auth-store.integration.test.ts
+@@ -0,0 +1,118 @@
++import { readFileSync } from "node:fs";
++import { fileURLToPath } from "node:url";
++
++import postgres from "postgres";
++import { describe, expect, it } from "vitest";
++
++import { PostgresAuthStore, type StoredChallenge, type StoredSession } from "./auth-store";
++
++const databaseUrl = process.env.TEST_DATABASE_URL;
++const integration = databaseUrl ? describe : describe.skip;
++const destructiveSentinel = "agent-market-ephemeral-only";
++const requestId = "0191f6f8-cb6b-7f31-81ad-c497d7d90102";
++const walletAddress = "0xaa11111111111111111111111111111111111111";
++
++function migration(name: string): string {
++  return readFileSync(fileURLToPath(new URL(`../../../../database/migrations/${name}`, import.meta.url)), "utf8")
++    .replace(/^\s*BEGIN;\s*$/gimu, "")
++    .replace(/^\s*COMMIT;\s*$/gimu, "");
++}
++
++function assertDedicatedLocalTestDatabase(value: string): void {
++  const url = new URL(value);
++  const databaseName = decodeURIComponent(url.pathname.replace(/^\//u, ""));
++  const localHosts = new Set(["127.0.0.1", "localhost", "::1"]);
++  if (process.env.TEST_DATABASE_DESTRUCTIVE !== destructiveSentinel
++    || !localHosts.has(url.hostname)
++    || !/^agent_market_auth_test_[a-z0-9_]+$/u.test(databaseName)) {
++    throw new Error("UNSAFE_TEST_DATABASE");
++  }
++}
++
++function challenge(id: string, nonceHash: string, expiresAt = "2026-08-21T12:10:00.000Z"): StoredChallenge {
++  return {
++    challengeId: id,
++    requestId,
++    walletAddress,
++    chainId: 11155111,
++    nonceHash,
++    domain: "agent-market.test",
++    uri: "https://agent-market.test",
++    statement: "Sign in to Agent Market. This request does not submit a transaction or reimburse gas.",
++    issuedAt: "2026-08-21T12:00:00.000Z",
++    expiresAt,
++  };
++}
++
++function session(id: string, hash: string, sessionRequestId = requestId): StoredSession {
++  return {
++    sessionHash: hash,
++    session: {
++      sessionId: id,
++      requestId: sessionRequestId,
++      walletAddress,
++      chainId: 11155111,
++      issuedAt: "2026-08-21T12:01:00.000Z",
++      expiresAt: "2026-08-22T12:01:00.000Z",
++      recentAuthAt: "2026-08-21T12:01:00.000Z",
++    },
++  };
++}
++
++integration.sequential("PostgreSQL auth store", () => {
++  it("enforces one concurrent winner, rollback, expiry, hash-only state, and revocation", async () => {
++    assertDedicatedLocalTestDatabase(databaseUrl!);
++    const sql = postgres(databaseUrl!, { max: 4, prepare: false });
++    try {
++      const core = migration("0001_agent_market_core.sql")
++        .replace("CREATE EXTENSION IF NOT EXISTS vector;", "")
++        .replace("embedding vector(384)", "embedding double precision[]");
++      await sql.unsafe(core);
++      await sql.unsafe(migration("0002_performance_observability.sql"));
++      await sql.unsafe(migration("0003_phase2_lifecycle.sql"));
++      const store = new PostgresAuthStore(sql);
++
++      const nonceHash = "11".repeat(32);
++      await store.createChallenge(challenge("0191f6f8-cb6b-7f31-81ad-c497d7d90101", nonceHash));
++      const results = await Promise.all([
++        store.consumeChallengeAndCreateSession({
++          challengeId: "0191f6f8-cb6b-7f31-81ad-c497d7d90101", nonceHash,
++          consumedAt: "2026-08-21T12:01:00.000Z", session: session("0191f6f8-cb6b-7f31-81ad-c497d7d90103", "22".repeat(32)),
++        }),
++        store.consumeChallengeAndCreateSession({
++          challengeId: "0191f6f8-cb6b-7f31-81ad-c497d7d90101", nonceHash,
++          consumedAt: "2026-08-21T12:01:00.000Z", session: session("0191f6f8-cb6b-7f31-81ad-c497d7d90104", "33".repeat(32)),
++        }),
++      ]);
++      const activeHash = results[0] ? "22".repeat(32) : "33".repeat(32);
++      expect([...results].sort()).toEqual([false, true]);
++
++      const rollbackId = "0191f6f8-cb6b-7f31-81ad-c497d7d90105";
++      const rollbackRequestId = "0191f6f8-cb6b-7f31-81ad-c497d7d90106";
++      await store.createChallenge({ ...challenge(rollbackId, "44".repeat(32)), requestId: rollbackRequestId });
++      await expect(store.consumeChallengeAndCreateSession({
++        challengeId: rollbackId, nonceHash: "44".repeat(32), consumedAt: "2026-08-21T12:01:00.000Z",
++        session: session("0191f6f8-cb6b-7f31-81ad-c497d7d90107", "55".repeat(32), requestId),
++      })).rejects.toThrow();
++      const afterRollback = await store.findChallenge(rollbackId);
++      expect(afterRollback?.consumedAt).toBeUndefined();
++
++      const expiredId = "0191f6f8-cb6b-7f31-81ad-c497d7d90108";
++      const expiredRequestId = "0191f6f8-cb6b-7f31-81ad-c497d7d90109";
++      await store.createChallenge({ ...challenge(expiredId, "66".repeat(32), "2026-08-21T12:02:00.000Z"), requestId: expiredRequestId });
++      expect(await store.consumeChallengeAndCreateSession({
++        challengeId: expiredId, nonceHash: "66".repeat(32), consumedAt: "2026-08-21T12:03:00.000Z",
++        session: { ...session("0191f6f8-cb6b-7f31-81ad-c497d7d90110", "77".repeat(32), expiredRequestId) },
++      })).toBe(false);
++
++      expect(await store.findActiveSession(activeHash, "2026-08-21T12:02:00.000Z")).not.toBeNull();
++      await store.revokeSession(activeHash, "2026-08-21T12:03:00.000Z");
++      expect(await store.findActiveSession(activeHash, "2026-08-21T12:04:00.000Z")).toBeNull();
++      const hashes = await sql<{ session_hash: string }[]>`SELECT encode(session_hash, 'hex') AS session_hash FROM agent_market.wallet_sessions`;
++      expect(hashes.map((row) => row.session_hash)).not.toContain("raw-session-token");
++    } finally {
++      await sql.unsafe("DROP SCHEMA IF EXISTS agent_market CASCADE");
++      await sql.end({ timeout: 5 });
++    }
++  }, 30_000);
++});
+diff --git a/apps/transaction-engine/src/auth/auth-store.test.ts b/apps/transaction-engine/src/auth/auth-store.test.ts
+new file mode 100644
+index 0000000..c395d91
+--- /dev/null
++++ b/apps/transaction-engine/src/auth/auth-store.test.ts
+@@ -0,0 +1,10 @@
++import { describe, expect, it } from "vitest";
++
++import { parsePersistedChainId } from "./auth-store";
++
++describe("persisted auth state", () => {
++  it("fails closed when a persisted identity is not on Sepolia", () => {
++    expect(parsePersistedChainId("11155111")).toBe(11155111);
++    expect(() => parsePersistedChainId(1)).toThrow("AUTH_PERSISTED_CHAIN_INVALID");
++  });
++});
+diff --git a/apps/transaction-engine/src/auth/auth-store.ts b/apps/transaction-engine/src/auth/auth-store.ts
+new file mode 100644
+index 0000000..acae714
+--- /dev/null
++++ b/apps/transaction-engine/src/auth/auth-store.ts
+@@ -0,0 +1,219 @@
++import { SEPOLIA_CHAIN_ID, type WalletChallengeV1, type WalletSessionV1 } from "@agent-market/shared-contracts";
++import postgres from "postgres";
++
++export type StoredChallenge = Omit<WalletChallengeV1, "nonce"> & {
++  nonceHash: string;
++  consumedAt?: string;
++};
++
++export interface StoredSession {
++  session: WalletSessionV1;
++  sessionHash: string;
++  revokedAt?: string;
++}
++
++export interface ConsumeChallengeInput {
++  challengeId: string;
++  nonceHash: string;
++  consumedAt: string;
++  session: StoredSession;
++}
++
++export interface AuthStore {
++  createChallenge(challenge: StoredChallenge): Promise<void>;
++  findChallenge(challengeId: string): Promise<StoredChallenge | null>;
++  consumeChallengeAndCreateSession(input: ConsumeChallengeInput): Promise<boolean>;
++  findActiveSession(sessionHash: string, now: string): Promise<WalletSessionV1 | null>;
++  revokeSession(sessionHash: string, revokedAt: string): Promise<void>;
++}
++
++export class MemoryAuthStore implements AuthStore {
++  private readonly challenges = new Map<string, StoredChallenge>();
++  private readonly sessions = new Map<string, StoredSession>();
++
++  async createChallenge(challenge: StoredChallenge): Promise<void> {
++    if (this.challenges.has(challenge.challengeId)) throw new Error("AUTH_CHALLENGE_CONFLICT");
++    this.challenges.set(challenge.challengeId, { ...challenge });
++  }
++
++  async findChallenge(challengeId: string): Promise<StoredChallenge | null> {
++    const challenge = this.challenges.get(challengeId);
++    return challenge ? { ...challenge } : null;
++  }
++
++  async consumeChallengeAndCreateSession(input: ConsumeChallengeInput): Promise<boolean> {
++    const challenge = this.challenges.get(input.challengeId);
++    if (!challenge || challenge.consumedAt || challenge.nonceHash !== input.nonceHash) return false;
++    challenge.consumedAt = input.consumedAt;
++    this.sessions.set(input.session.sessionHash, {
++      session: { ...input.session.session },
++      sessionHash: input.session.sessionHash,
++    });
++    return true;
++  }
++
++  async findActiveSession(sessionHash: string, now: string): Promise<WalletSessionV1 | null> {
++    const record = this.sessions.get(sessionHash);
++    if (!record || record.revokedAt || record.session.expiresAt <= now) return null;
++    return { ...record.session };
++  }
++
++  async revokeSession(sessionHash: string, revokedAt: string): Promise<void> {
++    const record = this.sessions.get(sessionHash);
++    if (record && !record.revokedAt) record.revokedAt = revokedAt;
++  }
++}
++
++type PostgresClient = ReturnType<typeof postgres>;
++
++interface ChallengeRow {
++  id: string;
++  request_id: string;
++  wallet_address: string;
++  chain_id: string | number;
++  nonce_hash: string;
++  domain: string;
++  uri: string;
++  issued_at: Date | string;
++  expires_at: Date | string;
++  consumed_at: Date | string | null;
++}
++
++interface SessionRow {
++  id: string;
++  request_id: string;
++  wallet_address: string;
++  chain_id: string | number;
++  issued_at: Date | string;
++  expires_at: Date | string;
++  recent_auth_at: Date | string;
++}
++
++function iso(value: Date | string): string {
++  return new Date(value).toISOString();
++}
++
++export function parsePersistedChainId(value: string | number): typeof SEPOLIA_CHAIN_ID {
++  if (Number(value) !== SEPOLIA_CHAIN_ID) throw new Error("AUTH_PERSISTED_CHAIN_INVALID");
++  return SEPOLIA_CHAIN_ID;
++}
++
++export class PostgresAuthStore implements AuthStore {
++  constructor(private readonly sql: PostgresClient) {}
++
++  static connect(databaseUrl: string): PostgresAuthStore {
++    return new PostgresAuthStore(postgres(databaseUrl, {
++      max: 2,
++      idle_timeout: 20,
++      connect_timeout: 10,
++      prepare: false,
++    }));
++  }
++
++  async createChallenge(challenge: StoredChallenge): Promise<void> {
++    await this.sql`
++      INSERT INTO agent_market.wallet_challenges (
++        id, request_id, wallet_address, chain_id, nonce_hash,
++        domain, uri, issued_at, expires_at
++      ) VALUES (
++        ${challenge.challengeId}::uuid,
++        ${challenge.requestId}::uuid,
++        ${challenge.walletAddress},
++        ${challenge.chainId},
++        ${Buffer.from(challenge.nonceHash, "hex")},
++        ${challenge.domain},
++        ${challenge.uri},
++        ${challenge.issuedAt}::timestamptz,
++        ${challenge.expiresAt}::timestamptz
++      )
++    `;
++  }
++
++  async findChallenge(challengeId: string): Promise<StoredChallenge | null> {
++    const rows = await this.sql<ChallengeRow[]>`
++      SELECT id, request_id, wallet_address, chain_id,
++             encode(nonce_hash, 'hex') AS nonce_hash,
++             domain, uri, issued_at, expires_at, consumed_at
++      FROM agent_market.wallet_challenges
++      WHERE id = ${challengeId}::uuid
++      LIMIT 1
++    `;
++    const row = rows[0];
++    if (!row) return null;
++    return {
++      challengeId: row.id,
++      requestId: row.request_id,
++      walletAddress: row.wallet_address,
++      chainId: parsePersistedChainId(row.chain_id),
++      domain: row.domain,
++      uri: row.uri,
++      statement: "Sign in to Agent Market. This request does not submit a transaction or reimburse gas.",
++      issuedAt: iso(row.issued_at),
++      expiresAt: iso(row.expires_at),
++      nonceHash: row.nonce_hash,
++      ...(row.consumed_at ? { consumedAt: iso(row.consumed_at) } : {}),
++    };
++  }
++
++  async consumeChallengeAndCreateSession(input: ConsumeChallengeInput): Promise<boolean> {
++    return this.sql.begin(async (transaction) => {
++      const consumed = await transaction`
++        UPDATE agent_market.wallet_challenges
++        SET consumed_at = ${input.consumedAt}::timestamptz
++        WHERE id = ${input.challengeId}::uuid
++          AND consumed_at IS NULL
++          AND nonce_hash = ${Buffer.from(input.nonceHash, "hex")}
++          AND expires_at > ${input.consumedAt}::timestamptz
++        RETURNING id
++      `;
++      if (consumed.length !== 1) return false;
++      const { session } = input.session;
++      await transaction`
++        INSERT INTO agent_market.wallet_sessions (
++          id, request_id, wallet_address, chain_id, session_hash,
++          issued_at, expires_at, recent_auth_at
++        ) VALUES (
++          ${session.sessionId}::uuid,
++          ${session.requestId}::uuid,
++          ${session.walletAddress},
++          ${session.chainId},
++          ${Buffer.from(input.session.sessionHash, "hex")},
++          ${session.issuedAt}::timestamptz,
++          ${session.expiresAt}::timestamptz,
++          ${session.recentAuthAt}::timestamptz
++        )
++      `;
++      return true;
++    });
++  }
++
++  async findActiveSession(sessionHash: string, now: string): Promise<WalletSessionV1 | null> {
++    const rows = await this.sql<SessionRow[]>`
++      SELECT id, request_id, wallet_address, chain_id, issued_at, expires_at, recent_auth_at
++      FROM agent_market.wallet_sessions
++      WHERE session_hash = ${Buffer.from(sessionHash, "hex")}
++        AND revoked_at IS NULL
++        AND expires_at > ${now}::timestamptz
++      LIMIT 1
++    `;
++    const row = rows[0];
++    if (!row) return null;
++    return {
++      sessionId: row.id,
++      requestId: row.request_id,
++      walletAddress: row.wallet_address,
++      chainId: parsePersistedChainId(row.chain_id),
++      issuedAt: iso(row.issued_at),
++      expiresAt: iso(row.expires_at),
++      recentAuthAt: iso(row.recent_auth_at),
++    };
++  }
++
++  async revokeSession(sessionHash: string, revokedAt: string): Promise<void> {
++    await this.sql`
++      UPDATE agent_market.wallet_sessions
++      SET revoked_at = COALESCE(revoked_at, ${revokedAt}::timestamptz)
++      WHERE session_hash = ${Buffer.from(sessionHash, "hex")}
++    `;
++  }
++}
+diff --git a/apps/transaction-engine/src/auth/challenge.ts b/apps/transaction-engine/src/auth/challenge.ts
+new file mode 100644
+index 0000000..52e4d43
+--- /dev/null
++++ b/apps/transaction-engine/src/auth/challenge.ts
+@@ -0,0 +1,104 @@
++import { createHash, randomBytes } from "node:crypto";
++
++import {
++  SEPOLIA_CHAIN_ID,
++  WalletAddressSchema,
++  WalletChallengeV1Schema,
++  type WalletChallengeV1,
++} from "@agent-market/shared-contracts";
++import { v7 as uuidv7 } from "uuid";
++
++import type { AuthStore, StoredChallenge } from "./auth-store";
++
++export const AUTH_STATEMENT = "Sign in to Agent Market. This request does not submit a transaction or reimburse gas.";
++
++export interface ChallengeRequestContext {
++  requestId: string;
++  domain: string;
++  uri: string;
++}
++
++export interface ChallengeDependencies {
++  now(): Date;
++  id(): string;
++  nonce(): string;
++}
++
++const defaultDependencies: ChallengeDependencies = {
++  now: () => new Date(),
++  id: () => uuidv7(),
++  nonce: () => randomBytes(24).toString("base64url"),
++};
++
++export function hashSecret(value: string): string {
++  return createHash("sha256").update(value, "utf8").digest("hex");
++}
++
++export function formatChallengeMessage(challenge: WalletChallengeV1): string {
++  return [
++    "Agent Market wallet authentication",
++    `Domain: ${challenge.domain}`,
++    `Wallet: ${challenge.walletAddress}`,
++    `Chain ID: ${challenge.chainId}`,
++    `URI: ${challenge.uri}`,
++    `Statement: ${challenge.statement}`,
++    `Nonce: ${challenge.nonce}`,
++    `Issued At: ${challenge.issuedAt}`,
++    `Expiration Time: ${challenge.expiresAt}`,
++    `Request ID: ${challenge.requestId}`,
++    `Challenge ID: ${challenge.challengeId}`,
++  ].join("\n");
++}
++
++function field(line: string | undefined, prefix: string): string {
++  if (!line?.startsWith(prefix)) throw new Error("AUTH_CHALLENGE_MESSAGE_INVALID");
++  return line.slice(prefix.length);
++}
++
++export function parseChallengeMessage(message: string): WalletChallengeV1 {
++  const lines = message.split("\n");
++  if (lines.length !== 11 || lines[0] !== "Agent Market wallet authentication") {
++    throw new Error("AUTH_CHALLENGE_MESSAGE_INVALID");
++  }
++  try {
++    return WalletChallengeV1Schema.parse({
++      domain: field(lines[1], "Domain: "),
++      walletAddress: field(lines[2], "Wallet: "),
++      chainId: Number(field(lines[3], "Chain ID: ")),
++      uri: field(lines[4], "URI: "),
++      statement: field(lines[5], "Statement: "),
++      nonce: field(lines[6], "Nonce: "),
++      issuedAt: field(lines[7], "Issued At: "),
++      expiresAt: field(lines[8], "Expiration Time: "),
++      requestId: field(lines[9], "Request ID: "),
++      challengeId: field(lines[10], "Challenge ID: "),
++    });
++  } catch {
++    throw new Error("AUTH_CHALLENGE_MESSAGE_INVALID");
++  }
++}
++
++export async function issueChallenge(
++  store: AuthStore,
++  address: string,
++  context: ChallengeRequestContext,
++  dependencies: ChallengeDependencies = defaultDependencies,
++): Promise<WalletChallengeV1> {
++  const issuedAt = dependencies.now();
++  const challenge = WalletChallengeV1Schema.parse({
++    challengeId: dependencies.id(),
++    requestId: context.requestId,
++    walletAddress: WalletAddressSchema.parse(address),
++    chainId: SEPOLIA_CHAIN_ID,
++    nonce: dependencies.nonce(),
++    domain: context.domain,
++    uri: context.uri,
++    statement: AUTH_STATEMENT,
++    issuedAt: issuedAt.toISOString(),
++    expiresAt: new Date(issuedAt.getTime() + 5 * 60_000).toISOString(),
++  });
++  const { nonce, ...publicFields } = challenge;
++  const stored: StoredChallenge = { ...publicFields, nonceHash: hashSecret(nonce) };
++  await store.createChallenge(stored);
++  return challenge;
++}
+diff --git a/apps/transaction-engine/src/auth/runtime.test.ts b/apps/transaction-engine/src/auth/runtime.test.ts
+new file mode 100644
+index 0000000..2e58caa
+--- /dev/null
++++ b/apps/transaction-engine/src/auth/runtime.test.ts
+@@ -0,0 +1,44 @@
++import { afterEach, describe, expect, it } from "vitest";
++
++import { getAuthOrigin, getAuthService, resetAuthRuntimeForTests } from "./runtime";
++
++const originalEnvironment = {
++  AUTH_ORIGIN: process.env.AUTH_ORIGIN,
++  DATABASE_URL: process.env.DATABASE_URL,
++  NODE_ENV: process.env.NODE_ENV,
++};
++
++function restore(name: keyof typeof originalEnvironment): void {
++  const value = originalEnvironment[name];
++  if (value === undefined) Reflect.deleteProperty(process.env, name);
++  else Reflect.set(process.env, name, value);
++}
++
++describe.sequential("auth runtime fail-closed configuration", () => {
++  afterEach(() => {
++    restore("AUTH_ORIGIN");
++    restore("DATABASE_URL");
++    restore("NODE_ENV");
++    resetAuthRuntimeForTests();
++  });
++
++  it.each([undefined, "http://agent-market.test", "https://agent-market.test/path", "https://agent-market.test?query=1"])(
++    "rejects a missing or non-canonical AUTH_ORIGIN: %s",
++    (value) => {
++      if (value === undefined) delete process.env.AUTH_ORIGIN;
++      else process.env.AUTH_ORIGIN = value;
++      expect(() => getAuthOrigin()).toThrow(/AUTH_ORIGIN_(?:NOT_CONFIGURED|INVALID)/u);
++    },
++  );
++
++  it("accepts only a canonical HTTPS origin", () => {
++    process.env.AUTH_ORIGIN = "https://agent-market.test";
++    expect(getAuthOrigin().origin).toBe("https://agent-market.test");
++  });
++
++  it("fails closed in production without DATABASE_URL", () => {
++    Reflect.set(process.env, "NODE_ENV", "production");
++    delete process.env.DATABASE_URL;
++    expect(() => getAuthService()).toThrow("AUTH_STORE_NOT_CONFIGURED");
++  });
++});
+diff --git a/apps/transaction-engine/src/auth/runtime.ts b/apps/transaction-engine/src/auth/runtime.ts
+new file mode 100644
+index 0000000..5cbffba
+--- /dev/null
++++ b/apps/transaction-engine/src/auth/runtime.ts
+@@ -0,0 +1,35 @@
++import { MemoryAuthStore, PostgresAuthStore } from "./auth-store";
++import { WalletAuthService } from "./session";
++
++let testService: WalletAuthService | undefined;
++let developmentService: WalletAuthService | undefined;
++
++export function setAuthServiceForTests(service: WalletAuthService | undefined): void {
++  testService = service;
++}
++
++export function resetAuthRuntimeForTests(): void {
++  testService = undefined;
++  developmentService = undefined;
++}
++
++export function getAuthOrigin(): URL {
++  const value = process.env.AUTH_ORIGIN?.trim();
++  if (!value) throw new Error("AUTH_ORIGIN_NOT_CONFIGURED");
++  const origin = new URL(value);
++  if (origin.protocol !== "https:" || origin.origin !== value.replace(/\/$/u, "")) {
++    throw new Error("AUTH_ORIGIN_INVALID");
++  }
++  return origin;
++}
++
++export function getAuthService(): WalletAuthService {
++  if (testService) return testService;
++  const databaseUrl = process.env.DATABASE_URL?.trim();
++  if (!developmentService && databaseUrl) {
++    developmentService = new WalletAuthService(PostgresAuthStore.connect(databaseUrl));
++  }
++  if (!developmentService && process.env.NODE_ENV === "production") throw new Error("AUTH_STORE_NOT_CONFIGURED");
++  developmentService ??= new WalletAuthService(new MemoryAuthStore());
++  return developmentService;
++}
+diff --git a/apps/transaction-engine/src/auth/session.test.ts b/apps/transaction-engine/src/auth/session.test.ts
+new file mode 100644
+index 0000000..e04d88c
+--- /dev/null
++++ b/apps/transaction-engine/src/auth/session.test.ts
+@@ -0,0 +1,110 @@
++import { Wallet } from "ethers";
++import { describe, expect, it } from "vitest";
++
++import { MemoryAuthStore } from "./auth-store";
++import { formatChallengeMessage } from "./challenge";
++import { WalletAuthService } from "./session";
++
++const challengeId = "0191f6f8-cb6b-7f31-81ad-c497d7d90101";
++const requestId = "0191f6f8-cb6b-7f31-81ad-c497d7d90102";
++const sessionId = "0191f6f8-cb6b-7f31-81ad-c497d7d90103";
++
++function fixture() {
++  let now = new Date("2026-08-21T12:00:00.000Z");
++  let nextId = 0;
++  const ids = [challengeId, sessionId];
++  const store = new MemoryAuthStore();
++  const service = new WalletAuthService(store, {
++    now: () => now,
++    id: () => ids[nextId++]!,
++    nonce: () => "0123456789abcdef01234567",
++    sessionToken: () => "session-token-that-never-enters-the-body",
++  });
++  return { service, setNow(value: string) { now = new Date(value); } };
++}
++
++async function challenge(
++  service: WalletAuthService,
++  wallet: { address: string; signMessage(message: string): Promise<string> },
++) {
++  const issued = await service.issueChallenge(wallet.address, {
++    requestId,
++    domain: "agent-market.test",
++    uri: "https://agent-market.test",
++  });
++  const message = formatChallengeMessage(issued);
++  return { issued, message, signature: await wallet.signMessage(message) };
++}
++
++describe("wallet challenge and session", () => {
++  it("verifies once, normalizes the wallet, and keeps the raw token outside the session", async () => {
++    const wallet = Wallet.createRandom();
++    const { service } = fixture();
++    const signed = await challenge(service, wallet);
++    const verified = await service.verifyChallenge(signed.message, signed.signature);
++    expect(verified.session.walletAddress).toBe(wallet.address.toLowerCase());
++    expect(verified.session).not.toHaveProperty("sessionToken");
++    expect(verified.sessionToken).toBe("session-token-that-never-enters-the-body");
++    await expect(service.verifyChallenge(signed.message, signed.signature)).rejects.toThrow("AUTH_CHALLENGE_CONSUMED");
++  });
++
++  it("rejects expired challenges", async () => {
++    const wallet = Wallet.createRandom();
++    const { service, setNow } = fixture();
++    const signed = await challenge(service, wallet);
++    setNow("2026-08-21T12:06:00.000Z");
++    await expect(service.verifyChallenge(signed.message, signed.signature)).rejects.toThrow("AUTH_CHALLENGE_EXPIRED");
++  });
++
++  it("rejects invalid signatures and signatures from another wallet", async () => {
++    const wallet = Wallet.createRandom();
++    const otherWallet = Wallet.createRandom();
++    const invalidFixture = fixture();
++    const invalid = await challenge(invalidFixture.service, wallet);
++    await expect(invalidFixture.service.verifyChallenge(invalid.message, "not-a-signature")).rejects.toThrow("AUTH_SIGNATURE_INVALID");
++
++    const mismatchFixture = fixture();
++    const mismatch = await challenge(mismatchFixture.service, wallet);
++    await expect(mismatchFixture.service.verifyChallenge(
++      mismatch.message,
++      await otherWallet.signMessage(mismatch.message),
++    )).rejects.toThrow("AUTH_WALLET_MISMATCH");
++  });
++
++  it.each([
++    ["domain", "Domain: agent-market.test", "Domain: evil.test"],
++    ["chain", "Chain ID: 11155111", "Chain ID: 1"],
++    ["wallet", "Wallet: ", "Wallet: 0x0000000000000000000000000000000000000001#"],
++  ])("rejects a %s mismatch", async (_name, from, to) => {
++    const wallet = Wallet.createRandom();
++    const { service } = fixture();
++    const signed = await challenge(service, wallet);
++    const tampered = from === "Wallet: "
++      ? signed.message.replace(/^Wallet: .*$/m, to.slice(0, -1))
++      : signed.message.replace(from, to);
++    await expect(service.verifyChallenge(tampered, await wallet.signMessage(tampered))).rejects.toThrow(/AUTH_CHALLENGE/);
++  });
++
++  it("revokes sessions and enforces recent authentication", async () => {
++    const wallet = Wallet.createRandom();
++    const { service, setNow } = fixture();
++    const signed = await challenge(service, wallet);
++    const verified = await service.verifyChallenge(signed.message, signed.signature);
++    expect(await service.authenticateSession(verified.sessionToken)).toEqual(verified.session);
++    service.requireRecentAuth(verified.session);
++    setNow("2026-08-21T12:06:00.000Z");
++    expect(() => service.requireRecentAuth(verified.session)).toThrow("AUTH_RECENT_REQUIRED");
++    expect(() => service.requireRecentAuth({ ...verified.session, recentAuthAt: "2026-08-21T12:07:00.000Z" })).toThrow("AUTH_RECENT_REQUIRED");
++    await service.revokeSession(verified.sessionToken);
++    await expect(service.authenticateSession(verified.sessionToken)).rejects.toThrow("AUTH_SESSION_INVALID");
++  });
++
++  it("rejects expired sessions", async () => {
++    const wallet = Wallet.createRandom();
++    const { service, setNow } = fixture();
++    const signed = await challenge(service, wallet);
++    const verified = await service.verifyChallenge(signed.message, signed.signature);
++    setNow("2026-08-22T12:00:01.000Z");
++    await expect(service.authenticateSession(verified.sessionToken)).rejects.toThrow("AUTH_SESSION_INVALID");
++  });
++});
+diff --git a/apps/transaction-engine/src/auth/session.ts b/apps/transaction-engine/src/auth/session.ts
+new file mode 100644
+index 0000000..ddc97ed
+--- /dev/null
++++ b/apps/transaction-engine/src/auth/session.ts
+@@ -0,0 +1,146 @@
++import { randomBytes } from "node:crypto";
++
++import { WalletSessionV1Schema, type WalletChallengeV1, type WalletSessionV1 } from "@agent-market/shared-contracts";
++import { getAddress, verifyMessage } from "ethers";
++import { v7 as uuidv7 } from "uuid";
++
++import type { AuthStore } from "./auth-store";
++import {
++  formatChallengeMessage,
++  hashSecret,
++  issueChallenge,
++  parseChallengeMessage,
++  type ChallengeDependencies,
++  type ChallengeRequestContext,
++} from "./challenge";
++
++export const AUTH_COOKIE_NAME = "__Host-agent_market_session";
++export const RECENT_AUTH_WINDOW_MS = 5 * 60_000;
++
++export class AuthError extends Error {
++  constructor(readonly code: string, readonly status = 401) {
++    super(code);
++  }
++}
++
++export interface VerifiedWalletSession {
++  session: WalletSessionV1;
++  sessionToken: string;
++}
++
++export interface SessionDependencies extends ChallengeDependencies {
++  sessionToken(): string;
++}
++
++const defaultDependencies: SessionDependencies = {
++  now: () => new Date(),
++  id: () => uuidv7(),
++  nonce: () => randomBytes(24).toString("base64url"),
++  sessionToken: () => randomBytes(32).toString("base64url"),
++};
++
++function sameChallenge(stored: Awaited<ReturnType<AuthStore["findChallenge"]>>, parsed: WalletChallengeV1): boolean {
++  return stored !== null
++    && stored.challengeId === parsed.challengeId
++    && stored.requestId === parsed.requestId
++    && stored.walletAddress === parsed.walletAddress
++    && stored.chainId === parsed.chainId
++    && stored.domain === parsed.domain
++    && stored.uri === parsed.uri
++    && stored.statement === parsed.statement
++    && stored.issuedAt === parsed.issuedAt
++    && stored.expiresAt === parsed.expiresAt
++    && stored.nonceHash === hashSecret(parsed.nonce);
++}
++
++export class WalletAuthService {
++  constructor(
++    private readonly store: AuthStore,
++    private readonly dependencies: SessionDependencies = defaultDependencies,
++  ) {}
++
++  async issueChallenge(address: string, context: ChallengeRequestContext): Promise<WalletChallengeV1> {
++    return issueChallenge(this.store, address, context, this.dependencies);
++  }
++
++  async verifyChallenge(message: string, signature: string): Promise<VerifiedWalletSession> {
++    let parsed: WalletChallengeV1;
++    try {
++      parsed = parseChallengeMessage(message);
++    } catch {
++      throw new AuthError("AUTH_CHALLENGE_MESSAGE_INVALID", 400);
++    }
++    const stored = await this.store.findChallenge(parsed.challengeId);
++    if (!stored || !sameChallenge(stored, parsed) || formatChallengeMessage(parsed) !== message) {
++      throw new AuthError("AUTH_CHALLENGE_MISMATCH");
++    }
++    if (stored.consumedAt) throw new AuthError("AUTH_CHALLENGE_CONSUMED");
++    const now = this.dependencies.now();
++    if (Date.parse(parsed.expiresAt) <= now.getTime()) throw new AuthError("AUTH_CHALLENGE_EXPIRED");
++    let recovered: string;
++    try {
++      recovered = getAddress(verifyMessage(message, signature)).toLowerCase();
++    } catch {
++      throw new AuthError("AUTH_SIGNATURE_INVALID");
++    }
++    if (recovered !== parsed.walletAddress) throw new AuthError("AUTH_WALLET_MISMATCH");
++    const sessionToken = this.dependencies.sessionToken();
++    const session = WalletSessionV1Schema.parse({
++      sessionId: this.dependencies.id(),
++      requestId: parsed.requestId,
++      walletAddress: parsed.walletAddress,
++      chainId: parsed.chainId,
++      issuedAt: now.toISOString(),
++      expiresAt: new Date(now.getTime() + 24 * 60 * 60_000).toISOString(),
++      recentAuthAt: now.toISOString(),
++    });
++    const consumed = await this.store.consumeChallengeAndCreateSession({
++      challengeId: parsed.challengeId,
++      nonceHash: hashSecret(parsed.nonce),
++      consumedAt: now.toISOString(),
++      session: { session, sessionHash: hashSecret(sessionToken) },
++    });
++    if (!consumed) throw new AuthError("AUTH_CHALLENGE_CONSUMED");
++    return { session, sessionToken };
++  }
++
++  async authenticateSession(sessionToken: string): Promise<WalletSessionV1> {
++    const session = await this.store.findActiveSession(hashSecret(sessionToken), this.dependencies.now().toISOString());
++    if (!session) throw new AuthError("AUTH_SESSION_INVALID");
++    return session;
++  }
++
++  async revokeSession(sessionToken: string): Promise<void> {
++    await this.store.revokeSession(hashSecret(sessionToken), this.dependencies.now().toISOString());
++  }
++
++  requireRecentAuth(session: WalletSessionV1): void {
++    const age = this.dependencies.now().getTime() - Date.parse(session.recentAuthAt);
++    if (!Number.isFinite(age) || age < 0 || age > RECENT_AUTH_WINDOW_MS) {
++      throw new AuthError("AUTH_RECENT_REQUIRED", 403);
++    }
++  }
++}
++
++export function serializeSessionCookie(token: string, maxAgeSeconds = 24 * 60 * 60): string {
++  return `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAgeSeconds}; HttpOnly; Secure; SameSite=Lax`;
++}
++
++export function clearSessionCookie(): string {
++  return `${AUTH_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
++}
++
++export function readSessionCookie(headers: Headers): string | null {
++  const cookies = headers.get("cookie")?.split(";") ?? [];
++  for (const cookie of cookies) {
++    const [name, ...value] = cookie.trim().split("=");
++    if (name === AUTH_COOKIE_NAME) {
++      try {
++        return decodeURIComponent(value.join("="));
++      } catch {
++        return null;
++      }
++    }
++  }
++  return null;
++}
+diff --git a/database/migrations/0003_phase2_lifecycle.sql b/database/migrations/0003_phase2_lifecycle.sql
+new file mode 100644
+index 0000000..86352f1
+--- /dev/null
++++ b/database/migrations/0003_phase2_lifecycle.sql
+@@ -0,0 +1,149 @@
++BEGIN;
++
++CREATE SCHEMA IF NOT EXISTS agent_market;
++SET LOCAL search_path TO agent_market, public;
++
++CREATE TABLE IF NOT EXISTS wallet_challenges (
++  id uuid PRIMARY KEY,
++  request_id uuid NOT NULL UNIQUE,
++  wallet_address text NOT NULL CHECK (wallet_address ~ '^0x[0-9a-f]{40}$'),
++  chain_id bigint NOT NULL CHECK (chain_id = 11155111),
++  nonce_hash bytea NOT NULL UNIQUE,
++  domain text NOT NULL,
++  uri text NOT NULL,
++  issued_at timestamptz NOT NULL,
++  expires_at timestamptz NOT NULL,
++  consumed_at timestamptz,
++  CHECK (expires_at > issued_at),
++  UNIQUE (request_id, wallet_address, chain_id)
++);
++
++CREATE TABLE IF NOT EXISTS wallet_sessions (
++  id uuid PRIMARY KEY,
++  request_id uuid NOT NULL UNIQUE,
++  wallet_address text NOT NULL CHECK (wallet_address ~ '^0x[0-9a-f]{40}$'),
++  chain_id bigint NOT NULL CHECK (chain_id = 11155111),
++  session_hash bytea NOT NULL UNIQUE,
++  issued_at timestamptz NOT NULL,
++  expires_at timestamptz NOT NULL,
++  recent_auth_at timestamptz NOT NULL,
++  revoked_at timestamptz,
++  CHECK (expires_at > issued_at),
++  FOREIGN KEY (request_id, wallet_address, chain_id)
++    REFERENCES wallet_challenges(request_id, wallet_address, chain_id)
++);
++
++CREATE TABLE IF NOT EXISTS idempotency_records (
++  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
++  actor_wallet text NOT NULL CHECK (actor_wallet ~ '^0x[0-9a-f]{40}$'),
++  command text NOT NULL,
++  resource_id text NOT NULL,
++  idempotency_key text NOT NULL,
++  request_id uuid NOT NULL UNIQUE,
++  response_status integer,
++  response_body jsonb,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  expires_at timestamptz NOT NULL,
++  UNIQUE (actor_wallet, command, resource_id, idempotency_key)
++);
++
++CREATE TABLE IF NOT EXISTS chain_transactions (
++  id uuid PRIMARY KEY,
++  intent_id uuid NOT NULL UNIQUE,
++  request_id uuid NOT NULL UNIQUE,
++  request_ref bytea NOT NULL UNIQUE CHECK (octet_length(request_ref) = 32),
++  chain_id bigint NOT NULL CHECK (chain_id = 11155111),
++  actor_wallet text NOT NULL CHECK (actor_wallet ~ '^0x[0-9a-f]{40}$'),
++  contract_address text NOT NULL CHECK (contract_address ~ '^0x[0-9a-f]{40}$'),
++  method text NOT NULL CHECK (method IN ('faucet','approve','createTask','assignAgent','acceptTask','submitWork','acceptWork','timeoutTask','openDispute','castVote','stake','unstake','claimYield')),
++  expected_value_atomic numeric(78, 0) NOT NULL DEFAULT 0 CHECK (expected_value_atomic >= 0),
++  transaction_hash text UNIQUE CHECK (transaction_hash IS NULL OR transaction_hash ~ '^0x[0-9a-f]{64}$'),
++  status text NOT NULL CHECK (status IN ('created', 'submitted', 'verifying', 'confirmed', 'failed', 'reorged')),
++  block_number bigint CHECK (block_number IS NULL OR block_number >= 0),
++  confirmations integer NOT NULL DEFAULT 0 CHECK (confirmations >= 0),
++  error_code text,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  checked_at timestamptz,
++  confirmed_at timestamptz,
++  CHECK (status != 'confirmed' OR (block_number IS NOT NULL AND confirmations > 0))
++);
++
++CREATE TABLE IF NOT EXISTS consumed_events (
++  event_id uuid NOT NULL,
++  request_id uuid NOT NULL,
++  consumer text NOT NULL,
++  processed_at timestamptz NOT NULL DEFAULT now(),
++  result_ref text,
++  PRIMARY KEY (consumer, event_id)
++);
++
++CREATE TABLE IF NOT EXISTS match_candidates (
++  match_job_id uuid NOT NULL,
++  agent_id uuid NOT NULL REFERENCES agents(id),
++  request_id uuid NOT NULL,
++  rank integer NOT NULL CHECK (rank BETWEEN 1 AND 3),
++  total_score numeric(8, 6) NOT NULL CHECK (total_score BETWEEN 0 AND 1),
++  component_scores jsonb NOT NULL,
++  explanation jsonb NOT NULL,
++  model_version text NOT NULL,
++  exploration boolean NOT NULL DEFAULT false,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  PRIMARY KEY (match_job_id, agent_id),
++  UNIQUE (match_job_id, rank)
++);
++
++CREATE TABLE IF NOT EXISTS match_feedback (
++  id uuid PRIMARY KEY,
++  event_id uuid NOT NULL UNIQUE,
++  request_id uuid NOT NULL,
++  match_job_id uuid NOT NULL,
++  agent_id uuid NOT NULL REFERENCES agents(id),
++  feedback_type text NOT NULL,
++  selected boolean,
++  occurred_at timestamptz NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS model_versions (
++  version text PRIMARY KEY,
++  training_run_id uuid NOT NULL UNIQUE,
++  algorithm text NOT NULL,
++  feature_order jsonb NOT NULL,
++  metrics jsonb NOT NULL,
++  model_hash text NOT NULL UNIQUE,
++  status text NOT NULL CHECK (status IN ('candidate', 'approved', 'rejected', 'active', 'retired')),
++  created_at timestamptz NOT NULL DEFAULT now(),
++  activated_at timestamptz
++);
++
++CREATE TABLE IF NOT EXISTS dlq_replay_audits (
++  replay_id uuid PRIMARY KEY,
++  original_event_id uuid NOT NULL,
++  request_id uuid NOT NULL,
++  idempotency_key text NOT NULL,
++  operator_wallet text NOT NULL CHECK (operator_wallet ~ '^0x[0-9a-f]{40}$'),
++  reason text NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  UNIQUE (original_event_id, idempotency_key)
++);
++
++ALTER TABLE agent_credentials
++  ADD COLUMN IF NOT EXISTS key_version integer NOT NULL DEFAULT 1 CHECK (key_version > 0),
++  ADD COLUMN IF NOT EXISTS public_prefix text,
++  ADD COLUMN IF NOT EXISTS last_four text CHECK (last_four IS NULL OR length(last_four) = 4);
++
++CREATE INDEX IF NOT EXISTS idx_wallet_sessions_active
++  ON wallet_sessions (wallet_address, expires_at DESC)
++  WHERE revoked_at IS NULL;
++
++CREATE INDEX IF NOT EXISTS idx_chain_transactions_reconcile
++  ON chain_transactions (status, checked_at)
++  WHERE status IN ('submitted', 'verifying', 'reorged');
++
++CREATE INDEX IF NOT EXISTS idx_match_candidates_request
++  ON match_candidates (request_id, rank);
++
++CREATE INDEX IF NOT EXISTS idx_match_feedback_training
++  ON match_feedback (occurred_at, feedback_type);
++
++COMMIT;
+diff --git a/packages/shared-contracts/src/auth.ts b/packages/shared-contracts/src/auth.ts
+new file mode 100644
+index 0000000..84a9f0f
+--- /dev/null
++++ b/packages/shared-contracts/src/auth.ts
+@@ -0,0 +1,34 @@
++import { z } from "zod";
++
++export const SEPOLIA_CHAIN_ID = 11_155_111 as const;
++
++export const WalletAddressSchema = z
++  .string()
++  .regex(/^0x[a-fA-F0-9]{40}$/)
++  .transform((address) => address.toLowerCase());
++
++export const WalletChallengeV1Schema = z.strictObject({
++  challengeId: z.string().uuid(),
++  requestId: z.string().uuid(),
++  walletAddress: WalletAddressSchema,
++  chainId: z.literal(SEPOLIA_CHAIN_ID),
++  nonce: z.string().min(16).max(96),
++  domain: z.string().min(1).max(253),
++  uri: z.string().url(),
++  statement: z.string().min(1).max(240),
++  issuedAt: z.string().datetime(),
++  expiresAt: z.string().datetime(),
++});
++
++export const WalletSessionV1Schema = z.strictObject({
++  sessionId: z.string().uuid(),
++  requestId: z.string().uuid(),
++  walletAddress: WalletAddressSchema,
++  chainId: z.literal(SEPOLIA_CHAIN_ID),
++  issuedAt: z.string().datetime(),
++  expiresAt: z.string().datetime(),
++  recentAuthAt: z.string().datetime(),
++});
++
++export type WalletChallengeV1 = z.infer<typeof WalletChallengeV1Schema>;
++export type WalletSessionV1 = z.infer<typeof WalletSessionV1Schema>;

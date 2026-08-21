@@ -1,0 +1,283 @@
+{
+  "evidenceVersion": 2,
+  "project": "agent-market",
+  "snapshot": "phase2-local-validation",
+  "capturedAt": "2026-08-21T20:25:42Z",
+  "truthBoundary": {
+    "en": "V1 production proof remains valid only for its recorded V1 scope. V2 claims are local, pending external verification, or deferred.",
+    "zh": "V1 生产证据只在其既有范围内有效。V2 状态仅为本地已验证、等待外部验证或延期。"
+  },
+  "assets": {
+    "diagrams": [
+      {
+        "en": "apps/web/public/architecture/system-context.svg",
+        "zh": "apps/web/public/architecture/system-context.zh-CN.svg"
+      },
+      {
+        "en": "apps/web/public/architecture/request-sequence.svg",
+        "zh": "apps/web/public/architecture/request-sequence.zh-CN.svg"
+      },
+      {
+        "en": "apps/web/public/architecture/full-delivery-chain.svg",
+        "zh": "apps/web/public/architecture/full-delivery-chain.zh-CN.svg"
+      }
+    ],
+    "screenshots": [
+      "apps/web/public/evidence/aws-cloudformation-stack.png",
+      "apps/web/public/evidence/aws-runtime-exit-zero.png",
+      "apps/web/public/evidence/github-actions-success.png",
+      "apps/web/public/evidence/cloudflare-edge-ssr.png"
+    ]
+  },
+  "items": [
+    {
+      "id": "V1-PERFORMANCE",
+      "phase": "v1",
+      "requirement": {
+        "en": "Trace one real browser performance sample through AWS and PostgreSQL, then pause safely.",
+        "zh": "把一条真实浏览器性能样本追踪到 AWS 与 PostgreSQL，并安全暂停消费端。"
+      },
+      "implementation": {
+        "en": "API Gateway, ingestion Lambda, SNS, SQS/DLQ, ECS Fargate and PostgreSQL preserve request_id.",
+        "zh": "API Gateway、接入 Lambda、SNS、SQS/DLQ、ECS Fargate 与 PostgreSQL 保持 request_id 连续。"
+      },
+      "code": [
+        "infra/aws/template.yaml",
+        "services/performance-aggregator/worker.py",
+        "scripts/aws/pause-agent-market.sh"
+      ],
+      "evidence": [
+        "docs/evidence/testing/2026-08-20-performance-observability.json",
+        "docs/evidence/deployment/2026-08-21-aws-reversible-pause.json",
+        "apps/web/public/evidence/aws-cloudformation-stack.png",
+        "apps/web/public/evidence/aws-runtime-exit-zero.png"
+      ],
+      "status": "verified-production"
+    },
+    {
+      "id": "V1-EDGE",
+      "phase": "v1",
+      "requirement": {
+        "en": "Serve known routes with Edge SSR and preserve a real 404.",
+        "zh": "已知路由使用 Edge SSR，并为未知路由保留真实 404。"
+      },
+      "implementation": {
+        "en": "Cloudflare Worker streams SSR, hydrates exact state, and allows one CSR fallback after fatal hydration failure.",
+        "zh": "Cloudflare Worker 流式输出 SSR，精确 hydration；严重 hydration 失败时最多执行一次 CSR fallback。"
+      },
+      "code": [
+        "apps/web/src/pages-worker.ts",
+        "apps/web/src/bootstrap.tsx",
+        "apps/web/src/ssr/html.ts"
+      ],
+      "evidence": [
+        "docs/evidence/deployment/2026-08-21-cloudflare-worker-production.json",
+        "apps/web/public/evidence/cloudflare-edge-ssr.png"
+      ],
+      "status": "verified-production"
+    },
+    {
+      "id": "V2-WEB-IDENTITY",
+      "phase": "v2",
+      "requirement": {
+        "en": "Authenticate wallet ownership without exposing a reusable session credential.",
+        "zh": "验证钱包所有权，同时不暴露可复用的 session 凭据。"
+      },
+      "implementation": {
+        "en": "Origin-bound challenge-sign-verify consumes the nonce once and returns a Secure HttpOnly cookie.",
+        "zh": "绑定来源的 challenge-sign-verify 只消费一次 nonce，并返回 Secure HttpOnly cookie。"
+      },
+      "code": [
+        "apps/transaction-engine/src/auth/challenge.ts",
+        "apps/transaction-engine/src/app/api/auth/auth-routes.test.ts",
+        "apps/transaction-engine/src/auth/auth-store.integration.test.ts"
+      ],
+      "evidence": [
+        ".tc-flow/reviews/T3.test-evidence.json"
+      ],
+      "status": "verified-local"
+    },
+    {
+      "id": "V2-INTENT-CONTRACTS",
+      "phase": "v2",
+      "requirement": {
+        "en": "Derive unsigned transaction intent on the server and execute the V2 lifecycle on Sepolia contracts.",
+        "zh": "由服务端生成 unsigned transaction intent，并在 Sepolia 合约执行 V2 生命周期。"
+      },
+      "implementation": {
+        "en": "Local schemas and contract tests cover intent fields, escrow, settlement, staking and arbitration. The T4 real PostgreSQL chain-state gate passed 1/1; no V2 Sepolia transaction is claimed.",
+        "zh": "本地 schema 与合约测试覆盖 intent 字段、托管、结算、质押和仲裁。T4 真实 PostgreSQL 链状态 Gate 已通过 1/1；当前不声称已有 V2 Sepolia 交易。"
+      },
+      "code": [
+        "apps/transaction-engine/src",
+        "packages/contracts/contracts",
+        "packages/contracts/test"
+      ],
+      "evidence": [
+        "docs/evidence/requirements.yaml",
+        "docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+      ],
+      "status": "verified-local"
+    },
+    {
+      "id": "V2-SEPOLIA-READBACK",
+      "phase": "v2",
+      "requirement": {
+        "en": "Accept chain success only after exact receipt, contract address and event readback.",
+        "zh": "只有精确回读 receipt、合约地址和事件后才接受链上成功。"
+      },
+      "implementation": {
+        "en": "RPC receipt and log verification is reconciled with Blockscout; a V2 Sepolia transaction has not been submitted.",
+        "zh": "使用 RPC 回执和日志校验并与 Blockscout 对账；尚未提交 V2 Sepolia 交易。"
+      },
+      "code": [
+        "scripts/blockchain/readback-agent-market.mjs",
+        "scripts/blockchain/readback-agent-market.test.mjs"
+      ],
+      "evidence": [],
+      "status": "pending-external"
+    },
+    {
+      "id": "V2-MATCHER",
+      "phase": "v2",
+      "requirement": {
+        "en": "Recall only eligible agents, rank deterministically, and process SQS batches idempotently.",
+        "zh": "只召回合格智能体，确定性排序，并幂等处理 SQS batch。"
+      },
+      "implementation": {
+        "en": "Go matcher applies exact pgvector recall after hard filters, persists at most two top candidates plus one newcomer, and passed the T5 real PostgreSQL/pgvector integration gate.",
+        "zh": "Go matcher 在 hard filters 后执行精确 pgvector recall，最多持久化两个高分候选加一个新人，并已通过 T5 真实 PostgreSQL/pgvector integration Gate。"
+      },
+      "code": [
+        "services/matcher-go/internal/store/postgres.go",
+        "services/matcher-go/internal/ranking/rank.go",
+        "services/matcher-go/cmd/matcher/main.go"
+      ],
+      "evidence": [
+        ".tc-flow/reviews/T5.round1.result.json",
+        "docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+      ],
+      "status": "verified-local"
+    },
+    {
+      "id": "V2-TRAINER",
+      "phase": "v2",
+      "requirement": {
+        "en": "Train reproducibly without request leakage or executable model payloads.",
+        "zh": "在无 request 泄漏、无可执行模型载荷的前提下可复现训练。"
+      },
+      "implementation": {
+        "en": "Python uses deterministic grouped OOF/CV and emits candidate-only, schema-validated safe JSON artifacts. Gate recommendation never approves; 33 tests and the independent T6 review passed.",
+        "zh": "Python 使用确定性 grouped OOF/CV，并只输出 candidate 状态、经过 schema 校验的安全 JSON artifact。Gate recommendation 不执行审批；33 项测试与 T6 独立 review 均已通过。"
+      },
+      "code": [
+        "services/trainer/src/agent_market_trainer/train.py",
+        "services/trainer/src/agent_market_trainer/model_store.py",
+        "services/trainer/tests"
+      ],
+      "evidence": [
+        "services/trainer/tests/test_train.py",
+        "services/trainer/tests/test_model_store.py",
+        "docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+      ],
+      "status": "verified-local"
+    },
+    {
+      "id": "V2-PERFORMANCE-OPS",
+      "phase": "v2",
+      "requirement": {
+        "en": "Operate replay, HMAC ingestion, DLQ isolation and reversible pause with bounded authority.",
+        "zh": "以受限权限运行 replay、HMAC 接入、DLQ 隔离与可逆暂停。"
+      },
+      "implementation": {
+        "en": "T7 passed 25 specialized tests, 8 repository-policy tests and the real PostgreSQL replay gate 3/3. Static AWS scanning is option-aware and fail-closed for unknown pre-action options; V2 AWS resources remain undeployed.",
+        "zh": "T7 已通过 25 项专项测试、8 项 repository policy 测试与真实 PostgreSQL replay Gate 3/3。AWS 静态扫描可识别 option，并对 action 前未知 option fail-closed；V2 AWS 资源仍未部署。"
+      },
+      "code": [
+        "infra/aws/template.yaml",
+        "scripts/aws/pause-agent-market.sh",
+        "apps/transaction-engine/src/recovery/replay.ts",
+        "apps/transaction-engine/src/recovery/postgres-replay-ledger.ts",
+        "database/migrations/0006_t7_recovery.sql",
+        "scripts/aws/prepare-agent-market-cluster-transition.sh",
+        "scripts/aws/validate-agent-market-cluster-transition.sh",
+        "scripts/aws/deploy-agent-market.sh",
+        "scripts/validate-repository.mjs",
+        ".github/workflows/repository-policy.yml",
+        "scripts/aws/inject-agent-market-cluster-retain.mjs"
+      ],
+      "evidence": [
+        "apps/transaction-engine/src/recovery/replay.test.ts",
+        "apps/transaction-engine/src/recovery/postgres-replay-ledger.integration.test.ts",
+        "infra/aws/template.test.mjs",
+        "infra/aws/t7-repair.test.mjs",
+        ".tc-flow/reviews/T7.test-evidence.json",
+        "scripts/aws/inject-agent-market-cluster-retain.test.mjs",
+        "scripts/aws/deploy-agent-market.test.mjs",
+        "scripts/aws/pause-agent-market.test.mjs",
+        "scripts/validate-repository.test.mjs",
+        "docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+      ],
+      "status": "pending-external"
+    },
+    {
+      "id": "V2-CLOUDFLARE-ACTIONS",
+      "phase": "v2",
+      "requirement": {
+        "en": "Gate contracts, TypeScript, Go, Python, Evidence and repository policy without automatic production deployment.",
+        "zh": "对 contracts、TypeScript、Go、Python、Evidence 和仓库策略执行 Gate，且不自动生产部署。"
+      },
+      "implementation": {
+        "en": "GitHub Actions uses Node 24 action runtimes and invokes the local verification matrix.",
+        "zh": "GitHub Actions 使用 Node 24 action runtime，并调用本地验证矩阵。"
+      },
+      "code": [
+        ".github/workflows/verify.yml",
+        ".github/workflows/repository-policy.yml",
+        "scripts/verify-all.mjs"
+      ],
+      "evidence": [
+        "scripts/verify-all.test.mjs",
+        "scripts/validate-repository.test.mjs"
+      ],
+      "status": "verified-local"
+    },
+    {
+      "id": "V2-EXTERNAL-DELIVERY",
+      "phase": "v2",
+      "requirement": {
+        "en": "Deploy V2 to AWS and Cloudflare and publish fresh external readback.",
+        "zh": "把 V2 部署到 AWS 与 Cloudflare，并发布新的外部回读。"
+      },
+      "implementation": {
+        "en": "No production deployment runs from CI; release remains a separate authorized action.",
+        "zh": "CI 不执行生产部署；发布仍是单独授权动作。"
+      },
+      "code": [
+        ".github/workflows/verify.yml",
+        ".github/workflows/project-delivery.yml"
+      ],
+      "evidence": [],
+      "status": "pending-external"
+    },
+    {
+      "id": "V2-THE-GRAPH",
+      "phase": "v2",
+      "requirement": {
+        "en": "Add indexed historical queries only when product scale requires them.",
+        "zh": "仅在产品规模需要时加入索引化历史查询。"
+      },
+      "implementation": {
+        "en": "Phase 2 deliberately uses RPC plus Blockscout; The Graph migration is documented with measurable triggers.",
+        "zh": "二期明确采用 RPC 加 Blockscout；The Graph 迁移使用可衡量触发条件。"
+      },
+      "code": [
+        "docs/architecture/adr/0001-defer-the-graph.md"
+      ],
+      "evidence": [
+        "docs/architecture/adr/0001-defer-the-graph.md"
+      ],
+      "status": "deferred"
+    }
+  ]
+}

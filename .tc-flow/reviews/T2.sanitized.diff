@@ -1,0 +1,760 @@
+diff --git a/packages/contracts/contracts/AgentMarketEscrow.sol b/packages/contracts/contracts/AgentMarketEscrow.sol
+index c6be824..72a7509 100644
+--- a/packages/contracts/contracts/AgentMarketEscrow.sol
++++ b/packages/contracts/contracts/AgentMarketEscrow.sol
+@@ -22,6 +22,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
+     struct TaskEscrow {
+         address publisher;
+         address agent;
++        bytes32 requestRef;
+         uint256 budget;
+         uint256 bond;
+         uint64 deadline;
+@@ -31,26 +32,33 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
+
+     IERC20 public immutable yd;
+     ICommittee public immutable committee;
++    address public immutable platformTreasury;
+     uint256 public rewardReserve;
+     mapping(bytes32 taskId => TaskEscrow escrow) public tasks;
++    mapping(bytes32 requestRef => bool used) public usedRequestRefs;
+
+     error InvalidAmount();
+     error InvalidDeadline();
+     error InvalidState(TaskState actual);
+     error Unauthorized(address caller);
+     error TaskAlreadyExists(bytes32 taskId);
++    error RequestRefAlreadyUsed(bytes32 requestRef);
++    error InvalidReference();
++    error InvalidTreasury();
+
+     event RewardPoolFunded(address indexed funder, uint256 amount);
+-    event TaskCreated(bytes32 indexed taskId, address indexed publisher, uint256 budget, uint64 deadline);
+-    event AgentAssigned(bytes32 indexed taskId, address indexed agent);
+-    event TaskAccepted(bytes32 indexed taskId, uint256 bond, uint64 startedAt);
+-    event WorkSubmitted(bytes32 indexed taskId);
+-    event DisputeOpened(bytes32 indexed taskId);
+-    event TaskSettled(bytes32 indexed taskId, bool agentWins, uint256 principalPaid, uint256 yieldPaid, uint256 yieldShortfall);
+-
+-    constructor(IERC20 token, ICommittee arbitration) Ownable(msg.sender) {
++    event TaskCreated(bytes32 indexed taskId, bytes32 indexed requestRef, address indexed publisher, uint256 budget, uint64 deadline);
++    event AgentAssigned(bytes32 indexed taskId, bytes32 indexed requestRef, address indexed agent);
++    event TaskAccepted(bytes32 indexed taskId, bytes32 indexed requestRef, uint256 bond, uint64 startedAt);
++    event WorkSubmitted(bytes32 indexed taskId, bytes32 indexed requestRef);
++    event DisputeOpened(bytes32 indexed taskId, bytes32 indexed requestRef);
++    event TaskSettled(bytes32 indexed taskId, bytes32 indexed requestRef, bool agentWins, uint256 budgetPaid, uint256 bondPaidToPlatform, uint256 yieldPaid, uint256 yieldShortfall);
++
++    constructor(IERC20 token, ICommittee arbitration, address treasury) Ownable(msg.sender) {
++        if (treasury == address(0)) revert InvalidTreasury();
+         yd = token;
+         committee = arbitration;
++        platformTreasury = treasury;
+     }
+
+     function fundRewardPool(uint256 amount) external onlyOwner {
+@@ -60,13 +68,16 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
+         emit RewardPoolFunded(msg.sender, amount);
+     }
+
+-    function createTask(bytes32 taskId, uint256 budget, uint64 deadline) external nonReentrant {
++    function createTask(bytes32 taskId, bytes32 requestRef, uint256 budget, uint64 deadline) external nonReentrant {
++        if (taskId == bytes32(0) || requestRef == bytes32(0)) revert InvalidReference();
+         if (tasks[taskId].state != TaskState.NONE) revert TaskAlreadyExists(taskId);
++        if (usedRequestRefs[requestRef]) revert RequestRefAlreadyUsed(requestRef);
+         if (budget == 0) revert InvalidAmount();
+         if (deadline <= block.timestamp) revert InvalidDeadline();
+-        tasks[taskId] = TaskEscrow(msg.sender, address(0), budget, 0, deadline, 0, TaskState.OPEN);
++        usedRequestRefs[requestRef] = true;
++        tasks[taskId] = TaskEscrow(msg.sender, address(0), requestRef, budget, 0, deadline, 0, TaskState.OPEN);
+         yd.safeTransferFrom(msg.sender, address(this), budget);
+-        emit TaskCreated(taskId, msg.sender, budget, deadline);
++        emit TaskCreated(taskId, requestRef, msg.sender, budget, deadline);
+     }
+
+     function assignAgent(bytes32 taskId, address agent) external {
+@@ -75,7 +86,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
+         if (msg.sender != task.publisher || agent == address(0)) revert Unauthorized(msg.sender);
+         task.agent = agent;
+         task.state = TaskState.ASSIGNED;
+-        emit AgentAssigned(taskId, agent);
++        emit AgentAssigned(taskId, task.requestRef, agent);
+     }
+
+     function acceptTask(bytes32 taskId) external nonReentrant {
+@@ -87,7 +98,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
+         task.startedAt = uint64(block.timestamp);
+         task.state = TaskState.IN_PROGRESS;
+         yd.safeTransferFrom(msg.sender, address(this), bond);
+-        emit TaskAccepted(taskId, bond, task.startedAt);
++        emit TaskAccepted(taskId, task.requestRef, bond, task.startedAt);
+     }
+
+     function submitWork(bytes32 taskId) external {
+@@ -95,7 +106,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
+         _requireState(task, TaskState.IN_PROGRESS);
+         if (msg.sender != task.agent) revert Unauthorized(msg.sender);
+         task.state = TaskState.SUBMITTED;
+-        emit WorkSubmitted(taskId);
++        emit WorkSubmitted(taskId, task.requestRef);
+     }
+
+     function acceptWork(bytes32 taskId) external nonReentrant {
+@@ -119,7 +130,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
+         if (msg.sender != task.publisher && msg.sender != task.agent) revert Unauthorized(msg.sender);
+         task.state = TaskState.DISPUTED;
+         committee.openCase(taskId, task.publisher, task.agent);
+-        emit DisputeOpened(taskId);
++        emit DisputeOpened(taskId, task.requestRef);
+     }
+
+     function resolveDispute(bytes32 taskId, bool agentWins) external nonReentrant {
+@@ -132,20 +143,19 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
+     function pendingYield(bytes32 taskId) public view returns (uint256) {
+         TaskEscrow memory task = tasks[taskId];
+         if (task.startedAt == 0) return 0;
+-        uint256 principal = task.budget + task.bond;
+-        return principal * RATE_PERCENT * (block.timestamp - task.startedAt) / (100 * YEAR);
++        return task.budget * RATE_PERCENT * (block.timestamp - task.startedAt) / (100 * YEAR);
+     }
+
+     function _settle(bytes32 taskId, TaskEscrow storage task, bool agentWins) private {
+-        uint256 principal = task.budget + task.bond;
+         uint256 dueYield = pendingYield(taskId);
+         uint256 paidYield = dueYield > rewardReserve ? rewardReserve : dueYield;
+         uint256 shortfall = dueYield - paidYield;
+         rewardReserve -= paidYield;
+         task.state = agentWins ? TaskState.SETTLED : TaskState.REFUNDED;
+         address recipient = agentWins ? task.agent : task.publisher;
+-        yd.safeTransfer(recipient, principal + paidYield);
+-        emit TaskSettled(taskId, agentWins, principal, paidYield, shortfall);
++        yd.safeTransfer(recipient, task.budget + paidYield);
++        yd.safeTransfer(platformTreasury, task.bond);
++        emit TaskSettled(taskId, task.requestRef, agentWins, task.budget, task.bond, paidYield, shortfall);
+     }
+
+     function _requireState(TaskEscrow storage task, TaskState expected) private view {
+diff --git a/packages/contracts/hardhat.config.ts b/packages/contracts/hardhat.config.ts
+index f0642c1..a2dc15d 100644
+--- a/packages/contracts/hardhat.config.ts
++++ b/packages/contracts/hardhat.config.ts
+@@ -2,6 +2,20 @@ import "@nomicfoundation/hardhat-toolbox";
+
+ import type { HardhatUserConfig } from "hardhat/config";
+
++const networks: HardhatUserConfig["networks"] = {
++  hardhat: {
++    chainId: 31337,
++  },
++};
++
++if (process.env.SEPOLIA_RPC_URL && process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY) {
++  networks.sepolia = {
++    chainId: 11155111,
++    url: process.env.SEPOLIA_RPC_URL,
++    accounts: [process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY],
++  };
++}
++
+ const config: HardhatUserConfig = {
+   solidity: {
+     version: "0.8.28",
+@@ -9,11 +23,7 @@ const config: HardhatUserConfig = {
+       optimizer: { enabled: true, runs: 200 },
+     },
+   },
+-  networks: {
+-    hardhat: {
+-      chainId: 31337,
+-    },
+-  },
++  networks,
+ };
+
+ export default config;
+diff --git a/packages/contracts/test/SettlementFlow.test.ts b/packages/contracts/test/SettlementFlow.test.ts
+index 76580d5..6098627 100644
+--- a/packages/contracts/test/SettlementFlow.test.ts
++++ b/packages/contracts/test/SettlementFlow.test.ts
+@@ -2,12 +2,14 @@ import { expect } from "chai";
+ import { ethers } from "hardhat";
+ import type { AgentMarketEscrow, ArbitrationCommittee, StakeYieldVault, YDToken } from "../typechain-types";
+
++const YEAR = BigInt(365 * 24 * 60 * 60);
++
+ describe("Agent Market settlement", () => {
+   async function fixture() {
+     const [owner, publisher, agent, m1, m2, m3, m4, m5] = await ethers.getSigners();
+     const token = (await ethers.deployContract("YDToken")) as unknown as YDToken;
+     const committee = (await ethers.deployContract("ArbitrationCommittee", [[m1.address, m2.address, m3.address, m4.address, m5.address]])) as unknown as ArbitrationCommittee;
+-    const escrow = (await ethers.deployContract("AgentMarketEscrow", [await token.getAddress(), await committee.getAddress()])) as unknown as AgentMarketEscrow;
++    const escrow = (await ethers.deployContract("AgentMarketEscrow", [await token.getAddress(), await committee.getAddress(), owner.address])) as unknown as AgentMarketEscrow;
+     const vault = (await ethers.deployContract("StakeYieldVault", [await token.getAddress()])) as unknown as StakeYieldVault;
+     await Promise.all([token.waitForDeployment(), committee.waitForDeployment(), escrow.waitForDeployment(), vault.waitForDeployment()]);
+     await committee.setAuthorizedEscrow(await escrow.getAddress(), true);
+@@ -17,11 +19,20 @@ describe("Agent Market settlement", () => {
+     return { owner, publisher, agent, m1, m2, m3, m4, m5, token, committee, escrow, vault };
+   }
+
++  async function blockTimestamp(receipt: { blockNumber: number | null }): Promise<bigint> {
++    if (receipt.blockNumber === null) throw new Error("transaction block is unavailable");
++    return BigInt((await ethers.provider.getBlock(receipt.blockNumber))!.timestamp);
++  }
++
++  function expectedYield(budget: bigint, startedAt: bigint, settledAt: bigint): bigint {
++    return budget * 6n * (settledAt - startedAt) / (100n * YEAR);
++  }
++
+   it("accrues exactly six percent linear yield in the staking vault", async () => {
+     const { owner, agent, token, vault } = await fixture();
+     const principal = ethers.parseEther("500");
+-    await token.connect(owner).approve(await vault.getAddress(), ethers.parseEther("500"));
+-    await vault.connect(owner).fundRewardPool(ethers.parseEther("500"));
++    await token.connect(owner).approve(await vault.getAddress(), principal);
++    await vault.connect(owner).fundRewardPool(principal);
+     await token.connect(agent).approve(await vault.getAddress(), principal);
+     await vault.connect(agent).stake(principal);
+     await ethers.provider.send("evm_increaseTime", [365 * 24 * 60 * 60]);
+@@ -31,50 +42,122 @@ describe("Agent Market settlement", () => {
+     const balanceBeforeClaim = await token.balanceOf(agent.address);
+     await vault.connect(agent).claimYield();
+     const claimed = (await token.balanceOf(agent.address)) - balanceBeforeClaim;
+-    const twoSecondTolerance = principal * 6n * 2n / (100n * BigInt(365 * 24 * 60 * 60));
+     expect(claimed).to.be.at.least(earnedBeforeClaim);
+-    expect(claimed - earnedBeforeClaim).to.be.at.most(twoSecondTolerance);
++    expect(claimed - earnedBeforeClaim).to.be.at.most(principal * 6n * 2n / (100n * YEAR));
+   });
+
+-  it("settles budget, six percent bond, and funded linear yield exactly once", async () => {
++  it("pays only budget yield to the agent and always sends the six percent bond to treasury", async () => {
+     const { owner, publisher, agent, token, escrow } = await fixture();
+     const taskId = ethers.id("task-success");
++    const requestRef = ethers.id("request-success");
+     const budget = ethers.parseEther("500");
+-    await token.connect(owner).approve(await escrow.getAddress(), ethers.parseEther("500"));
+-    await escrow.connect(owner).fundRewardPool(ethers.parseEther("500"));
+-    await token.connect(publisher).approve(await escrow.getAddress(), budget);
+-    const now = (await ethers.provider.getBlock("latest"))!.timestamp;
+-    await escrow.connect(publisher).createTask(taskId, budget, now + 40 * 24 * 60 * 60);
+-    await escrow.connect(publisher).assignAgent(taskId, agent.address);
+     const bond = ethers.parseEther("30");
++    await token.connect(owner).approve(await escrow.getAddress(), budget);
++    await escrow.connect(owner).fundRewardPool(budget);
++    await token.connect(publisher).approve(await escrow.getAddress(), budget);
++    const deadline = (await ethers.provider.getBlock("latest"))!.timestamp + 40 * 24 * 60 * 60;
++    await expect(escrow.connect(publisher).createTask(taskId, requestRef, budget, deadline)).to.emit(escrow, "TaskCreated").withArgs(taskId, requestRef, publisher.address, budget, deadline);
++    expect((await escrow.tasks(taskId)).requestRef).to.equal(requestRef);
++    await expect(escrow.connect(publisher).assignAgent(taskId, agent.address)).to.emit(escrow, "AgentAssigned").withArgs(taskId, requestRef, agent.address);
+     await token.connect(agent).approve(await escrow.getAddress(), bond);
+-    await escrow.connect(agent).acceptTask(taskId);
++    const accepted = await escrow.connect(agent).acceptTask(taskId);
++    const startedAt = await blockTimestamp((await accepted.wait())!);
++    await expect(accepted).to.emit(escrow, "TaskAccepted").withArgs(taskId, requestRef, bond, startedAt);
+     await ethers.provider.send("evm_increaseTime", [30 * 24 * 60 * 60]);
+     await ethers.provider.send("evm_mine", []);
+-    await escrow.connect(agent).submitWork(taskId);
+-    await escrow.connect(publisher).acceptWork(taskId);
+-    const settled = await escrow.tasks(taskId);
+-    expect(settled.state).to.equal(6);
++    await expect(escrow.connect(agent).submitWork(taskId)).to.emit(escrow, "WorkSubmitted").withArgs(taskId, requestRef);
++    const agentBefore = await token.balanceOf(agent.address);
++    const treasuryBefore = await token.balanceOf(owner.address);
++    const reserveBefore = await escrow.rewardReserve();
++    const settled = await escrow.connect(publisher).acceptWork(taskId);
++    const settledAt = await blockTimestamp((await settled.wait())!);
++    const yieldPaid = expectedYield(budget, startedAt, settledAt);
++    await expect(settled).to.emit(escrow, "TaskSettled").withArgs(taskId, requestRef, true, budget, bond, yieldPaid, 0);
++    expect((await token.balanceOf(agent.address)) - agentBefore).to.equal(budget + yieldPaid);
++    expect((await token.balanceOf(owner.address)) - treasuryBefore).to.equal(bond);
++    expect(reserveBefore - await escrow.rewardReserve()).to.equal(yieldPaid);
+     await expect(escrow.connect(publisher).acceptWork(taskId)).to.be.revertedWithCustomError(escrow, "InvalidState");
+-    expect(await token.balanceOf(agent.address)).to.be.greaterThan(ethers.parseEther("1030"));
+   });
+
+-  it("uses three seats and forms an agent ruling after two valid votes", async () => {
+-    const { publisher, agent, m1, m2, token, committee, escrow } = await fixture();
++  it("sends the bond to treasury when the committee rules for the publisher", async () => {
++    const { owner, publisher, agent, m1, m2, token, committee, escrow } = await fixture();
++    const taskId = ethers.id("task-publisher-wins");
++    const requestRef = ethers.id("request-publisher-wins");
++    const budget = ethers.parseEther("200");
++    const bond = ethers.parseEther("12");
++    await token.connect(owner).approve(await escrow.getAddress(), budget);
++    await escrow.connect(owner).fundRewardPool(budget);
++    await token.connect(publisher).approve(await escrow.getAddress(), budget);
++    const deadline = (await ethers.provider.getBlock("latest"))!.timestamp + 7 * 24 * 60 * 60;
++    await escrow.connect(publisher).createTask(taskId, requestRef, budget, deadline);
++    await escrow.connect(publisher).assignAgent(taskId, agent.address);
++    await token.connect(agent).approve(await escrow.getAddress(), bond);
++    const accepted = await escrow.connect(agent).acceptTask(taskId);
++    const startedAt = await blockTimestamp((await accepted.wait())!);
++    await expect(escrow.connect(publisher).openDispute(taskId)).to.emit(escrow, "DisputeOpened").withArgs(taskId, requestRef);
++    const publisherBefore = await token.balanceOf(publisher.address);
++    const treasuryBefore = await token.balanceOf(owner.address);
++    const reserveBefore = await escrow.rewardReserve();
++    await committee.connect(m1).castVote(taskId, false);
++    const resolution = await committee.connect(m2).castVote(taskId, false);
++    const settledAt = await blockTimestamp((await resolution.wait())!);
++    const yieldPaid = expectedYield(budget, startedAt, settledAt);
++    await expect(resolution).to.emit(escrow, "TaskSettled").withArgs(taskId, requestRef, false, budget, bond, yieldPaid, 0);
++    expect((await token.balanceOf(publisher.address)) - publisherBefore).to.equal(budget + yieldPaid);
++    expect((await token.balanceOf(owner.address)) - treasuryBefore).to.equal(bond);
++    expect(reserveBefore - await escrow.rewardReserve()).to.equal(yieldPaid);
++    expect((await escrow.tasks(taskId)).state).to.equal(7);
++  });
++
++  it("propagates requestRef through an agent-winning dispute", async () => {
++    const { owner, publisher, agent, m1, m2, token, committee, escrow } = await fixture();
+     const taskId = ethers.id("task-dispute");
++    const requestRef = ethers.id("request-dispute");
+     const budget = ethers.parseEther("200");
++    const bond = ethers.parseEther("12");
++    await token.connect(owner).approve(await escrow.getAddress(), budget);
++    await escrow.connect(owner).fundRewardPool(budget);
+     await token.connect(publisher).approve(await escrow.getAddress(), budget);
+-    const now = (await ethers.provider.getBlock("latest"))!.timestamp;
+-    await escrow.connect(publisher).createTask(taskId, budget, now + 7 * 24 * 60 * 60);
++    const deadline = (await ethers.provider.getBlock("latest"))!.timestamp + 7 * 24 * 60 * 60;
++    await escrow.connect(publisher).createTask(taskId, requestRef, budget, deadline);
+     await escrow.connect(publisher).assignAgent(taskId, agent.address);
+-    await token.connect(agent).approve(await escrow.getAddress(), ethers.parseEther("12"));
+-    await escrow.connect(agent).acceptTask(taskId);
+-    await escrow.connect(publisher).openDispute(taskId);
++    await token.connect(agent).approve(await escrow.getAddress(), bond);
++    const accepted = await escrow.connect(agent).acceptTask(taskId);
++    const startedAt = await blockTimestamp((await accepted.wait())!);
++    await expect(accepted).to.emit(escrow, "TaskAccepted").withArgs(taskId, requestRef, bond, startedAt);
++    await expect(escrow.connect(publisher).openDispute(taskId)).to.emit(escrow, "DisputeOpened").withArgs(taskId, requestRef);
+     const caseData = await committee.getCase(taskId);
+     expect(new Set(caseData.seats).size).to.equal(3);
++    const agentBefore = await token.balanceOf(agent.address);
++    const treasuryBefore = await token.balanceOf(owner.address);
+     await committee.connect(m1).castVote(taskId, true);
+-    await committee.connect(m2).castVote(taskId, true);
++    const resolution = await committee.connect(m2).castVote(taskId, true);
++    const settledAt = await blockTimestamp((await resolution.wait())!);
++    const yieldPaid = expectedYield(budget, startedAt, settledAt);
++    await expect(resolution).to.emit(escrow, "TaskSettled").withArgs(taskId, requestRef, true, budget, bond, yieldPaid, 0);
+     expect((await committee.getCase(taskId)).resolved).to.equal(true);
++    expect((await token.balanceOf(agent.address)) - agentBefore).to.be.at.least(budget);
++    expect((await token.balanceOf(owner.address)) - treasuryBefore).to.equal(bond);
+     expect((await escrow.tasks(taskId)).state).to.equal(6);
+   });
++
++  it("rejects zero or reused request references and unselected callers", async () => {
++    const { publisher, agent, m5, token, escrow } = await fixture();
++    const budget = ethers.parseEther("100");
++    const requestRef = ethers.id("request-unique");
++    const firstTaskId = ethers.id("task-first");
++    const secondTaskId = ethers.id("task-second");
++    const deadline = (await ethers.provider.getBlock("latest"))!.timestamp + 7 * 24 * 60 * 60;
++    await token.connect(publisher).approve(await escrow.getAddress(), budget);
++    await expect(escrow.connect(publisher).createTask(firstTaskId, ethers.ZeroHash, budget, deadline)).to.be.revertedWithCustomError(escrow, "InvalidReference");
++    await escrow.connect(publisher).createTask(firstTaskId, requestRef, budget, deadline);
++    await escrow.connect(publisher).assignAgent(firstTaskId, agent.address);
++    await expect(escrow.connect(publisher).acceptTask(firstTaskId)).to.be.revertedWithCustomError(escrow, "Unauthorized");
++    await token.connect(agent).approve(await escrow.getAddress(), ethers.parseEther("6"));
++    await escrow.connect(agent).acceptTask(firstTaskId);
++    await expect(escrow.connect(publisher).submitWork(firstTaskId)).to.be.revertedWithCustomError(escrow, "Unauthorized");
++    await token.connect(m5).faucet();
++    await token.connect(m5).approve(await escrow.getAddress(), budget);
++    await expect(escrow.connect(m5).createTask(secondTaskId, requestRef, budget, deadline)).to.be.revertedWithCustomError(escrow, "RequestRefAlreadyUsed").withArgs(requestRef);
++  });
+ });
+diff --git a/packages/contracts/tsconfig.json b/packages/contracts/tsconfig.json
+index b621aff..800f1c4 100644
+--- a/packages/contracts/tsconfig.json
++++ b/packages/contracts/tsconfig.json
+@@ -9,5 +9,5 @@
+     "resolveJsonModule": true,
+     "types": ["node", "mocha"]
+   },
+-  "include": ["hardhat.config.ts", "test/**/*.ts"]
++  "include": ["hardhat.config.ts", "src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
+ }
+diff --git a/packages/contracts/src/deployment-manifest.ts b/packages/contracts/src/deployment-manifest.ts
+new file mode 100644
+index 0000000..402d55b
+--- /dev/null
++++ b/packages/contracts/src/deployment-manifest.ts
+@@ -0,0 +1,122 @@
++import { getAddress, isAddress, isHexString } from "ethers";
++import { mkdir, writeFile } from "node:fs/promises";
++import { dirname } from "node:path";
++
++export const SEPOLIA_CHAIN_ID = 11155111;
++export const DEPLOYED_CONTRACT_NAMES = ["YDToken", "ArbitrationCommittee", "AgentMarketEscrow", "StakeYieldVault"] as const;
++export type DeployedContractName = (typeof DEPLOYED_CONTRACT_NAMES)[number];
++
++export interface ContractDeploymentRecord {
++  address: string;
++  transactionHash: string;
++  blockNumber: number;
++}
++
++export interface DeploymentManifestInput {
++  chainId: number;
++  deployer: string;
++  platformTreasury: string;
++  deployedAt: string;
++  contracts: Record<DeployedContractName, ContractDeploymentRecord>;
++}
++
++export interface DeploymentManifestV1 extends DeploymentManifestInput {
++  schemaVersion: 1;
++  network: "sepolia";
++}
++
++type UnknownRecord = Record<string, unknown>;
++
++function asRecord(value: unknown, label: string): UnknownRecord {
++  if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} must be an object`);
++  return value as UnknownRecord;
++}
++
++function assertExactKeys(record: UnknownRecord, allowed: readonly string[], label: string): void {
++  const unknown = Object.keys(record).filter((key) => !allowed.includes(key));
++  if (unknown.length) throw new Error(`${label} contains unknown fields: ${unknown.join(", ")}`);
++  const missing = allowed.filter((key) => !(key in record));
++  if (missing.length) throw new Error(`${label} is missing fields: ${missing.join(", ")}`);
++}
++
++function normalizeAddress(value: unknown, label: string): string {
++  if (typeof value !== "string" || !isAddress(value)) throw new Error(`${label} must be a valid address`);
++  return getAddress(value);
++}
++
++function normalizeDeployment(name: DeployedContractName, value: unknown): ContractDeploymentRecord {
++  const record = asRecord(value, name);
++  assertExactKeys(record, ["address", "transactionHash", "blockNumber"], name);
++  if (typeof record.transactionHash !== "string" || !isHexString(record.transactionHash, 32)) {
++    throw new Error(`${name} transactionHash must be 32 bytes`);
++  }
++  if (!Number.isSafeInteger(record.blockNumber) || Number(record.blockNumber) <= 0) {
++    throw new Error(`${name} blockNumber must be positive`);
++  }
++  return {
++    address: normalizeAddress(record.address, `${name} address`),
++    transactionHash: record.transactionHash,
++    blockNumber: Number(record.blockNumber),
++  };
++}
++
++export function createDeploymentManifest(input: unknown): DeploymentManifestV1 {
++  const root = asRecord(input, "manifest");
++  assertExactKeys(root, ["chainId", "deployer", "platformTreasury", "deployedAt", "contracts"], "manifest");
++  if (root.chainId !== SEPOLIA_CHAIN_ID) throw new Error(`Expected Sepolia chain ${SEPOLIA_CHAIN_ID}`);
++  if (typeof root.deployedAt !== "string" || Number.isNaN(Date.parse(root.deployedAt))) {
++    throw new Error("deployedAt must be an ISO timestamp");
++  }
++  const rawContracts = asRecord(root.contracts, "contracts");
++  assertExactKeys(rawContracts, DEPLOYED_CONTRACT_NAMES, "contracts");
++  const contracts = Object.fromEntries(
++    DEPLOYED_CONTRACT_NAMES.map((name) => [name, normalizeDeployment(name, rawContracts[name])]),
++  ) as Record<DeployedContractName, ContractDeploymentRecord>;
++  if (new Set(Object.values(contracts).map((record) => record.address)).size !== DEPLOYED_CONTRACT_NAMES.length) {
++    throw new Error("Contract deployment addresses must be unique");
++  }
++  return {
++    schemaVersion: 1,
++    network: "sepolia",
++    chainId: SEPOLIA_CHAIN_ID,
++    deployer: normalizeAddress(root.deployer, "deployer"),
++    platformTreasury: normalizeAddress(root.platformTreasury, "platformTreasury"),
++    deployedAt: new Date(root.deployedAt).toISOString(),
++    contracts,
++  };
++}
++
++export async function writeDeploymentManifest(
++  path: string,
++  input: unknown,
++  forbiddenValues: readonly string[] = [],
++): Promise<DeploymentManifestV1> {
++  const candidate = asRecord(input, "manifest");
++  let manifest: DeploymentManifestV1;
++  if ("schemaVersion" in candidate || "network" in candidate) {
++    assertExactKeys(
++      candidate,
++      ["schemaVersion", "network", "chainId", "deployer", "platformTreasury", "deployedAt", "contracts"],
++      "manifest",
++    );
++    if (candidate.schemaVersion !== 1 || candidate.network !== "sepolia") {
++      throw new Error("Deployment manifest version or network is invalid");
++    }
++    manifest = createDeploymentManifest({
++      chainId: candidate.chainId,
++      deployer: candidate.deployer,
++      platformTreasury: candidate.platformTreasury,
++      deployedAt: candidate.deployedAt,
++      contracts: candidate.contracts,
++    });
++  } else {
++    manifest = createDeploymentManifest(candidate);
++  }
++  const serialized = `${JSON.stringify(manifest, null, 2)}\n`;
++  for (const value of forbiddenValues.map((item) => item.trim()).filter((item) => item.length >= 4)) {
++    if (serialized.includes(value)) throw new Error("Deployment manifest contains a forbidden environment value");
++  }
++  await mkdir(dirname(path), { recursive: true });
++  await writeFile(path, serialized, { encoding: "utf8", mode: 0o600 });
++  return manifest;
++}
+diff --git a/packages/contracts/scripts/deploy-sepolia.ts b/packages/contracts/scripts/deploy-sepolia.ts
+new file mode 100644
+index 0000000..2e96908
+--- /dev/null
++++ b/packages/contracts/scripts/deploy-sepolia.ts
+@@ -0,0 +1,132 @@
++import { ethers, network } from "hardhat";
++import type { BaseContract, ContractTransactionResponse } from "ethers";
++import {
++  createDeploymentManifest,
++  SEPOLIA_CHAIN_ID,
++  writeDeploymentManifest,
++  type ContractDeploymentRecord,
++  type DeploymentManifestV1,
++} from "../src/deployment-manifest";
++
++export interface DeploymentEnvironment {
++  committeeMembers: string[];
++  platformTreasury: string;
++  outputPath: string;
++  forbiddenValues: string[];
++}
++
++export interface DeploymentRuntime {
++  networkName: string;
++  chainId: number | undefined;
++  deployer: string;
++  deploy(name: string, args: readonly unknown[]): Promise<ContractDeploymentRecord>;
++  authorizeEscrow(committeeAddress: string, escrowAddress: string): Promise<void>;
++}
++
++function requiredEnv(env: NodeJS.ProcessEnv, name: string): string {
++  const value = env[name]?.trim();
++  if (!value) throw new Error(`${name} is required`);
++  return value;
++}
++
++export function readDeploymentEnvironment(env: NodeJS.ProcessEnv): DeploymentEnvironment {
++  const rawMembers = requiredEnv(env, "ARBITRATION_MEMBER_ADDRESSES").split(",").map((value) => value.trim());
++  if (rawMembers.some((address) => !ethers.isAddress(address) || address === ethers.ZeroAddress)) {
++    throw new Error("ARBITRATION_MEMBER_ADDRESSES must contain valid non-zero addresses");
++  }
++  const committeeMembers = [...new Set(rawMembers.map(ethers.getAddress))];
++  if (committeeMembers.length < 5) throw new Error("ARBITRATION_MEMBER_ADDRESSES must contain five unique addresses");
++  const platformTreasury = ethers.getAddress(requiredEnv(env, "PLATFORM_TREASURY_ADDRESS"));
++  if (platformTreasury === ethers.ZeroAddress) throw new Error("PLATFORM_TREASURY_ADDRESS must be non-zero");
++  return {
++    committeeMembers,
++    platformTreasury,
++    outputPath: env.DEPLOYMENT_MANIFEST_PATH?.trim() || "docs/evidence/deployment/sepolia-contracts.json",
++    forbiddenValues: [env.SEPOLIA_RPC_URL ?? "", env.SEPOLIA_DEPLOYER_PRIVATE_KEY ?? ""],
++  };
++}
++
++export function formatDeploymentFailure(_error: unknown): string {
++  return "DEPLOYMENT_FAILED";
++}
++
++export async function deploySepolia(
++  runtime: DeploymentRuntime,
++  config: DeploymentEnvironment,
++  deployedAt = new Date().toISOString(),
++): Promise<DeploymentManifestV1> {
++  if (runtime.networkName !== "sepolia" || runtime.chainId !== SEPOLIA_CHAIN_ID) {
++    throw new Error(`Deployment is restricted to Sepolia chain ${SEPOLIA_CHAIN_ID}`);
++  }
++  const token = await runtime.deploy("YDToken", []);
++  const committee = await runtime.deploy("ArbitrationCommittee", [config.committeeMembers]);
++  const escrow = await runtime.deploy("AgentMarketEscrow", [token.address, committee.address, config.platformTreasury]);
++  const vault = await runtime.deploy("StakeYieldVault", [token.address]);
++  await runtime.authorizeEscrow(committee.address, escrow.address);
++  const manifest = createDeploymentManifest({
++    chainId: SEPOLIA_CHAIN_ID,
++    deployer: runtime.deployer,
++    platformTreasury: config.platformTreasury,
++    deployedAt,
++    contracts: { YDToken: token, ArbitrationCommittee: committee, AgentMarketEscrow: escrow, StakeYieldVault: vault },
++  });
++  await writeDeploymentManifest(config.outputPath, manifest, config.forbiddenValues);
++  return manifest;
++}
++
++export async function runSepoliaDeployment(
++  runtime: DeploymentRuntime,
++  env: NodeJS.ProcessEnv,
++  deployedAt?: string,
++): Promise<DeploymentManifestV1> {
++  return deploySepolia(runtime, readDeploymentEnvironment(env), deployedAt);
++}
++
++async function deploymentRecord(contract: BaseContract): Promise<ContractDeploymentRecord> {
++  await contract.waitForDeployment();
++  const transaction = contract.deploymentTransaction();
++  if (!transaction) throw new Error("Deployment transaction is unavailable");
++  const receipt = await transaction.wait();
++  if (!receipt) throw new Error("Deployment receipt is unavailable");
++  return { address: await contract.getAddress(), transactionHash: receipt.hash, blockNumber: receipt.blockNumber };
++}
++
++async function waitForConfiguration(transaction: ContractTransactionResponse): Promise<void> {
++  const receipt = await transaction.wait();
++  if (!receipt || receipt.status !== 1) throw new Error("Escrow authorization failed");
++}
++
++async function main(): Promise<void> {
++  const config = readDeploymentEnvironment(process.env);
++  if (network.name !== "sepolia" || network.config.chainId !== SEPOLIA_CHAIN_ID) {
++    throw new Error(`Deployment is restricted to Sepolia chain ${SEPOLIA_CHAIN_ID}`);
++  }
++  const [deployer] = await ethers.getSigners();
++  let committeeContract: BaseContract | undefined;
++  const runtime: DeploymentRuntime = {
++    networkName: network.name,
++    chainId: network.config.chainId,
++    deployer: deployer.address,
++    async deploy(name, args) {
++      const contract = await ethers.deployContract(name, [...args]);
++      if (name === "ArbitrationCommittee") committeeContract = contract;
++      return deploymentRecord(contract);
++    },
++    async authorizeEscrow(_committeeAddress, escrowAddress) {
++      if (!committeeContract) throw new Error("Committee deployment is unavailable");
++      const committee = committeeContract as unknown as BaseContract & {
++        setAuthorizedEscrow(address: string, authorized: boolean): Promise<ContractTransactionResponse>;
++      };
++      await waitForConfiguration(await committee.setAuthorizedEscrow(escrowAddress, true));
++    },
++  };
++  const manifest = await deploySepolia(runtime, config);
++  process.stdout.write(`Sepolia deployment manifest written to ${config.outputPath}; block ${manifest.contracts.StakeYieldVault.blockNumber}\n`);
++}
++
++if (require.main === module) {
++  main().catch((error: unknown) => {
++    process.stderr.write(`${formatDeploymentFailure(error)}\n`);
++    process.exitCode = 1;
++  });
++}
+diff --git a/packages/contracts/test/DeploymentManifest.test.ts b/packages/contracts/test/DeploymentManifest.test.ts
+new file mode 100644
+index 0000000..5d10a5d
+--- /dev/null
++++ b/packages/contracts/test/DeploymentManifest.test.ts
+@@ -0,0 +1,115 @@
++import { expect } from "chai";
++import { artifacts } from "hardhat";
++import { mkdtemp, readFile, rm } from "node:fs/promises";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { createDeploymentManifest, SEPOLIA_CHAIN_ID, writeDeploymentManifest, type DeploymentManifestInput } from "../src/deployment-manifest";
++import { formatDeploymentFailure, runSepoliaDeployment, type DeploymentRuntime } from "../scripts/deploy-sepolia";
++
++const addresses = [1, 2, 3, 4, 5, 6, 7].map((value) => `0x${value.toString(16).padStart(40, "0")}`);
++const transactionHashes = [1, 2, 3, 4].map((value) => `0x${value.toString(16).padStart(64, "0")}`);
++
++async function expectRejected(promise: Promise<unknown>, message: string): Promise<void> {
++  try {
++    await promise;
++    expect.fail("Expected promise to reject");
++  } catch (error) {
++    expect(error instanceof Error ? error.message : String(error)).to.include(message);
++  }
++}
++
++function validInput(): DeploymentManifestInput {
++  return {
++    chainId: SEPOLIA_CHAIN_ID,
++    deployer: addresses[0],
++    platformTreasury: addresses[1],
++    deployedAt: "2026-08-21T12:00:00.000Z",
++    contracts: {
++      YDToken: { address: addresses[2], transactionHash: transactionHashes[0], blockNumber: 100 },
++      ArbitrationCommittee: { address: addresses[3], transactionHash: transactionHashes[1], blockNumber: 101 },
++      AgentMarketEscrow: { address: addresses[4], transactionHash: transactionHashes[2], blockNumber: 102 },
++      StakeYieldVault: { address: addresses[5], transactionHash: transactionHashes[3], blockNumber: 103 },
++    },
++  };
++}
++
++function validEnv(outputPath: string): NodeJS.ProcessEnv {
++  return {
++    ARBITRATION_MEMBER_ADDRESSES: addresses.slice(0, 5).join(","),
++    PLATFORM_TREASURY_ADDRESS: addresses[6],
++    DEPLOYMENT_MANIFEST_PATH: outputPath,
++    SEPOLIA_RPC_URL: "https://rpc.example/secret-value",
++    SEPOLIA_DEPLOYER_PRIVATE_KEY: "0xprivate-secret-value",
++  };
++}
++
++describe("Sepolia deployment manifest", () => {
++  it("normalizes a complete four-contract manifest without secret material", () => {
++    const manifest = createDeploymentManifest(validInput());
++    expect(manifest.schemaVersion).to.equal(1);
++    expect(manifest.chainId).to.equal(11155111);
++    expect(Object.keys(manifest.contracts)).to.deep.equal(["YDToken", "ArbitrationCommittee", "AgentMarketEscrow", "StakeYieldVault"]);
++  });
++
++  it("rejects wrong-chain, unknown, duplicate, and malformed evidence", () => {
++    expect(() => createDeploymentManifest({ ...validInput(), chainId: 1 })).to.throw("Expected Sepolia chain");
++    expect(() => createDeploymentManifest({ ...validInput(), rpcUrl: "https://forbidden.example" })).to.throw("unknown fields");
++    const duplicated = validInput();
++    duplicated.contracts.StakeYieldVault.address = duplicated.contracts.YDToken.address;
++    expect(() => createDeploymentManifest(duplicated)).to.throw("addresses must be unique");
++    const malformed = validInput();
++    malformed.contracts.YDToken.transactionHash = "0x1234";
++    expect(() => createDeploymentManifest(malformed)).to.throw("transactionHash must be 32 bytes");
++  });
++
++  it("rebuilds an allowlisted object before writing and rejects forbidden values", async () => {
++    const directory = await mkdtemp(join(tmpdir(), "agent-market-manifest-"));
++    const output = join(directory, "manifest.json");
++    try {
++      await expectRejected(writeDeploymentManifest(output, { ...validInput(), metadata: { endpoint: "secret" } }), "unknown fields");
++      await expectRejected(writeDeploymentManifest(output, validInput(), [addresses[0]]), "forbidden environment value");
++      await writeDeploymentManifest(output, validInput(), ["https://rpc.example/secret-value"]);
++      expect(await readFile(output, "utf8")).not.to.include("rpc.example");
++    } finally {
++      await rm(directory, { recursive: true, force: true });
++    }
++  });
++
++  it("validates every environment value before deploy and preserves deployment order", async () => {
++    const directory = await mkdtemp(join(tmpdir(), "agent-market-deploy-"));
++    const calls: string[] = [];
++    let nextRecord = 0;
++    const runtime: DeploymentRuntime = {
++      networkName: "sepolia",
++      chainId: SEPOLIA_CHAIN_ID,
++      deployer: addresses[0],
++      async deploy(name) {
++        calls.push(name);
++        const index = nextRecord++;
++        return { address: addresses[index + 2], transactionHash: transactionHashes[index], blockNumber: index + 100 };
++      },
++      async authorizeEscrow() { calls.push("authorize"); },
++    };
++    try {
++      const badEnv = validEnv(join(directory, "bad.json"));
++      badEnv.ARBITRATION_MEMBER_ADDRESSES = Array(5).fill(addresses[2]).join(",");
++      await expectRejected(runSepoliaDeployment(runtime, badEnv), "five unique addresses");
++      expect(calls).to.deep.equal([]);
++      await runSepoliaDeployment(runtime, validEnv(join(directory, "manifest.json")), "2026-08-21T12:00:00.000Z");
++      expect(calls).to.deep.equal(["YDToken", "ArbitrationCommittee", "AgentMarketEscrow", "StakeYieldVault", "authorize"]);
++    } finally {
++      await rm(directory, { recursive: true, force: true });
++    }
++  });
++
++  it("uses a stable redacted failure and exposes the expected ABI", async () => {
++    expect(formatDeploymentFailure(new Error("https://rpc.example/private-key"))).to.equal("DEPLOYMENT_FAILED");
++    const artifact = await artifacts.readArtifact("AgentMarketEscrow");
++    const constructor = artifact.abi.find((item) => item.type === "constructor");
++    const createTask = artifact.abi.find((item) => item.type === "function" && item.name === "createTask");
++    const settled = artifact.abi.find((item) => item.type === "event" && item.name === "TaskSettled");
++    expect(constructor?.inputs?.map((input: { type: string }) => input.type)).to.deep.equal(["address", "address", "address"]);
++    expect(createTask?.inputs?.map((input: { type: string }) => input.type)).to.deep.equal(["bytes32", "bytes32", "uint256", "uint64"]);
++    expect(settled?.inputs?.[1]).to.include({ name: "requestRef", type: "bytes32", indexed: true });
++  });
++});

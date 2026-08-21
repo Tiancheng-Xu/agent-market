@@ -1,0 +1,155 @@
+{
+  "task": "T7",
+  "generatedAt": "2026-08-21T21:01:23.000Z",
+  "status": "verified_local_external_pending",
+  "scope": "local_repair_and_validation_only",
+  "externalActions": {
+    "aws": false,
+    "network": false,
+    "docker": true,
+    "deploy": false,
+    "commit": false,
+    "push": false
+  },
+  "verifiedLocal": [
+    {
+      "command": "T7_POSTGRES_ADMIN_URL=<redacted> pnpm --filter @agent-market/transaction-engine exec vitest run src/recovery/postgres-replay-ledger.integration.test.ts",
+      "exitCode": 0,
+      "source": "fresh local verification against an ephemeral PostgreSQL 16 container; container removed after the gate",
+      "summary": "T7 PostgreSQL integration passed 3/3, including migration constraints, concurrent claim and expired-lease reclaim, and non-identity body-tamper rollback."
+    },
+    {
+      "command": "main-thread real PostgreSQL integration verification: auth-store.integration.test.ts; transaction-store.integration.test.ts; services/matcher-go/internal/store/postgres_integration_test.go",
+      "exitCode": 0,
+      "source": "user-confirmed main-thread verification; not rerun in this no-PostgreSQL repair turn",
+      "summary": "Auth passed 1/1; Chain passed 1/1; matcher pgvector passed."
+    },
+    {
+      "command": "pnpm --filter @agent-market/transaction-engine test",
+      "exitCode": 0,
+      "summary": "26 files passed and 3 skipped; 85 tests passed and 5 skipped. Real PostgreSQL gates were intentionally not rerun in this no-PostgreSQL repair turn."
+    },
+    {
+      "command": "pnpm --filter @agent-market/transaction-engine typecheck",
+      "exitCode": 0,
+      "summary": "TypeScript completed with strict JSONValue/JSONObject replay bodies and transaction.json without broad casts."
+    },
+    {
+      "command": "pnpm --filter @agent-market/transaction-engine build",
+      "exitCode": 0,
+      "summary": "Next.js production build and TypeScript phase completed."
+    },
+    {
+      "command": "node --test infra/aws/template.test.mjs scripts/aws/deploy-agent-market.test.mjs",
+      "exitCode": 0,
+      "summary": "7 structural, inline-Python compilation, migration, lifecycle, IAM, and cost-boundary tests passed."
+    },
+    {
+      "command": "bash -n scripts/aws/pause-agent-market.sh scripts/aws/prepare-agent-market-cluster-transition.sh scripts/aws/validate-agent-market-cluster-transition.sh",
+      "exitCode": 0
+    },
+    {
+      "command": "python3 ~/.codex/skills/aws-budget-guard/scripts/check_iac_shared_resource_gate.py infra/aws/template.yaml",
+      "exitCode": 0,
+      "summary": "PASS: no unapproved shared-foundation creation; project ECR and three project log groups remain explicit review candidates."
+    },
+    {
+      "command": "node --test infra/aws/template.test.mjs infra/aws/t7-repair.test.mjs scripts/aws/inject-agent-market-cluster-retain.test.mjs scripts/aws/deploy-agent-market.test.mjs",
+      "exitCode": 0,
+      "summary": "22/22 template, inline Python, transition transformer, migration, lifecycle, FIFO, digest, TOCTOU, and deploy-gate tests passed."
+    },
+    {
+      "command": "node --test scripts/validate-repository.test.mjs && node scripts/validate-repository.mjs",
+      "exitCode": 0,
+      "summary": "Repository policy tests 8/8 pass: static shell/child_process ordering handles value options plus --no-paginate, --cli-auto-prompt, and --no-cli-auto-prompt; unknown pre-action options report fail-closed; dynamic concatenation remains an explicit residual."
+    },
+    {
+      "command": "node --test scripts/validate-evidence.test.mjs && node scripts/validate-evidence.mjs",
+      "exitCode": 0,
+      "summary": "6/6 evidence tests passed and the phase2 evidence repository validator passed."
+    },
+    {
+      "command": "bash -n scripts/aws/pause-agent-market.sh scripts/aws/prepare-agent-market-cluster-transition.sh scripts/aws/validate-agent-market-cluster-transition.sh scripts/aws/deploy-agent-market.sh",
+      "exitCode": 0,
+      "summary": "All four AWS operator scripts passed bash syntax validation; no script was executed against AWS."
+    },
+    {
+      "command": "scripts/aws/validate-agent-market-cluster-transition.sh (no arguments)",
+      "exitCode": 64,
+      "summary": "Expected fail-closed usage exit; no AWS or artifact access occurred."
+    },
+    {
+      "command": "node --test scripts/aws/deploy-agent-market.test.mjs",
+      "exitCode": 0,
+      "summary": "2/2: rejects duplicate critical arguments and post-validation template replacement; stable deploy uses a private read-only frozen template."
+    },
+    {
+      "command": "node --test scripts/aws/pause-agent-market.test.mjs",
+      "exitCode": 0,
+      "summary": "3/3: failure injection and SSM version-race continuation restore the immutable snapshot; dispatcher snapshots unreserved, 0, or greater than 1 fail before every SSM/Lambda/ECS mutation."
+    },
+    {
+      "command": "env -u T7_POSTGRES_ADMIN_URL -u DATABASE_URL pnpm --filter @agent-market/transaction-engine test",
+      "exitCode": 0,
+      "summary": "26 files passed / 3 skipped; 86 tests passed / 5 skipped. PostgreSQL integration, including the new body-tamper rollback case, was skipped because no local PostgreSQL gate was configured."
+    }
+  ],
+  "behavior": {
+    "replayDelivery": "at_least_once_with_stable_downstream_idempotency_key",
+    "replayLease": "pending, failed, or publishing rows whose lease expired and whose next_attempt_at is due can be reclaimed with FOR UPDATE SKIP LOCKED; stale workers cannot complete a replacement lease.",
+    "replayCrashWindow": "A crash before publish or after publish but before completion leaves a reclaimable lease. A later relay may publish again with dlq-replay-v1:<originalEventId>; consumers must deduplicate that stable key.",
+    "durableIdentity": "Parent and outbox retain the composite original event, request, publisher key, and canonical body hash FK. claimOutbox recomputes the shared deterministic canonical JSON hash inside its transaction and rolls back on mismatch; relay independently fails closed before publish.",
+    "ecsConcurrency": "Dispatcher ReservedConcurrentExecutions=1 is the hard Lambda worker boundary. SQS event-source MaximumConcurrency remains 2 because AWS does not accept 1. Before RunTask the worker checks project PENDING and RUNNING tasks; any existing task blocks another launch.",
+    "ecsCrashBoundary": "Canonical UUIDv7 requestId is both SNS FIFO deduplication ID and ECS clientToken. Tasks carry Project, HardDeadlineSeconds, and RequestId tags; duplicate ingestion in the FIFO five-minute deduplication window does not enqueue a new task request.",
+    "ecsStop": "StopTask retries three times and polling must observe STOPPED; failure is surfaced through ReportBatchItemFailures.",
+    "migrationGate": "Prepare preserves raw short-form tags and re-describes the live change set before approval. Final deploy consumes the approved finalTemplateSha256, copies the current template into a private read-only frozen file, verifies it twice, rejects all extra arguments, and deploys only that frozen path.",
+    "pauseResume": "The first pause snapshot is immutable and ownership-bound. priorDispatcherConcurrency must be the JSON integer 1; unreserved, 0, and values above 1 fail before any mutation. pausing/resuming steps use exact-old-state, SSM version, and write-readback checks for idempotent continuation.",
+    "hmac": "HMAC timestamp and signature validation remains before JSON parsing. A canonical UUIDv7 requestId drives SNS FIFO and SQS FIFO deduplication for five minutes; secret retrieval or validation unavailability fails closed.",
+    "repositoryPolicy": "Static token parsing skips a finite allowlist of AWS global/service flags and value options before cloudformation and its mutation action. --no-paginate, --cli-auto-prompt, and --no-cli-auto-prompt are supported boolean flags. Any unknown option before a statically visible action reports fail-closed; dynamically concatenated command names remain out of scope."
+  },
+  "costBoundary": {
+    "newDynamoDbTables": 0,
+    "dispatcherReservedConcurrency": 1,
+    "ecsTasksAllowedByLocalDesign": 1,
+    "lifecycleState": "One project-owned SSM Standard parameter; no dedicated compute or provisioned capacity.",
+    "note": "Actual AWS pricing, quotas, IAM evaluation, and deployed concurrency remain pending external verification."
+  },
+  "notVerified": [
+    "No AWS API was called. CloudFormation syntax/service validation, SSM lifecycle state, Lambda reserved concurrency, event-source behavior, IAM resource-tag conditions, ECS clientToken behavior, StopTask retries, and task hard-deadline reconciliation remain unverified.",
+    "The existing stack has not executed or approved the generated Phase 1 Retain change set. No cluster transition marker exists yet.",
+    "No SharedEcsClusterArn was discovered or validated.",
+    "Cloudflare HMAC production configuration, secret creation/rotation, live SNS/SQS/DLQ delivery, and downstream idempotency were not exercised.",
+    "The SQS event-source MaximumConcurrency value is 2, not 1; the intended one-worker boundary depends on Lambda ReservedConcurrentExecutions=1 and must be confirmed in an AWS change set before deployment.",
+    "Because migration 0006 is documented as not deployed, its constraints were repaired in place. Any environment that already applied the old 0006 must receive a new forward migration rather than editing migration history.",
+    "Repository policy and supported scripts cannot prevent a sufficiently privileged administrator from manually bypassing the wrapper; IAM/SCP enforcement is external and remains pending.",
+    "Repository scanning is intentionally static: dynamically concatenated AWS/CloudFormation command or action names are a residual and require reviewer/IAM controls."
+  ],
+  "sourceSha256": {
+    "apps/transaction-engine/src/recovery/replay.ts": "74c5c58c34cee365d33e579eab16451ba4f2dcb7a1bb5d456317f14add4a64ae",
+    "apps/transaction-engine/src/recovery/postgres-replay-ledger.ts": "0602d3289a7eb00ab0fa233bb2f6a6d61fc1d4d4bad98a012357d4a0ad81120d",
+    "apps/transaction-engine/src/recovery/replay.test.ts": "a650b335f9a7aab8481d5d370a39fee0e86567db2b83f786e491d8e8f817c084",
+    "apps/transaction-engine/src/recovery/postgres-replay-ledger.integration.test.ts": "655723beb21b4289c2f044d0f6daedfea5fd396fe7de1007a21b9e6bb0edc4fd",
+    "database/migrations/0006_t7_recovery.sql": "e7159a8185618ebd6bfc72fd24699966849c9d7ae4763f5ea4202d4e2452b2e6",
+    "infra/aws/template.yaml": "91f69c92853666e2d3df4c2b207b9b8e89849b12ce33687bba3ba4893bc74b97",
+    "infra/aws/template.test.mjs": "a4148bb31544faec65ac4847fad4c62b5e6f5aea6fabf153eb0f409053aa8bba",
+    "infra/aws/t7-repair.test.mjs": "a927107b7a6076cdc3e8a107bf8322565828308fe43e996f809aa5d5c729ed22",
+    "scripts/aws/pause-agent-market.sh": "781ab8cc40074f01cd0f3b62368ea6242b55d1b470291291e4e2912133ccc0ef",
+    "scripts/aws/prepare-agent-market-cluster-transition.sh": "ac062b6b19ceb21becd6309bb3561ce72684d9bf4e3e510c1167a8ee9b2b8b02",
+    "scripts/aws/validate-agent-market-cluster-transition.sh": "a0e74d0f92ff3ca1eb2dc92c259674b92a36b2f0e60b3741c014f8125669be64",
+    "scripts/aws/deploy-agent-market.sh": "4a6fbba6ed8a5da7eea671273668bd2c884157832d29177f9ff77af2c5a2eba3",
+    "scripts/validate-repository.mjs": "09419b1915142b8b5a15766b06fa631c8991d96d44167235b3cd5bddc349ba29",
+    "scripts/validate-repository.test.mjs": "3a3072d5268320f8d365fc5932f781d448c30f55880ffc303261f6bb341f8982",
+    ".github/workflows/repository-policy.yml": "ee9a45d32eed36cc0026861de46befb438e9e36e0cf9f4a58cb0dd6368ce023a",
+    "docs/evidence/phase2-local-validation.json": "30e9febe67393e59f04821ae71113f2aa57355e63a14a82376143bb266f9d15b",
+    "scripts/aws/inject-agent-market-cluster-retain.mjs": "f02a84784668eee5dfa76782b9104708db997d7104ae2e66680f25f876a1cae8",
+    "scripts/aws/inject-agent-market-cluster-retain.test.mjs": "bf2b69a5fdb8a4341e306565d86c798ef3629b273803e30b5c1bf4c4ef5e09b7",
+    "scripts/aws/deploy-agent-market.test.mjs": "95112e59d9ebf2191df5dbc781382da6f799a46ced4c65a1f6d5c10fc91c6e85",
+    "scripts/aws/pause-agent-market.test.mjs": "04cca83a05e3513a3976e160d5eb6b387081f9845a2fc643cc236262aff700af",
+    "scripts/aws/test-fixtures/fake-pause-aws.cjs": "9ce7fdb626ab019428d9e7244da603e5792e4c139538777dc8d4f6e6187eb38b"
+  },
+  "runtimeVersions": {
+    "node": "v22.23.1",
+    "pnpm": "11.17.0",
+    "postgresServer": "PostgreSQL 16 via postgres:16-alpine; exact patch version not captured"
+  }
+}

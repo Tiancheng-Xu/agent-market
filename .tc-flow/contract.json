@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "runId": "0424cdbc-cf90-45fd-86a8-ca719680cbef",
+  "feature": "agent-market-phase2",
+  "version": 2,
+  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
+  "goal": "Close V2 items 1 through 9 with a verifiable Sepolia marketplace flow.",
+  "amendments": [
+    {
+      "approvedAt": "2026-08-21",
+      "decision": "The six-percent agent bond is non-refundable, never counted in yield, and always transferred to the deployment-specified platform treasury on settlement. Gas is never reimbursed."
+    }
+  ],
+  "nonGoals": [
+    "mainnet",
+    "real yield",
+    "Privy or social login",
+    "paymaster",
+    "The Graph critical-path integration",
+    "customer-managed KMS creation",
+    "automatic production deployment"
+  ],
+  "repositories": [
+    {
+      "path": "/Users/shier/Desktop/repos/agent-market/.worktrees/phase2-184ef819",
+      "role": "monorepo",
+      "baseCommit": "47a1a4071338b38e28fb75d54691f859e7864d65",
+      "branch": "tc/phase2-184ef819"
+    }
+  ],
+  "allowedWritePaths": [
+    ".tc-flow/**",
+    "README.md",
+    ".github/**",
+    "apps/transaction-engine/**",
+    "apps/web/src/pages/EvidencePage.tsx",
+    "apps/web/src/evidence/**",
+    "database/migrations/**",
+    "docs/architecture/**",
+    "docs/evidence/**",
+    "docs/superpowers/**",
+    "infra/aws/**",
+    "packages/contracts/**",
+    "packages/shared-contracts/**",
+    "scripts/aws/**",
+    "scripts/blockchain/**",
+    "services/matcher-go/**",
+    "services/trainer/**"
+  ],
+  "allowedTools": [
+    "filesystem",
+    "git-read",
+    "pnpm",
+    "node",
+    "hardhat-local",
+    "go",
+    "python-local",
+    "docker-local",
+    "aws-read-only-after-login",
+    "blockscout-after-unlock"
+  ],
+  "network": {
+    "allowedRead": [
+      "GitHub",
+      "AWS us-east-1 inventory",
+      "Ethereum Sepolia RPC",
+      "Blockscout Sepolia"
+    ],
+    "blockedWithoutActionApproval": [
+      "Sepolia transaction submission",
+      "AWS resource mutation",
+      "paid resource creation",
+      "production deployment",
+      "destructive cleanup"
+    ]
+  },
+  "data": {
+    "secrets": "environment-only and never logged",
+    "privateKeys": "never stored in repository, browser bundle, logs, or Evidence",
+    "pii": "redact before external review",
+    "evidence": "bounded sanitized projections only"
+  },
+  "acceptance": [
+    "all eight tasks pass independent review",
+    "full pnpm verify passes",
+    "Go vet and tests pass",
+    "Python tests pass",
+    "repository policy returns ALLOW",
+    "external states remain pending until fresh readback exists"
+  ]
+}

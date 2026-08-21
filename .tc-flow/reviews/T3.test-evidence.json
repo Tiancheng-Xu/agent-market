@@ -1,0 +1,38 @@
+{
+  "taskId": "T3",
+  "status": "pass",
+  "verifiedAt": "2026-08-21",
+  "checks": [
+    {
+      "name": "transaction-engine unit and route tests",
+      "result": "pass",
+      "detail": "15 files passed, 42 tests passed, 1 PostgreSQL integration test skipped in the normal suite"
+    },
+    {
+      "name": "real PostgreSQL concurrency and rollback integration",
+      "result": "pass",
+      "detail": "1/1 passed against an ephemeral local postgres:16-alpine instance using a dedicated agent_market_auth_test_* database and destructive-test sentinel; no shared or cloud database used"
+    },
+    {
+      "name": "transaction-engine typecheck",
+      "result": "pass"
+    },
+    {
+      "name": "transaction-engine production build",
+      "result": "pass",
+      "detail": "Next.js build completed; auth endpoints remained dynamic"
+    },
+    {
+      "name": "contracts regression",
+      "result": "pass",
+      "detail": "13/13 contract tests passed with ethers 6.17.0"
+    },
+    {
+      "name": "local resource cleanup",
+      "result": "pass",
+      "detail": "ephemeral PostgreSQL container removed and Colima stopped by cleanup trap"
+    }
+  ],
+  "externalWrites": [],
+  "secretsPublished": false
+}

@@ -1,0 +1,13 @@
+{
+  "taskId": "T3",
+  "round": 2,
+  "verdict": "repair",
+  "repairs": [
+    "Restricted destructive PostgreSQL integration cleanup to localhost, an agent_market_auth_test_* database, and an explicit destructive-test sentinel",
+    "Preserved valid session cookies when server-side revocation fails so logout can be retried",
+    "Added request correlation to logout failure responses",
+    "Added regression tests for invalid and cross-wallet signatures, session expiry, future recent-auth timestamps, verify-store failure, logout-store failure, canonical origin, and production database fail-closed behavior",
+    "Regenerated the cumulative T3 review diff including untracked implementation and test files"
+  ],
+  "status": "ready-for-round-3"
+}

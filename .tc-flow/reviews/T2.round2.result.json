@@ -1,0 +1,7 @@
+{
+  "task":"T2",
+  "round":2,
+  "verdict":"repair",
+  "issues":{"high":0,"medium":1},
+  "repair":"restored three-unique-seat and resolved-after-two-votes arbitration assertions"
+}

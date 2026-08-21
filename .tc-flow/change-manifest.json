@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "runId": "0424cdbc-cf90-45fd-86a8-ca719680cbef",
+  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
+  "feature": "agent-market-phase2",
+  "expectedScopes": [
+    ".tc-flow",
+    ".github",
+    "README.md",
+    "apps/transaction-engine",
+    "apps/web",
+    "database/migrations",
+    "docs/architecture",
+    "docs/evidence",
+    "docs/superpowers",
+    "infra/aws",
+    "packages/contracts",
+    "packages/shared-contracts",
+    "pnpm-lock.yaml",
+    "scripts",
+    "services/matcher-go",
+    "services/trainer"
+  ],
+  "unexpectedFiles": [],
+  "updatedAt": "2026-08-21T21:14:54.496Z"
+}
