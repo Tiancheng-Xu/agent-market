@@ -3,7 +3,6 @@ import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
 import { bootstrapClient, readRenderStateFromDocument } from "./bootstrap";
-import { FullChainEvidence } from "./evidence/FullChainEvidence";
 import { LanguageProvider } from "./i18n/LanguageProvider";
 import { startPerformanceCollection } from "./performance/collector";
 import { ServerApp } from "./ssr/ServerApp";
@@ -28,9 +27,6 @@ function ClientApplication({ initialInteractive }: { initialInteractive: boolean
           ? (
               <BrowserRouter>
                 <App />
-                {globalThis.location.pathname === "/evidence"
-                  ? <FullChainEvidence />
-                  : null}
               </BrowserRouter>
             )
           : <ServerApp pathname={globalThis.location.pathname} />}

@@ -1,10 +1,15 @@
 export type TaskStatus =
   | "open"
+  | "funding_pending"
+  | "funded"
   | "matching"
   | "assigned"
   | "in_progress"
   | "submitted"
-  | "accepted";
+  | "accepted"
+  | "disputed"
+  | "settled"
+  | "refunded";
 
 export interface CreateTaskInput {
   id: string;
@@ -23,6 +28,8 @@ export interface TaskSnapshot {
   agentId?: string;
   deliveryUri?: string;
   version: number;
+  refundScope?: "budget_only";
+  bondDisposition?: "not_applicable" | "platform_treasury";
 }
 
 export interface TaskTransitionResult {
@@ -30,6 +37,8 @@ export interface TaskTransitionResult {
   requestId: string;
   status: TaskStatus;
   version: number;
+  refundScope?: "budget_only";
+  bondDisposition?: "not_applicable" | "platform_treasury";
 }
 
 export class TaskAggregate {
@@ -61,7 +70,17 @@ export class TaskAggregate {
   }
 
   startMatching(requestId: string): TaskTransitionResult {
-    return this.transition(requestId, "open", "matching");
+    return this.transition(requestId, ["open", "funded"], "matching");
+  }
+
+  markFundingPending(publisherId: string, requestId: string): TaskTransitionResult {
+    this.requirePublisher(publisherId);
+    return this.transition(requestId, "open", "funding_pending");
+  }
+
+  markFunded(publisherId: string, requestId: string): TaskTransitionResult {
+    this.requirePublisher(publisherId);
+    return this.transition(requestId, "funding_pending", "funded");
   }
 
   assign(agentId: string, requestId: string): TaskTransitionResult {
@@ -91,15 +110,30 @@ export class TaskAggregate {
   }
 
   acceptDelivery(publisherId: string, requestId: string): TaskTransitionResult {
-    if (this.state.publisherId !== publisherId) {
-      throw new Error("TASK_PUBLISHER_FORBIDDEN");
-    }
+    this.requirePublisher(publisherId);
     return this.transition(requestId, "submitted", "accepted");
+  }
+
+  openDispute(requestId: string): TaskTransitionResult {
+    return this.transition(requestId, "submitted", "disputed");
+  }
+
+  settle(requestId: string): TaskTransitionResult {
+    return this.transition(requestId, ["accepted", "disputed"], "settled");
+  }
+
+  refundBudget(publisherId: string, requestId: string): TaskTransitionResult {
+    this.requirePublisher(publisherId);
+    const bondExists = ["in_progress", "submitted", "disputed"].includes(this.state.status);
+    return this.transition(requestId, ["funded", "assigned", "in_progress", "submitted", "disputed"], "refunded", () => {
+      this.state.refundScope = "budget_only";
+      this.state.bondDisposition = bondExists ? "platform_treasury" : "not_applicable";
+    });
   }
 
   private transition(
     requestId: string,
-    expected: TaskStatus,
+    expected: TaskStatus | readonly TaskStatus[],
     next: TaskStatus,
     mutate?: () => void,
   ): TaskTransitionResult {
@@ -107,7 +141,8 @@ export class TaskAggregate {
     if (existing) {
       return existing;
     }
-    if (this.state.status !== expected) {
+    const allowed = Array.isArray(expected) ? expected : [expected];
+    if (!allowed.includes(this.state.status)) {
       throw new Error("TASK_TRANSITION_INVALID");
     }
 
@@ -119,12 +154,20 @@ export class TaskAggregate {
     return result;
   }
 
+  private requirePublisher(publisherId: string): void {
+    if (this.state.publisherId !== publisherId) {
+      throw new Error("TASK_PUBLISHER_FORBIDDEN");
+    }
+  }
+
   private result(requestId: string): TaskTransitionResult {
     return {
       taskId: this.state.id,
       requestId,
       status: this.state.status,
       version: this.state.version,
+      ...(this.state.refundScope ? { refundScope: this.state.refundScope } : {}),
+      ...(this.state.bondDisposition ? { bondDisposition: this.state.bondDisposition } : {}),
     };
   }
 }

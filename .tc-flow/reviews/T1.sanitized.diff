@@ -1,0 +1,652 @@
+diff --git a/apps/transaction-engine/package.json b/apps/transaction-engine/package.json
+index 001d8fd..bb235cf 100644
+--- a/apps/transaction-engine/package.json
++++ b/apps/transaction-engine/package.json
+@@ -17,6 +17,7 @@
+     "uuid": "14.0.2"
+   },
+   "devDependencies": {
++    "@electric-sql/pglite": "0.5.5",
+     "@types/node": "26.2.0",
+     "@types/react": "19.2.18",
+     "@types/react-dom": "19.2.4",
+diff --git a/apps/transaction-engine/src/persistence/schema.test.ts b/apps/transaction-engine/src/persistence/schema.test.ts
+index 85524e0..8f83fa1 100644
+--- a/apps/transaction-engine/src/persistence/schema.test.ts
++++ b/apps/transaction-engine/src/persistence/schema.test.ts
+@@ -6,9 +6,13 @@ import { describe, expect, it } from "vitest";
+ const migrationPath = fileURLToPath(
+   new URL("../../../../database/migrations/0001_agent_market_core.sql", import.meta.url),
+ );
++const phase2MigrationPath = fileURLToPath(
++  new URL("../../../../database/migrations/0003_phase2_lifecycle.sql", import.meta.url),
++);
+
+ describe("PostgreSQL core schema", () => {
+   const sql = readFileSync(migrationPath, "utf8").toLowerCase();
++  const phase2Sql = readFileSync(phase2MigrationPath, "utf8").toLowerCase();
+
+   it("enables pgvector and defines the core marketplace records", () => {
+     expect(sql).toContain("create extension if not exists vector");
+@@ -31,4 +35,30 @@ describe("PostgreSQL core schema", () => {
+     expect(sql).toContain("unique (task_id, request_id)");
+     expect(sql).toContain("idx_outbox_events_pending");
+   });
++
++  it("adds wallet, transaction, matching, model, and replay lifecycle records", () => {
++    expect(phase2Sql).toContain("create table if not exists wallet_challenges");
++    expect(phase2Sql).toContain("create table if not exists wallet_sessions");
++    expect(phase2Sql).toContain("create table if not exists idempotency_records");
++    expect(phase2Sql).toContain("create table if not exists chain_transactions");
++    expect(phase2Sql).toContain("create table if not exists consumed_events");
++    expect(phase2Sql).toContain("create table if not exists match_candidates");
++    expect(phase2Sql).toContain("create table if not exists match_feedback");
++    expect(phase2Sql).toContain("create table if not exists model_versions");
++    expect(phase2Sql).toContain("create table if not exists dlq_replay_audits");
++  });
++
++  it("keeps Sepolia and replay identities unique without plaintext credentials", () => {
++    expect(phase2Sql).toContain("check (chain_id = 11155111)");
++    expect(phase2Sql).toContain("unique (actor_wallet, command, resource_id, idempotency_key)");
++    expect(phase2Sql).toContain("unique (original_event_id, idempotency_key)");
++    expect(phase2Sql).toContain("unique (request_id, wallet_address, chain_id)");
++    expect(phase2Sql).toContain("primary key (consumer, event_id)");
++    expect(phase2Sql).toContain("status != 'confirmed'");
++    expect(phase2Sql).toContain("expected_value_atomic >= 0");
++    expect(phase2Sql).toContain("create table if not exists wallet_challenges");
++    expect(phase2Sql).toContain("add column if not exists key_version");
++    expect(sql).toContain("ciphertext");
++    expect(phase2Sql).not.toMatch(/credential_plaintext|plaintext_secret|api_key\s+text/);
++  });
+ });
+diff --git a/packages/shared-contracts/src/contracts.test.ts b/packages/shared-contracts/src/contracts.test.ts
+index a143ac6..ed153e6 100644
+--- a/packages/shared-contracts/src/contracts.test.ts
++++ b/packages/shared-contracts/src/contracts.test.ts
+@@ -3,7 +3,16 @@ import { fileURLToPath } from "node:url";
+
+ import { describe, expect, it } from "vitest";
+
+-import { AppErrorSchema, MatchRequestedV1Schema } from "./index";
++import {
++  AppErrorSchema,
++  DlqReplayRequestedV1Schema,
++  MatchRequestedV1Schema,
++  SEPOLIA_CHAIN_ID,
++  TransactionIntentV1Schema,
++  TransactionVerificationV1Schema,
++  WalletChallengeV1Schema,
++  WalletSessionV1Schema,
++} from "./index";
+
+ const fixturePath = fileURLToPath(
+   new URL("../fixtures/match-requested.v1.json", import.meta.url),
+@@ -26,4 +35,87 @@ describe("shared contracts", () => {
+       }),
+     ).toThrow();
+   });
++
++  it("accepts strict Sepolia wallet challenge and session contracts", () => {
++    const challenge = {
++      challengeId: "0191f6f8-cb6b-7f31-81ad-c497d7d90001",
++      requestId: "0191f6f8-cb6b-7f31-81ad-c497d7d90002",
++      walletAddress: "0x1111111111111111111111111111111111111111",
++      chainId: SEPOLIA_CHAIN_ID,
++      nonce: "nonce-0123456789abcdef",
++      domain: "agent-market.baby2b.online",
++      uri: "https://agent-market.baby2b.online",
++      statement: "Sign in to Agent Market on Sepolia.",
++      issuedAt: "2026-08-21T09:00:00.000Z",
++      expiresAt: "2026-08-21T09:05:00.000Z",
++    };
++    expect(WalletChallengeV1Schema.parse(challenge).chainId).toBe(11_155_111);
++    expect(WalletChallengeV1Schema.parse({
++      ...challenge,
++      walletAddress: "0xAa11111111111111111111111111111111111111",
++    }).walletAddress).toBe("0xaa11111111111111111111111111111111111111");
++    expect(() => WalletChallengeV1Schema.parse({ ...challenge, chainId: 1 })).toThrow();
++
++    const session = {
++      sessionId: "0191f6f8-cb6b-7f31-81ad-c497d7d90003",
++      requestId: challenge.requestId,
++      walletAddress: challenge.walletAddress,
++      chainId: SEPOLIA_CHAIN_ID,
++      issuedAt: challenge.issuedAt,
++      expiresAt: "2026-08-21T09:30:00.000Z",
++      recentAuthAt: challenge.issuedAt,
++    };
++    expect(WalletSessionV1Schema.parse(session).walletAddress).toBe(
++      challenge.walletAddress,
++    );
++    expect(() => WalletSessionV1Schema.parse({ ...session, secret: "leak" })).toThrow();
++  });
++
++  it("validates transaction intent and replay identities without secrets", () => {
++    const intent = {
++      intentId: "0191f6f8-cb6b-7f31-81ad-c497d7d90004",
++      requestId: "0191f6f8-cb6b-7f31-81ad-c497d7d90005",
++      requestRef: `0x${"12".repeat(32)}`,
++      chainId: SEPOLIA_CHAIN_ID,
++      from: "0x1111111111111111111111111111111111111111",
++      to: "0x2222222222222222222222222222222222222222",
++      method: "createTask" as const,
++      data: "0x1234",
++      valueAtomic: "0",
++      createdAt: "2026-08-21T09:00:00.000Z",
++      expiresAt: "2026-08-21T09:05:00.000Z",
++    };
++    expect(TransactionIntentV1Schema.parse(intent).method).toBe("createTask");
++    expect(() => TransactionIntentV1Schema.parse({ ...intent, privateKey: "no" })).toThrow();
++    expect(() => TransactionVerificationV1Schema.parse({
++      intentId: intent.intentId,
++      requestId: intent.requestId,
++      txHash: `0x${"34".repeat(32)}`,
++      status: "confirmed",
++      confirmations: 0,
++      blockNumber: null,
++      eventName: "TaskCreated",
++      checkedAt: intent.createdAt,
++    })).toThrow();
++    expect(TransactionVerificationV1Schema.parse({
++      intentId: intent.intentId,
++      requestId: intent.requestId,
++      txHash: `0x${"AB".repeat(32)}`,
++      status: "confirmed",
++      confirmations: 2,
++      blockNumber: 9_000_000,
++      eventName: "TaskCreated",
++      checkedAt: intent.createdAt,
++    }).txHash).toBe(`0x${"ab".repeat(32)}`);
++
++    expect(DlqReplayRequestedV1Schema.parse({
++      replayId: "0191f6f8-cb6b-7f31-81ad-c497d7d90006",
++      type: "dlq.replay.requested.v1",
++      occurredAt: "2026-08-21T09:00:00.000Z",
++      originalEventId: "0191f6f8-cb6b-7f31-81ad-c497d7d90007",
++      requestId: intent.requestId,
++      idempotencyKey: "idem-0123456789",
++      reason: "operator-approved replay",
++    }).originalEventId).toBe("0191f6f8-cb6b-7f31-81ad-c497d7d90007");
++  });
+ });
+diff --git a/packages/shared-contracts/src/events.ts b/packages/shared-contracts/src/events.ts
+index 6330789..ab7965e 100644
+--- a/packages/shared-contracts/src/events.ts
++++ b/packages/shared-contracts/src/events.ts
+@@ -1,6 +1,7 @@
+ import { z } from "zod";
+
+ export const MATCH_REQUESTED_V1 = "match.requested.v1" as const;
++export const DLQ_REPLAY_REQUESTED_V1 = "dlq.replay.requested.v1" as const;
+
+ export const MatchRequestedV1Schema = z.strictObject({
+   eventId: z.string().uuid(),
+@@ -13,3 +14,17 @@ export const MatchRequestedV1Schema = z.strictObject({
+ });
+
+ export type MatchRequestedV1 = z.infer<typeof MatchRequestedV1Schema>;
++
++export const DlqReplayRequestedV1Schema = z.strictObject({
++  replayId: z.string().uuid(),
++  type: z.literal(DLQ_REPLAY_REQUESTED_V1),
++  occurredAt: z.string().datetime(),
++  originalEventId: z.string().uuid(),
++  requestId: z.string().uuid(),
++  idempotencyKey: z.string().min(8).max(128),
++  reason: z.string().min(1).max(240),
++});
++
++export type DlqReplayRequestedV1 = z.infer<
++  typeof DlqReplayRequestedV1Schema
++>;
+diff --git a/packages/shared-contracts/src/index.ts b/packages/shared-contracts/src/index.ts
+index 0e38be6..2f5931c 100644
+--- a/packages/shared-contracts/src/index.ts
++++ b/packages/shared-contracts/src/index.ts
+@@ -4,11 +4,30 @@ export {
+   type AppError,
+ } from "./errors";
+ export {
++  SEPOLIA_CHAIN_ID,
++  WalletAddressSchema,
++  WalletChallengeV1Schema,
++  WalletSessionV1Schema,
++  type WalletChallengeV1,
++  type WalletSessionV1,
++} from "./auth";
++export {
++  DLQ_REPLAY_REQUESTED_V1,
++  DlqReplayRequestedV1Schema,
+   MATCH_REQUESTED_V1,
+   MatchRequestedV1Schema,
++  type DlqReplayRequestedV1,
+   type MatchRequestedV1,
+ } from "./events";
+ export {
+   RequestContextSchema,
+   type RequestContext,
+ } from "./request-context";
++export {
++  TransactionIntentV1Schema,
++  TransactionMethodSchema,
++  TransactionVerificationStatusSchema,
++  TransactionVerificationV1Schema,
++  type TransactionIntentV1,
++  type TransactionVerificationV1,
++} from "./transactions";
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 73e55df..14a8de2 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -30,6 +30,9 @@ importers:
+         specifier: 14.0.2
+         version: 14.0.2
+     devDependencies:
++      '@electric-sql/pglite':
++        specifier: 0.5.5
++        version: 0.5.5
+       '@types/node':
+         specifier: 26.2.0
+         version: 26.2.0
+@@ -229,6 +232,9 @@ packages:
+     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
+     engines: {node: '>=12'}
+
++  '@electric-sql/pglite@0.5.5':
++    resolution: {integrity: sha512-QeZ+oB7QaU4EJj2awrB8hwFZ5TXxLRBQ9Gfq0dQauYDdWsRtuWRCERgtri35vRfL07KQHlVlc/4Qxvn7a5AXeA==}
++
+   '@emnapi/runtime@1.11.3':
+     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
+
+@@ -2087,10 +2093,6 @@ packages:
+     resolution: {integrity: sha512-Kf/3ZW54L4UT0pZtsY/rf+EkBU7Qi5nnhonjUb8yTXcxH3cdcWrV2cRyk0Xk/4jK6OoHhxxZHriyhje20If2hQ==}
+     engines: {node: '>=14.0.0'}
+
+-  ethers@6.17.0:
+-    resolution: {integrity: sha512-BpyrpIPJ3ydEVow8zGaz1DuPS7YU8DcWxuBnY9a0UA/lvAPwrMr+EPXsfrul628SRaekPNeIM4UFh/91GWZang==}
+-    engines: {node: '>=14.0.0'}
+-
+   ethjs-unit@0.1.6:
+     resolution: {integrity: sha512-/Sn9Y0oKl0uqQuvgFk/zQgR7aw1g36qX/jzSQ5lSwlO0GigPymk4eGQfeNTD03w1dPOqfz8V77Cy43jH56pagw==}
+     engines: {node: '>=6.5.0', npm: '>=3'}
+@@ -3858,6 +3860,8 @@ snapshots:
+     dependencies:
+       '@jridgewell/trace-mapping': 0.3.9
+
++  '@electric-sql/pglite@0.5.5': {}
++
+   '@emnapi/runtime@1.11.3':
+     dependencies:
+       tslib: 2.8.1
+@@ -4421,7 +4425,7 @@ snapshots:
+       '@nomicfoundation/solidity-analyzer': 0.1.2
+       cbor: 9.0.2
+       debug: 4.4.3(supports-color@8.1.1)
+-      ethers: 6.17.0
++      ethers: 6.15.0
+       fs-extra: 10.1.0
+       immer: 10.0.2
+       lodash: 4.17.21
+@@ -5559,19 +5563,6 @@ snapshots:
+       - bufferutil
+       - utf-8-validate
+
+-  ethers@6.17.0:
+-    dependencies:
+-      '@adraffy/ens-normalize': 1.11.1
+-      '@noble/curves': 1.2.0
+-      '@noble/hashes': 1.3.2
+-      '@types/node': 22.7.5
+-      aes-js: 4.0.0-beta.5
+-      tslib: 2.7.0
+-      ws: 8.21.0
+-    transitivePeerDependencies:
+-      - bufferutil
+-      - utf-8-validate
+-
+   ethjs-unit@0.1.6:
+     dependencies:
+       bn.js: 4.11.6
+diff --git a/packages/shared-contracts/src/auth.ts b/packages/shared-contracts/src/auth.ts
+new file mode 100644
+index 0000000..84a9f0f
+--- /dev/null
++++ b/packages/shared-contracts/src/auth.ts
+@@ -0,0 +1,34 @@
++import { z } from "zod";
++
++export const SEPOLIA_CHAIN_ID = 11_155_111 as const;
++
++export const WalletAddressSchema = z
++  .string()
++  .regex(/^0x[a-fA-F0-9]{40}$/)
++  .transform((address) => address.toLowerCase());
++
++export const WalletChallengeV1Schema = z.strictObject({
++  challengeId: z.string().uuid(),
++  requestId: z.string().uuid(),
++  walletAddress: WalletAddressSchema,
++  chainId: z.literal(SEPOLIA_CHAIN_ID),
++  nonce: z.string().min(16).max(96),
++  domain: z.string().min(1).max(253),
++  uri: z.string().url(),
++  statement: z.string().min(1).max(240),
++  issuedAt: z.string().datetime(),
++  expiresAt: z.string().datetime(),
++});
++
++export const WalletSessionV1Schema = z.strictObject({
++  sessionId: z.string().uuid(),
++  requestId: z.string().uuid(),
++  walletAddress: WalletAddressSchema,
++  chainId: z.literal(SEPOLIA_CHAIN_ID),
++  issuedAt: z.string().datetime(),
++  expiresAt: z.string().datetime(),
++  recentAuthAt: z.string().datetime(),
++});
++
++export type WalletChallengeV1 = z.infer<typeof WalletChallengeV1Schema>;
++export type WalletSessionV1 = z.infer<typeof WalletSessionV1Schema>;
+diff --git a/packages/shared-contracts/src/transactions.ts b/packages/shared-contracts/src/transactions.ts
+new file mode 100644
+index 0000000..cccf827
+--- /dev/null
++++ b/packages/shared-contracts/src/transactions.ts
+@@ -0,0 +1,84 @@
++import { z } from "zod";
++
++import { SEPOLIA_CHAIN_ID, WalletAddressSchema } from "./auth";
++
++const Bytes32Schema = z
++  .string()
++  .regex(/^0x[a-fA-F0-9]{64}$/)
++  .transform((value) => value.toLowerCase());
++const HexDataSchema = z.string().regex(/^0x(?:[a-fA-F0-9]{2})*$/);
++
++export const TransactionMethodSchema = z.enum([
++  "faucet",
++  "approve",
++  "createTask",
++  "assignAgent",
++  "acceptTask",
++  "submitWork",
++  "acceptWork",
++  "timeoutTask",
++  "openDispute",
++  "castVote",
++  "stake",
++  "unstake",
++  "claimYield",
++]);
++
++export const TransactionIntentV1Schema = z.strictObject({
++  intentId: z.string().uuid(),
++  requestId: z.string().uuid(),
++  requestRef: Bytes32Schema,
++  chainId: z.literal(SEPOLIA_CHAIN_ID),
++  from: WalletAddressSchema,
++  to: WalletAddressSchema,
++  method: TransactionMethodSchema,
++  data: HexDataSchema,
++  valueAtomic: z.string().regex(/^(0|[1-9][0-9]*)$/),
++  createdAt: z.string().datetime(),
++  expiresAt: z.string().datetime(),
++});
++
++export const TransactionVerificationStatusSchema = z.enum([
++  "verifying",
++  "confirmed",
++  "failed",
++  "reorged",
++]);
++
++const TransactionVerificationBaseSchema = z.strictObject({
++  intentId: z.string().uuid(),
++  requestId: z.string().uuid(),
++  txHash: Bytes32Schema,
++  checkedAt: z.string().datetime(),
++});
++
++export const TransactionVerificationV1Schema = z.discriminatedUnion("status", [
++  TransactionVerificationBaseSchema.extend({
++    status: z.literal("verifying"),
++    confirmations: z.number().int().nonnegative(),
++    blockNumber: z.number().int().nonnegative().nullable(),
++  }),
++  TransactionVerificationBaseSchema.extend({
++    status: z.literal("confirmed"),
++    confirmations: z.number().int().positive(),
++    blockNumber: z.number().int().nonnegative(),
++    eventName: z.string().min(1).max(96),
++  }),
++  TransactionVerificationBaseSchema.extend({
++    status: z.literal("failed"),
++    confirmations: z.number().int().nonnegative(),
++    blockNumber: z.number().int().nonnegative().nullable(),
++    errorCode: z.string().min(1).max(96),
++  }),
++  TransactionVerificationBaseSchema.extend({
++    status: z.literal("reorged"),
++    confirmations: z.literal(0),
++    blockNumber: z.number().int().nonnegative().nullable(),
++    errorCode: z.literal("CHAIN_REORG"),
++  }),
++]);
++
++export type TransactionIntentV1 = z.infer<typeof TransactionIntentV1Schema>;
++export type TransactionVerificationV1 = z.infer<
++  typeof TransactionVerificationV1Schema
++>;
+diff --git a/database/migrations/0003_phase2_lifecycle.sql b/database/migrations/0003_phase2_lifecycle.sql
+new file mode 100644
+index 0000000..86352f1
+--- /dev/null
++++ b/database/migrations/0003_phase2_lifecycle.sql
+@@ -0,0 +1,149 @@
++BEGIN;
++
++CREATE SCHEMA IF NOT EXISTS agent_market;
++SET LOCAL search_path TO agent_market, public;
++
++CREATE TABLE IF NOT EXISTS wallet_challenges (
++  id uuid PRIMARY KEY,
++  request_id uuid NOT NULL UNIQUE,
++  wallet_address text NOT NULL CHECK (wallet_address ~ '^0x[0-9a-f]{40}$'),
++  chain_id bigint NOT NULL CHECK (chain_id = 11155111),
++  nonce_hash bytea NOT NULL UNIQUE,
++  domain text NOT NULL,
++  uri text NOT NULL,
++  issued_at timestamptz NOT NULL,
++  expires_at timestamptz NOT NULL,
++  consumed_at timestamptz,
++  CHECK (expires_at > issued_at),
++  UNIQUE (request_id, wallet_address, chain_id)
++);
++
++CREATE TABLE IF NOT EXISTS wallet_sessions (
++  id uuid PRIMARY KEY,
++  request_id uuid NOT NULL UNIQUE,
++  wallet_address text NOT NULL CHECK (wallet_address ~ '^0x[0-9a-f]{40}$'),
++  chain_id bigint NOT NULL CHECK (chain_id = 11155111),
++  session_hash bytea NOT NULL UNIQUE,
++  issued_at timestamptz NOT NULL,
++  expires_at timestamptz NOT NULL,
++  recent_auth_at timestamptz NOT NULL,
++  revoked_at timestamptz,
++  CHECK (expires_at > issued_at),
++  FOREIGN KEY (request_id, wallet_address, chain_id)
++    REFERENCES wallet_challenges(request_id, wallet_address, chain_id)
++);
++
++CREATE TABLE IF NOT EXISTS idempotency_records (
++  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
++  actor_wallet text NOT NULL CHECK (actor_wallet ~ '^0x[0-9a-f]{40}$'),
++  command text NOT NULL,
++  resource_id text NOT NULL,
++  idempotency_key text NOT NULL,
++  request_id uuid NOT NULL UNIQUE,
++  response_status integer,
++  response_body jsonb,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  expires_at timestamptz NOT NULL,
++  UNIQUE (actor_wallet, command, resource_id, idempotency_key)
++);
++
++CREATE TABLE IF NOT EXISTS chain_transactions (
++  id uuid PRIMARY KEY,
++  intent_id uuid NOT NULL UNIQUE,
++  request_id uuid NOT NULL UNIQUE,
++  request_ref bytea NOT NULL UNIQUE CHECK (octet_length(request_ref) = 32),
++  chain_id bigint NOT NULL CHECK (chain_id = 11155111),
++  actor_wallet text NOT NULL CHECK (actor_wallet ~ '^0x[0-9a-f]{40}$'),
++  contract_address text NOT NULL CHECK (contract_address ~ '^0x[0-9a-f]{40}$'),
++  method text NOT NULL CHECK (method IN ('faucet','approve','createTask','assignAgent','acceptTask','submitWork','acceptWork','timeoutTask','openDispute','castVote','stake','unstake','claimYield')),
++  expected_value_atomic numeric(78, 0) NOT NULL DEFAULT 0 CHECK (expected_value_atomic >= 0),
++  transaction_hash text UNIQUE CHECK (transaction_hash IS NULL OR transaction_hash ~ '^0x[0-9a-f]{64}$'),
++  status text NOT NULL CHECK (status IN ('created', 'submitted', 'verifying', 'confirmed', 'failed', 'reorged')),
++  block_number bigint CHECK (block_number IS NULL OR block_number >= 0),
++  confirmations integer NOT NULL DEFAULT 0 CHECK (confirmations >= 0),
++  error_code text,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  checked_at timestamptz,
++  confirmed_at timestamptz,
++  CHECK (status != 'confirmed' OR (block_number IS NOT NULL AND confirmations > 0))
++);
++
++CREATE TABLE IF NOT EXISTS consumed_events (
++  event_id uuid NOT NULL,
++  request_id uuid NOT NULL,
++  consumer text NOT NULL,
++  processed_at timestamptz NOT NULL DEFAULT now(),
++  result_ref text,
++  PRIMARY KEY (consumer, event_id)
++);
++
++CREATE TABLE IF NOT EXISTS match_candidates (
++  match_job_id uuid NOT NULL,
++  agent_id uuid NOT NULL REFERENCES agents(id),
++  request_id uuid NOT NULL,
++  rank integer NOT NULL CHECK (rank BETWEEN 1 AND 3),
++  total_score numeric(8, 6) NOT NULL CHECK (total_score BETWEEN 0 AND 1),
++  component_scores jsonb NOT NULL,
++  explanation jsonb NOT NULL,
++  model_version text NOT NULL,
++  exploration boolean NOT NULL DEFAULT false,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  PRIMARY KEY (match_job_id, agent_id),
++  UNIQUE (match_job_id, rank)
++);
++
++CREATE TABLE IF NOT EXISTS match_feedback (
++  id uuid PRIMARY KEY,
++  event_id uuid NOT NULL UNIQUE,
++  request_id uuid NOT NULL,
++  match_job_id uuid NOT NULL,
++  agent_id uuid NOT NULL REFERENCES agents(id),
++  feedback_type text NOT NULL,
++  selected boolean,
++  occurred_at timestamptz NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS model_versions (
++  version text PRIMARY KEY,
++  training_run_id uuid NOT NULL UNIQUE,
++  algorithm text NOT NULL,
++  feature_order jsonb NOT NULL,
++  metrics jsonb NOT NULL,
++  model_hash text NOT NULL UNIQUE,
++  status text NOT NULL CHECK (status IN ('candidate', 'approved', 'rejected', 'active', 'retired')),
++  created_at timestamptz NOT NULL DEFAULT now(),
++  activated_at timestamptz
++);
++
++CREATE TABLE IF NOT EXISTS dlq_replay_audits (
++  replay_id uuid PRIMARY KEY,
++  original_event_id uuid NOT NULL,
++  request_id uuid NOT NULL,
++  idempotency_key text NOT NULL,
++  operator_wallet text NOT NULL CHECK (operator_wallet ~ '^0x[0-9a-f]{40}$'),
++  reason text NOT NULL,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  UNIQUE (original_event_id, idempotency_key)
++);
++
++ALTER TABLE agent_credentials
++  ADD COLUMN IF NOT EXISTS key_version integer NOT NULL DEFAULT 1 CHECK (key_version > 0),
++  ADD COLUMN IF NOT EXISTS public_prefix text,
++  ADD COLUMN IF NOT EXISTS last_four text CHECK (last_four IS NULL OR length(last_four) = 4);
++
++CREATE INDEX IF NOT EXISTS idx_wallet_sessions_active
++  ON wallet_sessions (wallet_address, expires_at DESC)
++  WHERE revoked_at IS NULL;
++
++CREATE INDEX IF NOT EXISTS idx_chain_transactions_reconcile
++  ON chain_transactions (status, checked_at)
++  WHERE status IN ('submitted', 'verifying', 'reorged');
++
++CREATE INDEX IF NOT EXISTS idx_match_candidates_request
++  ON match_candidates (request_id, rank);
++
++CREATE INDEX IF NOT EXISTS idx_match_feedback_training
++  ON match_feedback (occurred_at, feedback_type);
++
++COMMIT;
+diff --git a/apps/transaction-engine/src/persistence/schema.integration.test.ts b/apps/transaction-engine/src/persistence/schema.integration.test.ts
+new file mode 100644
+index 0000000..45b0d36
+--- /dev/null
++++ b/apps/transaction-engine/src/persistence/schema.integration.test.ts
+@@ -0,0 +1,52 @@
++import { readFileSync } from "node:fs";
++import { fileURLToPath } from "node:url";
++
++import { PGlite } from "@electric-sql/pglite";
++import { describe, expect, it } from "vitest";
++
++function migration(name: string): string {
++  return readFileSync(
++    fileURLToPath(new URL(`../../../../database/migrations/${name}`, import.meta.url)),
++    "utf8",
++  );
++}
++
++describe("PostgreSQL phase 2 migration", () => {
++  it("upgrades the V1 schema and can be safely applied again", async () => {
++    const database = new PGlite();
++    const pgliteCore = migration("0001_agent_market_core.sql")
++      .replace("CREATE EXTENSION IF NOT EXISTS vector;", "")
++      .replace("embedding vector(384)", "embedding text");
++    await database.exec(pgliteCore);
++    await database.exec(migration("0002_performance_observability.sql"));
++    await database.exec(migration("0003_phase2_lifecycle.sql"));
++    await database.exec(migration("0003_phase2_lifecycle.sql"));
++
++    const tables = await database.query<{ table_name: string }>(`
++      SELECT table_name
++      FROM information_schema.tables
++      WHERE table_schema = 'agent_market'
++      ORDER BY table_name
++    `);
++    const names = tables.rows.map(({ table_name }) => table_name);
++    expect(names).toContain("wallet_challenges");
++    expect(names).toContain("wallet_sessions");
++    expect(names).toContain("chain_transactions");
++    expect(names).toContain("model_versions");
++
++    await expect(database.exec(`
++      INSERT INTO agent_market.wallet_challenges (
++        id, request_id, wallet_address, chain_id, nonce_hash,
++        domain, uri, issued_at, expires_at
++      ) VALUES (
++        '0191f6f8-cb6b-7f31-81ad-c497d7d90101',
++        '0191f6f8-cb6b-7f31-81ad-c497d7d90102',
++        '0xAA11111111111111111111111111111111111111',
++        11155111, decode('12', 'hex'), 'example.test', 'https://example.test',
++        now(), now() + interval '5 minutes'
++      )
++    `)).rejects.toThrow();
++
++    await database.close();
++  });
++});

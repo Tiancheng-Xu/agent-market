@@ -1,63 +1,116 @@
 package ranking
 
-import "sort"
+import (
+	"bytes"
+	"crypto/sha256"
+	"fmt"
+	"sort"
+)
 
-type Candidate struct {
-	ID         string
-	RuleScore  float64
-	CTRScore   float64
-	IsNewcomer bool
-	Eligible   bool
+const (
+	SemanticWeight    = 0.30
+	QualityWeight     = 0.25
+	ReliabilityWeight = 0.15
+	PriceWeight       = 0.15
+	FreshnessWeight   = 0.15
+)
+
+type ComponentScores struct {
+	Semantic    float64 `json:"semantic"`
+	Quality     float64 `json:"quality"`
+	Reliability float64 `json:"reliability"`
+	Price       float64 `json:"price"`
+	Freshness   float64 `json:"freshness"`
 }
 
-func Select(candidates []Candidate, topCount int, explorationCount int) []Candidate {
+type Explanation struct {
+	Summary    string          `json:"summary"`
+	Components ComponentScores `json:"components"`
+	Newcomer   bool            `json:"newcomer"`
+}
+
+type Candidate struct {
+	ID           string
+	Semantic     float64
+	Quality      float64
+	Reliability  float64
+	Price        float64
+	Freshness    float64
+	IsNewcomer   bool
+	Eligible     bool
+	TotalScore   float64
+	Components   ComponentScores
+	Explanation  Explanation
+	ModelVersion string
+	Exploration  bool
+}
+
+// Select returns at most two highest-scoring eligible candidates followed by
+// one eligible newcomer not already present in the top set.
+func Select(candidates []Candidate, requestID string, modelVersion string) []Candidate {
 	eligible := make([]Candidate, 0, len(candidates))
 	for _, candidate := range candidates {
-		if candidate.Eligible {
-			eligible = append(eligible, candidate)
+		if !candidate.Eligible {
+			continue
 		}
+		eligible = append(eligible, scored(candidate, modelVersion))
 	}
-
-	sort.SliceStable(eligible, func(left, right int) bool {
-		leftScore := score(eligible[left])
-		rightScore := score(eligible[right])
-		if leftScore == rightScore {
-			return eligible[left].ID < eligible[right].ID
+	sort.Slice(eligible, func(left, right int) bool {
+		if eligible[left].TotalScore != eligible[right].TotalScore {
+			return eligible[left].TotalScore > eligible[right].TotalScore
 		}
-		return leftScore > rightScore
+		leftHash := stableHash(requestID, eligible[left].ID)
+		rightHash := stableHash(requestID, eligible[right].ID)
+		if comparison := bytes.Compare(leftHash[:], rightHash[:]); comparison != 0 {
+			return comparison < 0
+		}
+		return eligible[left].ID < eligible[right].ID
 	})
 
-	if topCount < 0 {
-		topCount = 0
-	}
-	if topCount > len(eligible) {
-		topCount = len(eligible)
-	}
-
+	topCount := min(2, len(eligible))
 	selected := append([]Candidate(nil), eligible[:topCount]...)
 	selectedIDs := make(map[string]struct{}, len(selected))
 	for _, candidate := range selected {
 		selectedIDs[candidate.ID] = struct{}{}
 	}
-
-	for _, candidate := range eligible {
-		if explorationCount <= 0 {
-			break
-		}
+	for _, candidate := range eligible[topCount:] {
 		if !candidate.IsNewcomer {
 			continue
 		}
 		if _, exists := selectedIDs[candidate.ID]; exists {
 			continue
 		}
+		candidate.Exploration = true
 		selected = append(selected, candidate)
-		selectedIDs[candidate.ID] = struct{}{}
-		explorationCount--
+		break
 	}
-
 	return selected
 }
 
-func score(candidate Candidate) float64 {
-	return candidate.RuleScore*0.7 + candidate.CTRScore*0.3
+func scored(candidate Candidate, modelVersion string) Candidate {
+	candidate.Components = ComponentScores{
+		Semantic: clamp(candidate.Semantic), Quality: clamp(candidate.Quality),
+		Reliability: clamp(candidate.Reliability), Price: clamp(candidate.Price), Freshness: clamp(candidate.Freshness),
+	}
+	candidate.TotalScore = clamp(candidate.Components.Semantic*SemanticWeight + candidate.Components.Quality*QualityWeight + candidate.Components.Reliability*ReliabilityWeight + candidate.Components.Price*PriceWeight + candidate.Components.Freshness*FreshnessWeight)
+	candidate.ModelVersion = modelVersion
+	candidate.Explanation = Explanation{
+		Summary:    fmt.Sprintf("weighted score %.6f from semantic, quality, reliability, price, and freshness", candidate.TotalScore),
+		Components: candidate.Components, Newcomer: candidate.IsNewcomer,
+	}
+	return candidate
+}
+
+func clamp(value float64) float64 {
+	if value < 0 {
+		return 0
+	}
+	if value > 1 {
+		return 1
+	}
+	return value
+}
+
+func stableHash(requestID string, agentID string) [32]byte {
+	return sha256.Sum256([]byte(requestID + "\x00" + agentID))
 }

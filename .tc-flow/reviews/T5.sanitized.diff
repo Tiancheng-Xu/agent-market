@@ -1,0 +1,1100 @@
+diff --git a/services/matcher-go/cmd/matcher/main.go b/services/matcher-go/cmd/matcher/main.go
+index 3410f11..6b64996 100644
+--- a/services/matcher-go/cmd/matcher/main.go
++++ b/services/matcher-go/cmd/matcher/main.go
+@@ -1,24 +1,45 @@
+ package main
+
+ import (
+-	"encoding/json"
++	"context"
+	"log"
+	"os"
+
+-	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/contracts"
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/handler"
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/store"
++	"github.com/aws/aws-lambda-go/events"
++	"github.com/aws/aws-lambda-go/lambda"
++	"github.com/jackc/pgx/v5/pgxpool"
+ )
+
++type messageHandler interface {
++	HandleMessage(context.Context, string) (store.ProcessResult, error)
++}
++
++func handleBatch(ctx context.Context, event events.SQSEvent, sqsHandler messageHandler) events.SQSEventResponse {
++	response := events.SQSEventResponse{}
++	for _, message := range event.Records {
++		if _, err := sqsHandler.HandleMessage(ctx, message.Body); err != nil {
++			log.Printf("matcher message %q failed: %v", message.MessageId, err)
++			response.BatchItemFailures = append(response.BatchItemFailures, events.SQSBatchItemFailure{ItemIdentifier: message.MessageId})
++		}
++	}
++	return response
++}
++
+ func main() {
+-	event, err := contracts.DecodeMatchRequested(os.Stdin)
++	databaseURL := os.Getenv("DATABASE_URL")
++	if databaseURL == "" {
++		log.Fatal("DATABASE_URL is required")
++	}
++	pool, err := pgxpool.New(context.Background(), databaseURL)
+	if err != nil {
+-		log.Fatal(err)
++		log.Fatalf("configure PostgreSQL pool: %v", err)
+	}
++	defer pool.Close()
+
+-	if err := json.NewEncoder(os.Stdout).Encode(map[string]string{
+-		"requestId":  event.RequestID,
+-		"matchJobId": event.MatchJobID,
+-		"status":     "accepted",
+-	}); err != nil {
+-		log.Fatal(err)
+-	}
++	sqsHandler := handler.NewSQS(store.NewPostgres(pool, store.DefaultRecallLimit))
++	lambda.Start(func(ctx context.Context, event events.SQSEvent) (events.SQSEventResponse, error) {
++		return handleBatch(ctx, event, sqsHandler), nil
++	})
+ }
+diff --git a/services/matcher-go/go.mod b/services/matcher-go/go.mod
+index e099f30..5b9296e 100644
+--- a/services/matcher-go/go.mod
++++ b/services/matcher-go/go.mod
+@@ -2,4 +2,15 @@ module github.com/Tiancheng-Xu/agent-market/services/matcher-go
+
+ go 1.26.5
+
+-require github.com/google/go-cmp v0.7.0 // indirect
++require (
++	github.com/aws/aws-lambda-go v1.54.0
++	github.com/jackc/pgx/v5 v5.10.0
++)
++
++require (
++	github.com/jackc/pgpassfile v1.0.0 // indirect
++	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
++	github.com/jackc/puddle/v2 v2.2.2 // indirect
++	golang.org/x/sync v0.17.0 // indirect
++	golang.org/x/text v0.29.0 // indirect
++)
+diff --git a/services/matcher-go/go.sum b/services/matcher-go/go.sum
+index 40e761a..d21a27d 100644
+--- a/services/matcher-go/go.sum
++++ b/services/matcher-go/go.sum
+@@ -1,2 +1,28 @@
+-github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
+-github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
++github.com/aws/aws-lambda-go v1.54.0 h1:EGYpdyRGF88xszqlGcBewz811mJeRS+maNlLZXFheII=
++github.com/aws/aws-lambda-go v1.54.0/go.mod h1:dpMpZgvWx5vuQJfBt0zqBha60q7Dd7RfgJv23DymV8A=
++github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
++github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
++github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
++github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
++github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=
++github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 h1:iCEnooe7UlwOQYpKFhBabPMi4aNAfoODPEFNiAnClxo=
++github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761/go.mod h1:5TJZWKEWniPve33vlWYSoGYefn3gLQRzjfDlhSJ9ZKM=
++github.com/jackc/pgx/v5 v5.10.0 h1:VhSvgU2jSli8o3AqIEOTJr7rZwAEUVo4E4XhR94Zfr0=
++github.com/jackc/pgx/v5 v5.10.0/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=
++github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo=
++github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
++github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
++github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
++github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
++github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
++github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
++github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
++github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
++golang.org/x/sync v0.17.0 h1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=
++golang.org/x/sync v0.17.0/go.mod h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=
++golang.org/x/text v0.29.0 h1:1neNs90w9YzJ9BocxfsQNHKuAT4pkghyXc4nhZ6sJvk=
++golang.org/x/text v0.29.0/go.mod h1:7MhJOA9CD2qZyOKYazxdYMF85OwPdEr9jTtBpO7ydH4=
++gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
++gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
++gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
++gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+diff --git a/services/matcher-go/internal/ranking/rank.go b/services/matcher-go/internal/ranking/rank.go
+index ec8487e..ec447a9 100644
+--- a/services/matcher-go/internal/ranking/rank.go
++++ b/services/matcher-go/internal/ranking/rank.go
+@@ -1,63 +1,116 @@
+ package ranking
+
+-import "sort"
++import (
++	"bytes"
++	"crypto/sha256"
++	"fmt"
++	"sort"
++)
++
++const (
++	SemanticWeight    = 0.30
++	QualityWeight     = 0.25
++	ReliabilityWeight = 0.15
++	PriceWeight       = 0.15
++	FreshnessWeight   = 0.15
++)
++
++type ComponentScores struct {
++	Semantic    float64 `json:"semantic"`
++	Quality     float64 `json:"quality"`
++	Reliability float64 `json:"reliability"`
++	Price       float64 `json:"price"`
++	Freshness   float64 `json:"freshness"`
++}
++
++type Explanation struct {
++	Summary    string          `json:"summary"`
++	Components ComponentScores `json:"components"`
++	Newcomer   bool            `json:"newcomer"`
++}
+
+ type Candidate struct {
+-	ID         string
+-	RuleScore  float64
+-	CTRScore   float64
+-	IsNewcomer bool
+-	Eligible   bool
++	ID           string
++	Semantic     float64
++	Quality      float64
++	Reliability  float64
++	Price        float64
++	Freshness    float64
++	IsNewcomer   bool
++	Eligible     bool
++	TotalScore   float64
++	Components   ComponentScores
++	Explanation  Explanation
++	ModelVersion string
++	Exploration  bool
+ }
+
+-func Select(candidates []Candidate, topCount int, explorationCount int) []Candidate {
++// Select returns at most two highest-scoring eligible candidates followed by
++// one eligible newcomer not already present in the top set.
++func Select(candidates []Candidate, requestID string, modelVersion string) []Candidate {
+	eligible := make([]Candidate, 0, len(candidates))
+	for _, candidate := range candidates {
+-		if candidate.Eligible {
+-			eligible = append(eligible, candidate)
++		if !candidate.Eligible {
++			continue
+		}
++		eligible = append(eligible, scored(candidate, modelVersion))
+	}
+-
+-	sort.SliceStable(eligible, func(left, right int) bool {
+-		leftScore := score(eligible[left])
+-		rightScore := score(eligible[right])
+-		if leftScore == rightScore {
+-			return eligible[left].ID < eligible[right].ID
++	sort.Slice(eligible, func(left, right int) bool {
++		if eligible[left].TotalScore != eligible[right].TotalScore {
++			return eligible[left].TotalScore > eligible[right].TotalScore
++		}
++		leftHash := stableHash(requestID, eligible[left].ID)
++		rightHash := stableHash(requestID, eligible[right].ID)
++		if comparison := bytes.Compare(leftHash[:], rightHash[:]); comparison != 0 {
++			return comparison < 0
+		}
+-		return leftScore > rightScore
++		return eligible[left].ID < eligible[right].ID
+	})
+
+-	if topCount < 0 {
+-		topCount = 0
+-	}
+-	if topCount > len(eligible) {
+-		topCount = len(eligible)
+-	}
+-
++	topCount := min(2, len(eligible))
+	selected := append([]Candidate(nil), eligible[:topCount]...)
+	selectedIDs := make(map[string]struct{}, len(selected))
+	for _, candidate := range selected {
+		selectedIDs[candidate.ID] = struct{}{}
+	}
+-
+-	for _, candidate := range eligible {
+-		if explorationCount <= 0 {
+-			break
+-		}
++	for _, candidate := range eligible[topCount:] {
+		if !candidate.IsNewcomer {
+			continue
+		}
+		if _, exists := selectedIDs[candidate.ID]; exists {
+			continue
+		}
++		candidate.Exploration = true
+		selected = append(selected, candidate)
+-		selectedIDs[candidate.ID] = struct{}{}
+-		explorationCount--
++		break
+	}
+-
+	return selected
+ }
+
+-func score(candidate Candidate) float64 {
+-	return candidate.RuleScore*0.7 + candidate.CTRScore*0.3
++func scored(candidate Candidate, modelVersion string) Candidate {
++	candidate.Components = ComponentScores{
++		Semantic: clamp(candidate.Semantic), Quality: clamp(candidate.Quality),
++		Reliability: clamp(candidate.Reliability), Price: clamp(candidate.Price), Freshness: clamp(candidate.Freshness),
++	}
++	candidate.TotalScore = clamp(candidate.Components.Semantic*SemanticWeight + candidate.Components.Quality*QualityWeight + candidate.Components.Reliability*ReliabilityWeight + candidate.Components.Price*PriceWeight + candidate.Components.Freshness*FreshnessWeight)
++	candidate.ModelVersion = modelVersion
++	candidate.Explanation = Explanation{
++		Summary:    fmt.Sprintf("weighted score %.6f from semantic, quality, reliability, price, and freshness", candidate.TotalScore),
++		Components: candidate.Components, Newcomer: candidate.IsNewcomer,
++	}
++	return candidate
++}
++
++func clamp(value float64) float64 {
++	if value < 0 {
++		return 0
++	}
++	if value > 1 {
++		return 1
++	}
++	return value
++}
++
++func stableHash(requestID string, agentID string) [32]byte {
++	return sha256.Sum256([]byte(requestID + "\x00" + agentID))
+ }
+diff --git a/services/matcher-go/internal/ranking/rank_test.go b/services/matcher-go/internal/ranking/rank_test.go
+index 74faf2c..fec26f4 100644
+--- a/services/matcher-go/internal/ranking/rank_test.go
++++ b/services/matcher-go/internal/ranking/rank_test.go
+@@ -1,22 +1,64 @@
+ package ranking
+
+ import (
++	"math"
++	"reflect"
+	"testing"
+-
+-	"github.com/google/go-cmp/cmp"
+ )
+
+-func TestSelectReturnsTwoTopAndOneNewcomer(t *testing.T) {
++func TestSelectUsesFixedWeightsAndClampsScores(t *testing.T) {
++	selected := Select([]Candidate{{ID: "agent-a", Semantic: 2, Quality: 0.8, Reliability: 0.6, Price: 0.4, Freshness: -1, Eligible: true}}, "request-a", "model-v1")
++	if len(selected) != 1 {
++		t.Fatalf("selected count = %d, want 1", len(selected))
++	}
++	want := 1*0.30 + 0.8*0.25 + 0.6*0.15 + 0.4*0.15
++	if math.Abs(selected[0].TotalScore-want) > 1e-12 {
++		t.Fatalf("total score = %f, want %f", selected[0].TotalScore, want)
++	}
++	if selected[0].Components.Semantic != 1 || selected[0].Components.Freshness != 0 {
++		t.Fatalf("component scores were not clamped: %#v", selected[0].Components)
++	}
++	if selected[0].ModelVersion != "model-v1" || selected[0].Explanation.Summary == "" {
++		t.Fatalf("missing output metadata: %#v", selected[0])
++	}
++}
++
++func TestSelectReturnsTwoTopAndOneDistinctNewcomer(t *testing.T) {
+	candidates := []Candidate{
+-		{ID: "a", RuleScore: 0.9, CTRScore: 0.8, Eligible: true},
+-		{ID: "b", RuleScore: 0.8, CTRScore: 0.7, Eligible: true},
+-		{ID: "c", RuleScore: 0.7, CTRScore: 0.6, Eligible: true, IsNewcomer: true},
+-		{ID: "d", RuleScore: 1.0, CTRScore: 1.0, Eligible: false},
++		{ID: "top-new", Semantic: 1, Quality: 1, Reliability: 1, Price: 1, Freshness: 1, IsNewcomer: true, Eligible: true},
++		{ID: "top-old", Semantic: .9, Quality: .9, Reliability: .9, Price: .9, Freshness: .9, Eligible: true},
++		{ID: "explore", Semantic: .5, Quality: .5, Reliability: .5, Price: .5, Freshness: .5, IsNewcomer: true, Eligible: true},
++		{ID: "ineligible", Semantic: 1, Quality: 1, Reliability: 1, Price: 1, Freshness: 1, IsNewcomer: true, Eligible: false},
++	}
++	got := Select(candidates, "request-a", "model-v1")
++	want := []string{"top-new", "top-old", "explore"}
++	if !reflect.DeepEqual(candidateIDs(got), want) {
++		t.Fatalf("ids = %v, want %v", candidateIDs(got), want)
+	}
++	if got[0].Exploration || got[1].Exploration || !got[2].Exploration {
++		t.Fatalf("unexpected exploration flags: %#v", got)
++	}
++}
++
++func TestSelectIsDeterministicForTies(t *testing.T) {
++	candidates := []Candidate{
++		{ID: "a", Semantic: .5, Quality: .5, Reliability: .5, Price: .5, Freshness: .5, Eligible: true},
++		{ID: "b", Semantic: .5, Quality: .5, Reliability: .5, Price: .5, Freshness: .5, Eligible: true},
++		{ID: "c", Semantic: .5, Quality: .5, Reliability: .5, Price: .5, Freshness: .5, IsNewcomer: true, Eligible: true},
++	}
++	first := candidateIDs(Select(candidates, "request-stable", "model-v1"))
++	for range 10 {
++		if got := candidateIDs(Select(candidates, "request-stable", "model-v1")); !reflect.DeepEqual(got, first) {
++			t.Fatalf("non-deterministic order: first %v, got %v", first, got)
++		}
++	}
++}
+
+-	got := Select(candidates, 2, 1)
+-	if diff := cmp.Diff([]string{"a", "b", "c"}, candidateIDs(got)); diff != "" {
+-		t.Fatalf("unexpected selected ids (-want +got):\n%s", diff)
++func TestSelectReturnsActualCountWithoutPadding(t *testing.T) {
++	got := Select([]Candidate{{ID: "only", Semantic: .5, Eligible: true}}, "request-a", "model-v1")
++	want := []string{"only"}
++	if !reflect.DeepEqual(candidateIDs(got), want) {
++		t.Fatalf("ids = %v, want %v", candidateIDs(got), want)
+	}
+ }
+
+diff --git a/apps/transaction-engine/src/persistence/matcher-schema.test.ts b/apps/transaction-engine/src/persistence/matcher-schema.test.ts
+new file mode 100644
+index 0000000..09f70d9
+--- /dev/null
++++ b/apps/transaction-engine/src/persistence/matcher-schema.test.ts
+@@ -0,0 +1,27 @@
++import { readFileSync } from "node:fs";
++import { fileURLToPath } from "node:url";
++
++import { describe, expect, it } from "vitest";
++
++const sql = readFileSync(fileURLToPath(
++  new URL("../../../../database/migrations/0005_matcher_profile.sql", import.meta.url),
++), "utf8").toLowerCase();
++
++describe("matcher profile schema", () => {
++  it("adds task embeddings, bounded agent features, and a partial HNSW recall index", () => {
++    expect(sql).toContain("add column if not exists embedding vector(384)");
++    expect(sql).toContain("add column if not exists available boolean");
++    expect(sql).toContain("add column if not exists minimum_budget_atomic");
++    expect(sql).toContain("quality_score between 0 and 1");
++    expect(sql).toContain("reliability_score between 0 and 1");
++    expect(sql).toContain("price_score between 0 and 1");
++    expect(sql).toContain("freshness_score between 0 and 1");
++    expect(sql).toContain("using hnsw (embedding vector_cosine_ops)");
++  });
++
++  it("keeps database task states aligned with the phase 2 domain lifecycle", () => {
++    for (const status of ["funding_pending", "funded", "disputed", "settled", "refunded"]) {
++      expect(sql).toContain(`'${status}'`);
++    }
++  });
++});
+diff --git a/database/migrations/0005_matcher_profile.sql b/database/migrations/0005_matcher_profile.sql
+new file mode 100644
+index 0000000..9837620
+--- /dev/null
++++ b/database/migrations/0005_matcher_profile.sql
+@@ -0,0 +1,70 @@
++BEGIN;
++
++CREATE SCHEMA IF NOT EXISTS agent_market;
++SET LOCAL search_path TO agent_market, public;
++
++ALTER TABLE tasks
++  ADD COLUMN IF NOT EXISTS embedding vector(384);
++
++ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_status_check;
++ALTER TABLE tasks
++  ADD CONSTRAINT tasks_status_check CHECK (status IN (
++    'open', 'funding_pending', 'funded', 'matching', 'assigned',
++    'in_progress', 'submitted', 'accepted', 'disputed', 'settled',
++    'refunded', 'cancelled'
++  ));
++
++ALTER TABLE agents
++  ADD COLUMN IF NOT EXISTS available boolean NOT NULL DEFAULT true,
++  ADD COLUMN IF NOT EXISTS minimum_budget_atomic numeric(78, 0) NOT NULL DEFAULT 0,
++  ADD COLUMN IF NOT EXISTS quality_score numeric(7, 6) NOT NULL DEFAULT 0.5,
++  ADD COLUMN IF NOT EXISTS reliability_score numeric(7, 6) NOT NULL DEFAULT 0.5,
++  ADD COLUMN IF NOT EXISTS price_score numeric(7, 6) NOT NULL DEFAULT 0.5,
++  ADD COLUMN IF NOT EXISTS freshness_score numeric(7, 6) NOT NULL DEFAULT 0.5,
++  ADD COLUMN IF NOT EXISTS completed_tasks integer NOT NULL DEFAULT 0;
++
++DO $$
++BEGIN
++  IF NOT EXISTS (
++    SELECT 1 FROM pg_constraint
++    WHERE conname = 'agents_matcher_scores_range'
++      AND conrelid = 'agent_market.agents'::regclass
++  ) THEN
++    ALTER TABLE agents ADD CONSTRAINT agents_matcher_scores_range CHECK (
++      minimum_budget_atomic >= 0
++      AND quality_score BETWEEN 0 AND 1
++      AND reliability_score BETWEEN 0 AND 1
++      AND price_score BETWEEN 0 AND 1
++      AND freshness_score BETWEEN 0 AND 1
++      AND completed_tasks >= 0
++    );
++  END IF;
++
++  IF NOT EXISTS (
++    SELECT 1 FROM pg_constraint
++    WHERE conname = 'agents_embedding_nonzero'
++      AND conrelid = 'agent_market.agents'::regclass
++  ) THEN
++    ALTER TABLE agents ADD CONSTRAINT agents_embedding_nonzero
++      CHECK (embedding IS NULL OR vector_norm(embedding) > 0);
++  END IF;
++
++  IF NOT EXISTS (
++    SELECT 1 FROM pg_constraint
++    WHERE conname = 'tasks_embedding_nonzero'
++      AND conrelid = 'agent_market.tasks'::regclass
++  ) THEN
++    ALTER TABLE tasks ADD CONSTRAINT tasks_embedding_nonzero
++      CHECK (embedding IS NULL OR vector_norm(embedding) > 0);
++  END IF;
++END $$;
++
++CREATE INDEX IF NOT EXISTS idx_agents_embedding_hnsw
++  ON agents USING hnsw (embedding vector_cosine_ops)
++  WHERE status = 'active' AND available = true AND embedding IS NOT NULL AND vector_norm(embedding) > 0;
++
++CREATE INDEX IF NOT EXISTS idx_tasks_embedding_ready
++  ON tasks (id)
++  WHERE embedding IS NOT NULL AND status IN ('open', 'funded', 'matching');
++
++COMMIT;
+diff --git a/services/matcher-go/cmd/matcher/main_test.go b/services/matcher-go/cmd/matcher/main_test.go
+new file mode 100644
+index 0000000..c7fc88b
+--- /dev/null
++++ b/services/matcher-go/cmd/matcher/main_test.go
+@@ -0,0 +1,31 @@
++package main
++
++import (
++	"context"
++	"errors"
++	"testing"
++
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/store"
++	"github.com/aws/aws-lambda-go/events"
++)
++
++type batchHandler struct{ failures map[string]bool }
++
++func (handler batchHandler) HandleMessage(_ context.Context, body string) (store.ProcessResult, error) {
++	if handler.failures[body] {
++		return store.ProcessResult{}, errors.New("failed")
++	}
++	return store.ProcessResult{}, nil
++}
++
++func TestHandleBatchReportsOnlyFailedMessages(t *testing.T) {
++	event := events.SQSEvent{Records: []events.SQSMessage{
++		{MessageId: "ok-1", Body: "ok"},
++		{MessageId: "bad-1", Body: "bad"},
++		{MessageId: "ok-2", Body: "ok"},
++	}}
++	response := handleBatch(context.Background(), event, batchHandler{failures: map[string]bool{"bad": true}})
++	if len(response.BatchItemFailures) != 1 || response.BatchItemFailures[0].ItemIdentifier != "bad-1" {
++		t.Fatalf("unexpected partial batch response: %#v", response)
++	}
++}
+diff --git a/services/matcher-go/internal/handler/sqs.go b/services/matcher-go/internal/handler/sqs.go
+new file mode 100644
+index 0000000..ae3aa7d
+--- /dev/null
++++ b/services/matcher-go/internal/handler/sqs.go
+@@ -0,0 +1,45 @@
++package handler
++
++import (
++	"context"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"strings"
++
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/contracts"
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/store"
++)
++
++var ErrPoisonMessage = errors.New("poison SQS message")
++
++type Processor interface {
++	Process(context.Context, contracts.MatchRequestedV1) (store.ProcessResult, error)
++}
++
++type SQS struct{ processor Processor }
++
++func NewSQS(processor Processor) *SQS { return &SQS{processor: processor} }
++
++func (handler *SQS) HandleMessage(ctx context.Context, body string) (store.ProcessResult, error) {
++	if len(body) > 256*1024 {
++		return store.ProcessResult{}, fmt.Errorf("%w: body too large", ErrPoisonMessage)
++	}
++	event, err := contracts.DecodeMatchRequested(strings.NewReader(body))
++	if err != nil {
++		var envelope struct {
++			Message string `json:"Message"`
++		}
++		if envelopeErr := json.Unmarshal([]byte(body), &envelope); envelopeErr == nil && envelope.Message != "" {
++			event, err = contracts.DecodeMatchRequested(strings.NewReader(envelope.Message))
++		}
++	}
++	if err != nil {
++		return store.ProcessResult{}, fmt.Errorf("%w: %v", ErrPoisonMessage, err)
++	}
++	result, err := handler.processor.Process(ctx, event)
++	if err != nil {
++		return store.ProcessResult{}, fmt.Errorf("process SQS match event: %w", err)
++	}
++	return result, nil
++}
+diff --git a/services/matcher-go/internal/handler/sqs_test.go b/services/matcher-go/internal/handler/sqs_test.go
+new file mode 100644
+index 0000000..5bc6efb
+--- /dev/null
++++ b/services/matcher-go/internal/handler/sqs_test.go
+@@ -0,0 +1,61 @@
++package handler
++
++import (
++	"context"
++	"encoding/json"
++	"errors"
++	"testing"
++
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/contracts"
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/store"
++)
++
++const validBody = `{"eventId":"018f3f50-7b2d-7cc1-98f5-9ab68e75a211","type":"match.requested.v1","occurredAt":"2026-08-20T12:00:00Z","requestId":"018f3f50-7b2d-7cc1-98f5-9ab68e75a212","matchJobId":"018f3f50-7b2d-7cc1-98f5-9ab68e75a213","taskId":"018f3f50-7b2d-7cc1-98f5-9ab68e75a214","modelVersion":"baseline-v1"}`
++
++func TestHandleMessageRejectsPoisonBodyWithRecognizableError(t *testing.T) {
++	handler := NewSQS(&fakeProcessor{})
++	_, err := handler.HandleMessage(context.Background(), `{"type":"match.requested.v1","unexpected":true}`)
++	if !errors.Is(err, ErrPoisonMessage) {
++		t.Fatalf("error = %v, want ErrPoisonMessage", err)
++	}
++}
++
++func TestHandleMessagePreservesDuplicateResult(t *testing.T) {
++	processor := &fakeProcessor{result: store.ProcessResult{Duplicate: true}}
++	result, err := NewSQS(processor).HandleMessage(context.Background(), validBody)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !result.Duplicate || processor.calls != 1 {
++		t.Fatalf("result = %#v, processor calls = %d", result, processor.calls)
++	}
++}
++
++func TestHandleMessageAcceptsStandardSNSEnvelope(t *testing.T) {
++	body, _ := json.Marshal(map[string]any{"Type": "Notification", "Message": validBody})
++	processor := &fakeProcessor{}
++	if _, err := NewSQS(processor).HandleMessage(context.Background(), string(body)); err != nil {
++		t.Fatal(err)
++	}
++	if processor.calls != 1 {
++		t.Fatalf("processor calls = %d", processor.calls)
++	}
++}
++
++func TestHandleMessageDoesNotClassifyDatabaseFailureAsPoison(t *testing.T) {
++	_, err := NewSQS(&fakeProcessor{err: errors.New("database unavailable")}).HandleMessage(context.Background(), validBody)
++	if err == nil || errors.Is(err, ErrPoisonMessage) {
++		t.Fatalf("error = %v, want retryable processing error", err)
++	}
++}
++
++type fakeProcessor struct {
++	result store.ProcessResult
++	err    error
++	calls  int
++}
++
++func (processor *fakeProcessor) Process(context.Context, contracts.MatchRequestedV1) (store.ProcessResult, error) {
++	processor.calls++
++	return processor.result, processor.err
++}
+diff --git a/services/matcher-go/internal/store/postgres.go b/services/matcher-go/internal/store/postgres.go
+new file mode 100644
+index 0000000..f6406c5
+--- /dev/null
++++ b/services/matcher-go/internal/store/postgres.go
+@@ -0,0 +1,198 @@
++package store
++
++import (
++	"context"
++	"encoding/json"
++	"errors"
++	"fmt"
++
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/contracts"
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/ranking"
++	"github.com/jackc/pgx/v5"
++	"github.com/jackc/pgx/v5/pgconn"
++	"github.com/jackc/pgx/v5/pgxpool"
++)
++
++const (
++	ConsumerName       = "matcher-go"
++	DefaultRecallLimit = 50
++	MaxRecallLimit     = 100
++)
++
++const claimEventSQL = `
++INSERT INTO agent_market.consumed_events (event_id, request_id, consumer)
++VALUES ($1, $2, $3)
++ON CONFLICT (consumer, event_id) DO NOTHING`
++
++const validateTaskSQL = `
++SELECT EXISTS (
++  SELECT 1 FROM agent_market.tasks
++  WHERE id = $1 AND request_id = $2 AND embedding IS NOT NULL AND vector_norm(embedding) > 0
++)`
++
++const recallSQL = `
++WITH target AS MATERIALIZED (
++  SELECT embedding, requirements, budget_atomic
++  FROM agent_market.tasks
++  WHERE id = $1 AND request_id = $2
++    AND embedding IS NOT NULL AND vector_norm(embedding) > 0
++), eligible AS MATERIALIZED (
++  SELECT a.*, t.embedding AS task_embedding
++  FROM target AS t
++  JOIN agent_market.agents AS a ON TRUE
++  WHERE a.status = 'active'
++    AND a.available = TRUE
++    AND a.embedding IS NOT NULL
++    AND vector_norm(a.embedding) > 0
++    AND a.capabilities @> t.requirements
++    AND t.budget_atomic >= a.minimum_budget_atomic
++)
++SELECT
++  id::text,
++  (1 - (embedding <=> task_embedding))::double precision AS semantic_score,
++  quality_score::double precision,
++  reliability_score::double precision,
++  price_score::double precision,
++  freshness_score::double precision,
++  (completed_tasks = 0) AS is_newcomer
++FROM eligible
++ORDER BY embedding <=> task_embedding, id
++LIMIT $3`
++
++const persistCandidateSQL = `
++INSERT INTO agent_market.match_candidates (
++  match_job_id, agent_id, request_id, rank, total_score,
++  component_scores, explanation, model_version, exploration
++) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
++
++type ProcessResult struct {
++	Duplicate  bool
++	Candidates []ranking.Candidate
++}
++
++type rowIterator interface {
++	Close()
++	Err() error
++	Next() bool
++	Scan(dest ...any) error
++}
++
++type transaction interface {
++	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
++	Query(context.Context, string, ...any) (rowIterator, error)
++	QueryRow(context.Context, string, ...any) pgx.Row
++	Commit(context.Context) error
++	Rollback(context.Context) error
++}
++
++type pgxTransaction struct{ pgx.Tx }
++
++func (transaction pgxTransaction) Query(ctx context.Context, sql string, arguments ...any) (rowIterator, error) {
++	return transaction.Tx.Query(ctx, sql, arguments...)
++}
++
++func (transaction pgxTransaction) QueryRow(ctx context.Context, sql string, arguments ...any) pgx.Row {
++	return transaction.Tx.QueryRow(ctx, sql, arguments...)
++}
++
++var ErrTaskRequestMismatch = errors.New("task and request do not match or task embedding is invalid")
++
++type Postgres struct {
++	begin       func(context.Context) (transaction, error)
++	recallLimit int
++}
++
++func NewPostgres(pool *pgxpool.Pool, recallLimit int) *Postgres {
++	if recallLimit <= 0 {
++		recallLimit = DefaultRecallLimit
++	}
++	if recallLimit > MaxRecallLimit {
++		recallLimit = MaxRecallLimit
++	}
++	return &Postgres{
++		begin: func(ctx context.Context) (transaction, error) {
++			tx, err := pool.Begin(ctx)
++			if err != nil {
++				return nil, err
++			}
++			return pgxTransaction{Tx: tx}, nil
++		},
++		recallLimit: recallLimit,
++	}
++}
++
++func (postgres *Postgres) Process(ctx context.Context, event contracts.MatchRequestedV1) (result ProcessResult, err error) {
++	tx, err := postgres.begin(ctx)
++	if err != nil {
++		return ProcessResult{}, fmt.Errorf("begin matcher transaction: %w", err)
++	}
++	defer func() {
++		if err != nil {
++			_ = tx.Rollback(ctx)
++		}
++	}()
++
++	claim, err := tx.Exec(ctx, claimEventSQL, event.EventID, event.RequestID, ConsumerName)
++	if err != nil {
++		return ProcessResult{}, fmt.Errorf("claim match event: %w", err)
++	}
++	if claim.RowsAffected() == 0 {
++		if err = tx.Commit(ctx); err != nil {
++			return ProcessResult{}, fmt.Errorf("commit duplicate match event: %w", err)
++		}
++		return ProcessResult{Duplicate: true}, nil
++	}
++	var taskValid bool
++	if err = tx.QueryRow(ctx, validateTaskSQL, event.TaskID, event.RequestID).Scan(&taskValid); err != nil {
++		return ProcessResult{}, fmt.Errorf("validate match task: %w", err)
++	}
++	if !taskValid {
++		return ProcessResult{}, ErrTaskRequestMismatch
++	}
++
++	rows, err := tx.Query(ctx, recallSQL, event.TaskID, event.RequestID, postgres.recallLimit)
++	if err != nil {
++		return ProcessResult{}, fmt.Errorf("recall match candidates: %w", err)
++	}
++	candidates, err := scanCandidates(rows)
++	if err != nil {
++		return ProcessResult{}, err
++	}
++	selected := ranking.Select(candidates, event.RequestID, event.ModelVersion)
++
++	for index, candidate := range selected {
++		componentScores, marshalErr := json.Marshal(candidate.Components)
++		if marshalErr != nil {
++			return ProcessResult{}, fmt.Errorf("marshal component scores: %w", marshalErr)
++		}
++		explanation, marshalErr := json.Marshal(candidate.Explanation)
++		if marshalErr != nil {
++			return ProcessResult{}, fmt.Errorf("marshal explanation: %w", marshalErr)
++		}
++		if _, err = tx.Exec(ctx, persistCandidateSQL, event.MatchJobID, candidate.ID, event.RequestID, index+1, candidate.TotalScore, componentScores, explanation, candidate.ModelVersion, candidate.Exploration); err != nil {
++			return ProcessResult{}, fmt.Errorf("persist match candidate: %w", err)
++		}
++	}
++	if err = tx.Commit(ctx); err != nil {
++		return ProcessResult{}, fmt.Errorf("commit matcher transaction: %w", err)
++	}
++	return ProcessResult{Candidates: selected}, nil
++}
++
++func scanCandidates(rows rowIterator) ([]ranking.Candidate, error) {
++	defer rows.Close()
++	candidates := make([]ranking.Candidate, 0)
++	for rows.Next() {
++		candidate := ranking.Candidate{Eligible: true}
++		if err := rows.Scan(&candidate.ID, &candidate.Semantic, &candidate.Quality, &candidate.Reliability, &candidate.Price, &candidate.Freshness, &candidate.IsNewcomer); err != nil {
++			return nil, fmt.Errorf("scan match candidate: %w", err)
++		}
++		candidates = append(candidates, candidate)
++	}
++	if err := rows.Err(); err != nil && !errors.Is(err, context.Canceled) {
++		return nil, fmt.Errorf("iterate match candidates: %w", err)
++	} else if err != nil {
++		return nil, err
++	}
++	return candidates, nil
++}
+diff --git a/services/matcher-go/internal/store/postgres_integration_test.go b/services/matcher-go/internal/store/postgres_integration_test.go
+new file mode 100644
+index 0000000..9288ff6
+--- /dev/null
++++ b/services/matcher-go/internal/store/postgres_integration_test.go
+@@ -0,0 +1,114 @@
++package store
++
++import (
++	"context"
++	"errors"
++	"fmt"
++	"net/url"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/contracts"
++	"github.com/jackc/pgx/v5/pgxpool"
++)
++
++func TestPostgresPgvectorIntegration(t *testing.T) {
++	databaseURL := os.Getenv("TEST_DATABASE_URL")
++	if databaseURL == "" {
++		t.Skip("TEST_DATABASE_URL is required")
++	}
++	parsed, err := url.Parse(databaseURL)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if os.Getenv("TEST_DATABASE_DESTRUCTIVE") != "agent-market-ephemeral-only" ||
++		(parsed.Hostname() != "127.0.0.1" && parsed.Hostname() != "localhost" && parsed.Hostname() != "::1") ||
++		!strings.HasPrefix(strings.TrimPrefix(parsed.Path, "/"), "agent_market_matcher_test_") {
++		t.Fatal("UNSAFE_TEST_DATABASE")
++	}
++	ctx := context.Background()
++	pool, err := pgxpool.New(ctx, databaseURL)
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer pool.Close()
++	defer func() { _, _ = pool.Exec(ctx, "DROP SCHEMA IF EXISTS agent_market CASCADE") }()
++	for _, name := range []string{"0001_agent_market_core.sql", "0002_performance_observability.sql", "0003_phase2_lifecycle.sql", "0005_matcher_profile.sql"} {
++		content, readErr := os.ReadFile(filepath.Join("..", "..", "..", "..", "database", "migrations", name))
++		if readErr != nil {
++			t.Fatal(readErr)
++		}
++		if _, err = pool.Exec(ctx, string(content)); err != nil {
++			t.Fatalf("apply %s: %v", name, err)
++		}
++	}
++	vector := func(first, second float64) string {
++		values := make([]string, 384)
++		values[0], values[1] = fmt.Sprint(first), fmt.Sprint(second)
++		for index := 2; index < len(values); index++ {
++			values[index] = "0"
++		}
++		return "[" + strings.Join(values, ",") + "]"
++	}
++	taskID := "018f3f50-7b2d-7cc1-98f5-9ab68e75a214"
++	requestID := "018f3f50-7b2d-7cc1-98f5-9ab68e75a212"
++	_, err = pool.Exec(ctx, `INSERT INTO agent_market.tasks
++		(id,publisher_wallet,title,description,requirements,budget_atomic,request_id,embedding)
++		VALUES ($1,'0x1111111111111111111111111111111111111111','task','task',ARRAY['research'],100,$2,$3::vector)`, taskID, requestID, vector(1, 0))
++	if err != nil {
++		t.Fatal(err)
++	}
++	agents := []struct {
++		id, status, capability, embedding string
++		available                         bool
++		minimum                           int
++		completed                         int
++	}{
++		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a301", "active", "research", vector(1, 0), true, 50, 2},
++		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a302", "active", "research", vector(.9, .1), true, 50, 2},
++		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a303", "active", "research", vector(.8, .2), true, 50, 0},
++		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a304", "active", "other", vector(1, 0), true, 50, 0},
++		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a305", "suspended", "research", vector(1, 0), true, 50, 0},
++		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a306", "active", "research", vector(1, 0), true, 101, 0},
++	}
++	for _, agent := range agents {
++		_, err = pool.Exec(ctx, `INSERT INTO agent_market.agents
++			(id,owner_wallet,name,description,capabilities,status,embedding,available,minimum_budget_atomic,completed_tasks)
++			VALUES ($1,'0x2222222222222222222222222222222222222222',$2,$2,ARRAY[$3],$4,$5::vector,$6,$7,$8)`,
++			agent.id, agent.id, agent.capability, agent.status, agent.embedding, agent.available, agent.minimum, agent.completed)
++		if err != nil {
++			t.Fatal(err)
++		}
++	}
++	event := contracts.MatchRequestedV1{
++		EventID: "018f3f50-7b2d-7cc1-98f5-9ab68e75a211", Type: contracts.MatchRequestedV1Type,
++		OccurredAt: "2026-08-20T12:00:00Z", RequestID: requestID,
++		MatchJobID: "018f3f50-7b2d-7cc1-98f5-9ab68e75a213", TaskID: taskID, ModelVersion: "baseline-v1",
++	}
++	repository := NewPostgres(pool, DefaultRecallLimit)
++	result, err := repository.Process(ctx, event)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(result.Candidates) != 3 {
++		t.Fatalf("candidate count = %d, want 3", len(result.Candidates))
++	}
++	for _, candidate := range result.Candidates {
++		if strings.HasSuffix(candidate.ID, "304") || strings.HasSuffix(candidate.ID, "305") || strings.HasSuffix(candidate.ID, "306") {
++			t.Fatalf("ineligible candidate returned: %s", candidate.ID)
++		}
++	}
++	duplicate, err := repository.Process(ctx, event)
++	if err != nil || !duplicate.Duplicate {
++		t.Fatalf("duplicate result = %#v, err = %v", duplicate, err)
++	}
++	mismatch := event
++	mismatch.EventID = "018f3f50-7b2d-7cc1-98f5-9ab68e75a299"
++	mismatch.RequestID = "018f3f50-7b2d-7cc1-98f5-9ab68e75a298"
++	_, err = repository.Process(ctx, mismatch)
++	if !errors.Is(err, ErrTaskRequestMismatch) {
++		t.Fatalf("mismatch error = %v", err)
++	}
++}
+diff --git a/services/matcher-go/internal/store/postgres_test.go b/services/matcher-go/internal/store/postgres_test.go
+new file mode 100644
+index 0000000..c0bd6e5
+--- /dev/null
++++ b/services/matcher-go/internal/store/postgres_test.go
+@@ -0,0 +1,156 @@
++package store
++
++import (
++	"context"
++	"errors"
++	"reflect"
++	"strings"
++	"testing"
++
++	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/contracts"
++	"github.com/jackc/pgx/v5"
++	"github.com/jackc/pgx/v5/pgconn"
++)
++
++func TestRecallSQLAppliesHardFiltersBeforeBoundedVectorRecall(t *testing.T) {
++	required := []string{"MATERIALIZED", "request_id = $2", "a.status = 'active'", "a.available = TRUE", "a.embedding IS NOT NULL", "vector_norm(a.embedding) > 0", "a.capabilities @> t.requirements", "t.budget_atomic >= a.minimum_budget_atomic", "embedding <=> task_embedding", "LIMIT $3"}
++	for _, fragment := range required {
++		if !strings.Contains(recallSQL, fragment) {
++			t.Errorf("recall SQL missing %q", fragment)
++		}
++	}
++	lower := strings.ToLower(recallSQL)
++	if strings.Contains(lower, "ctr") || strings.Contains(lower, "model_score") {
++		t.Fatal("model score must not bypass hard filters")
++	}
++}
++
++func TestProcessClaimsRecallsPersistsAndCommitsInOneTransaction(t *testing.T) {
++	tx := &fakeTransaction{
++		execTags: []pgconn.CommandTag{pgconn.NewCommandTag("INSERT 0 1"), pgconn.NewCommandTag("INSERT 0 1")},
++		rows:     &fakeRows{values: [][]any{{"agent-a", 0.9, 0.8, 0.7, 0.6, 0.5, true}}},
++	}
++	postgres := &Postgres{begin: func(context.Context) (transaction, error) { return tx, nil }, recallLimit: MaxRecallLimit}
++	result, err := postgres.Process(context.Background(), testEvent())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if result.Duplicate || len(result.Candidates) != 1 {
++		t.Fatalf("unexpected result: %#v", result)
++	}
++	if !tx.committed || tx.rolledBack {
++		t.Fatalf("transaction state: committed=%v rolledBack=%v", tx.committed, tx.rolledBack)
++	}
++	want := []string{claimEventSQL, persistCandidateSQL}
++	if !reflect.DeepEqual(tx.execSQL, want) {
++		t.Fatalf("exec SQL = %v, want claim then persist", tx.execSQL)
++	}
++	if tx.querySQL != recallSQL {
++		t.Fatal("recall query was not executed")
++	}
++}
++
++func TestProcessDuplicateEventDoesNotRecallOrPersistAgain(t *testing.T) {
++	tx := &fakeTransaction{execTags: []pgconn.CommandTag{pgconn.NewCommandTag("INSERT 0 0")}}
++	postgres := &Postgres{begin: func(context.Context) (transaction, error) { return tx, nil }, recallLimit: DefaultRecallLimit}
++	result, err := postgres.Process(context.Background(), testEvent())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !result.Duplicate || len(result.Candidates) != 0 {
++		t.Fatalf("unexpected duplicate result: %#v", result)
++	}
++	if tx.querySQL != "" || len(tx.execSQL) != 1 || !tx.committed {
++		t.Fatalf("duplicate performed extra work: %#v", tx)
++	}
++}
++
++func TestProcessRollsBackWithoutConsumingEventOnFailure(t *testing.T) {
++	tx := &fakeTransaction{execTags: []pgconn.CommandTag{pgconn.NewCommandTag("INSERT 0 1")}, queryErr: errors.New("database unavailable")}
++	postgres := &Postgres{begin: func(context.Context) (transaction, error) { return tx, nil }, recallLimit: DefaultRecallLimit}
++	if _, err := postgres.Process(context.Background(), testEvent()); err == nil {
++		t.Fatal("expected recall failure")
++	}
++	if !tx.rolledBack || tx.committed {
++		t.Fatalf("transaction state: committed=%v rolledBack=%v", tx.committed, tx.rolledBack)
++	}
++}
++
++type fakeTransaction struct {
++	execTags   []pgconn.CommandTag
++	execSQL    []string
++	querySQL   string
++	queryErr   error
++	rows       rowIterator
++	committed  bool
++	rolledBack bool
++	taskValid  bool
++}
++
++func (tx *fakeTransaction) Exec(_ context.Context, sql string, _ ...any) (pgconn.CommandTag, error) {
++	tx.execSQL = append(tx.execSQL, sql)
++	if len(tx.execTags) == 0 {
++		return pgconn.CommandTag{}, errors.New("unexpected exec")
++	}
++	tag := tx.execTags[0]
++	tx.execTags = tx.execTags[1:]
++	return tag, nil
++}
++func (tx *fakeTransaction) Query(_ context.Context, sql string, _ ...any) (rowIterator, error) {
++	tx.querySQL = sql
++	return tx.rows, tx.queryErr
++}
++func (tx *fakeTransaction) QueryRow(_ context.Context, _ string, _ ...any) pgx.Row {
++	valid := tx.taskValid
++	if !valid && tx.rows != nil {
++		valid = true
++	}
++	return fakeRow{valid: valid}
++}
++func (tx *fakeTransaction) Commit(context.Context) error   { tx.committed = true; return nil }
++func (tx *fakeTransaction) Rollback(context.Context) error { tx.rolledBack = true; return nil }
++
++type fakeRow struct{ valid bool }
++
++func (row fakeRow) Scan(dest ...any) error {
++	*(dest[0].(*bool)) = row.valid
++	return nil
++}
++
++type fakeRows struct {
++	values  [][]any
++	current int
++}
++
++func (rows *fakeRows) Close()     {}
++func (rows *fakeRows) Err() error { return nil }
++func (rows *fakeRows) Next() bool {
++	if rows.current >= len(rows.values) {
++		return false
++	}
++	rows.current++
++	return true
++}
++func (rows *fakeRows) Scan(dest ...any) error {
++	for index, value := range rows.values[rows.current-1] {
++		switch target := dest[index].(type) {
++		case *string:
++			*target = value.(string)
++		case *float64:
++			*target = value.(float64)
++		case *bool:
++			*target = value.(bool)
++		default:
++			return errors.New("unsupported scan target")
++		}
++	}
++	return nil
++}
++
++func testEvent() contracts.MatchRequestedV1 {
++	return contracts.MatchRequestedV1{
++		EventID: "018f3f50-7b2d-7cc1-98f5-9ab68e75a211", Type: contracts.MatchRequestedV1Type, OccurredAt: "2026-08-20T12:00:00Z",
++		RequestID: "018f3f50-7b2d-7cc1-98f5-9ab68e75a212", MatchJobID: "018f3f50-7b2d-7cc1-98f5-9ab68e75a213",
++		TaskID: "018f3f50-7b2d-7cc1-98f5-9ab68e75a214", ModelVersion: "baseline-v1",
++	}
++}

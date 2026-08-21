@@ -22,6 +22,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
     struct TaskEscrow {
         address publisher;
         address agent;
+        bytes32 requestRef;
         uint256 budget;
         uint256 bond;
         uint64 deadline;
@@ -31,26 +32,33 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
 
     IERC20 public immutable yd;
     ICommittee public immutable committee;
+    address public immutable platformTreasury;
     uint256 public rewardReserve;
     mapping(bytes32 taskId => TaskEscrow escrow) public tasks;
+    mapping(bytes32 requestRef => bool used) public usedRequestRefs;
 
     error InvalidAmount();
     error InvalidDeadline();
     error InvalidState(TaskState actual);
     error Unauthorized(address caller);
     error TaskAlreadyExists(bytes32 taskId);
+    error RequestRefAlreadyUsed(bytes32 requestRef);
+    error InvalidReference();
+    error InvalidTreasury();
 
     event RewardPoolFunded(address indexed funder, uint256 amount);
-    event TaskCreated(bytes32 indexed taskId, address indexed publisher, uint256 budget, uint64 deadline);
-    event AgentAssigned(bytes32 indexed taskId, address indexed agent);
-    event TaskAccepted(bytes32 indexed taskId, uint256 bond, uint64 startedAt);
-    event WorkSubmitted(bytes32 indexed taskId);
-    event DisputeOpened(bytes32 indexed taskId);
-    event TaskSettled(bytes32 indexed taskId, bool agentWins, uint256 principalPaid, uint256 yieldPaid, uint256 yieldShortfall);
+    event TaskCreated(bytes32 indexed taskId, bytes32 indexed requestRef, address indexed publisher, uint256 budget, uint64 deadline);
+    event AgentAssigned(bytes32 indexed taskId, bytes32 indexed requestRef, address indexed agent);
+    event TaskAccepted(bytes32 indexed taskId, bytes32 indexed requestRef, uint256 bond, uint64 startedAt);
+    event WorkSubmitted(bytes32 indexed taskId, bytes32 indexed requestRef);
+    event DisputeOpened(bytes32 indexed taskId, bytes32 indexed requestRef);
+    event TaskSettled(bytes32 indexed taskId, bytes32 indexed requestRef, bool agentWins, uint256 budgetPaid, uint256 bondPaidToPlatform, uint256 yieldPaid, uint256 yieldShortfall);
 
-    constructor(IERC20 token, ICommittee arbitration) Ownable(msg.sender) {
+    constructor(IERC20 token, ICommittee arbitration, address treasury) Ownable(msg.sender) {
+        if (treasury == address(0)) revert InvalidTreasury();
         yd = token;
         committee = arbitration;
+        platformTreasury = treasury;
     }
 
     function fundRewardPool(uint256 amount) external onlyOwner {
@@ -60,13 +68,16 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
         emit RewardPoolFunded(msg.sender, amount);
     }
 
-    function createTask(bytes32 taskId, uint256 budget, uint64 deadline) external nonReentrant {
+    function createTask(bytes32 taskId, bytes32 requestRef, uint256 budget, uint64 deadline) external nonReentrant {
+        if (taskId == bytes32(0) || requestRef == bytes32(0)) revert InvalidReference();
         if (tasks[taskId].state != TaskState.NONE) revert TaskAlreadyExists(taskId);
+        if (usedRequestRefs[requestRef]) revert RequestRefAlreadyUsed(requestRef);
         if (budget == 0) revert InvalidAmount();
         if (deadline <= block.timestamp) revert InvalidDeadline();
-        tasks[taskId] = TaskEscrow(msg.sender, address(0), budget, 0, deadline, 0, TaskState.OPEN);
+        usedRequestRefs[requestRef] = true;
+        tasks[taskId] = TaskEscrow(msg.sender, address(0), requestRef, budget, 0, deadline, 0, TaskState.OPEN);
         yd.safeTransferFrom(msg.sender, address(this), budget);
-        emit TaskCreated(taskId, msg.sender, budget, deadline);
+        emit TaskCreated(taskId, requestRef, msg.sender, budget, deadline);
     }
 
     function assignAgent(bytes32 taskId, address agent) external {
@@ -75,7 +86,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
         if (msg.sender != task.publisher || agent == address(0)) revert Unauthorized(msg.sender);
         task.agent = agent;
         task.state = TaskState.ASSIGNED;
-        emit AgentAssigned(taskId, agent);
+        emit AgentAssigned(taskId, task.requestRef, agent);
     }
 
     function acceptTask(bytes32 taskId) external nonReentrant {
@@ -87,7 +98,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
         task.startedAt = uint64(block.timestamp);
         task.state = TaskState.IN_PROGRESS;
         yd.safeTransferFrom(msg.sender, address(this), bond);
-        emit TaskAccepted(taskId, bond, task.startedAt);
+        emit TaskAccepted(taskId, task.requestRef, bond, task.startedAt);
     }
 
     function submitWork(bytes32 taskId) external {
@@ -95,7 +106,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
         _requireState(task, TaskState.IN_PROGRESS);
         if (msg.sender != task.agent) revert Unauthorized(msg.sender);
         task.state = TaskState.SUBMITTED;
-        emit WorkSubmitted(taskId);
+        emit WorkSubmitted(taskId, task.requestRef);
     }
 
     function acceptWork(bytes32 taskId) external nonReentrant {
@@ -119,7 +130,7 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
         if (msg.sender != task.publisher && msg.sender != task.agent) revert Unauthorized(msg.sender);
         task.state = TaskState.DISPUTED;
         committee.openCase(taskId, task.publisher, task.agent);
-        emit DisputeOpened(taskId);
+        emit DisputeOpened(taskId, task.requestRef);
     }
 
     function resolveDispute(bytes32 taskId, bool agentWins) external nonReentrant {
@@ -132,20 +143,19 @@ contract AgentMarketEscrow is Ownable, ReentrancyGuard {
     function pendingYield(bytes32 taskId) public view returns (uint256) {
         TaskEscrow memory task = tasks[taskId];
         if (task.startedAt == 0) return 0;
-        uint256 principal = task.budget + task.bond;
-        return principal * RATE_PERCENT * (block.timestamp - task.startedAt) / (100 * YEAR);
+        return task.budget * RATE_PERCENT * (block.timestamp - task.startedAt) / (100 * YEAR);
     }
 
     function _settle(bytes32 taskId, TaskEscrow storage task, bool agentWins) private {
-        uint256 principal = task.budget + task.bond;
         uint256 dueYield = pendingYield(taskId);
         uint256 paidYield = dueYield > rewardReserve ? rewardReserve : dueYield;
         uint256 shortfall = dueYield - paidYield;
         rewardReserve -= paidYield;
         task.state = agentWins ? TaskState.SETTLED : TaskState.REFUNDED;
         address recipient = agentWins ? task.agent : task.publisher;
-        yd.safeTransfer(recipient, principal + paidYield);
-        emit TaskSettled(taskId, agentWins, principal, paidYield, shortfall);
+        yd.safeTransfer(recipient, task.budget + paidYield);
+        yd.safeTransfer(platformTreasury, task.bond);
+        emit TaskSettled(taskId, task.requestRef, agentWins, task.budget, task.bond, paidYield, shortfall);
     }
 
     function _requireState(TaskEscrow storage task, TaskState expected) private view {

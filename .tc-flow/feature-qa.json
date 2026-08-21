@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "runId": "0424cdbc-cf90-45fd-86a8-ca719680cbef",
+  "feature": "agent-market-phase2",
+  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
+  "generatedAt": "2026-08-21T21:14:54.496Z",
+  "verdict": "pass",
+  "renderingMode": "edge-ssr-with-single-csr-fallback",
+  "gates": {
+    "rootVerify": "pass",
+    "trainerDocker": "pass",
+    "realPostgres": {
+      "auth": "1/1",
+      "chain": "1/1",
+      "replay": "3/3",
+      "matcherPgvector": "1/1"
+    },
+    "iacSharedResource": "pass",
+    "specialized": "42/42",
+    "evidenceResponsive": "pass",
+    "independentReview": "pass"
+  },
+  "truthBoundary": {
+    "verified": "local implementation, local databases, container build, Evidence rendering and static delivery gates",
+    "pending": "fresh V2 AWS, Sepolia and Cloudflare identifiers plus public readback",
+    "deferred": "The Graph"
+  }
+}

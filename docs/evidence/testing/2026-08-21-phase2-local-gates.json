@@ -1,0 +1,47 @@
+{
+  "evidenceVersion": 1,
+  "project": "agent-market",
+  "capturedAt": "2026-08-21T20:37:51Z",
+  "scope": "local-verification-only",
+  "source": "owner-confirmed final independent reviews and local gate outputs",
+  "tasks": {
+    "T4": {
+      "status": "verified-local",
+      "realPostgreSQL": "chain transaction-state integration passed 1/1"
+    },
+    "T5": {
+      "status": "verified-local",
+      "realPostgreSQL": "matcher pgvector integration passed with three real candidates, duplicate-event and request-binding coverage"
+    },
+    "T6": {
+      "status": "verified-local",
+      "artifactInitialStatus": "candidate",
+      "gateRecommendationApproves": false,
+      "tests": "33/33 passed",
+      "independentReview": "pass"
+    },
+    "T7": {
+      "status": "verified-local-external-pending",
+      "specializedTests": "25/25 passed",
+      "repositoryPolicyTests": "8/8 passed",
+      "realPostgreSQLReplay": "3/3 passed"
+    },
+    "T8": {
+      "status": "verified-local",
+      "scriptsTests": "17/17 passed",
+      "evidenceValidator": "pass",
+      "repositoryValidator": "pass",
+      "webTypecheck": "pass",
+      "webBuild": "pass",
+      "ssrMatrix": "9/9 passed",
+      "svgSanity": "XML 6/6; rendered non-zero dimensions 6/6",
+      "pngValidation": "valid minimal CRC fixture accepted; text, truncated, CRC-corrupt and zlib-undecodable fixtures rejected"
+    }
+  },
+  "external": {
+    "awsV2": "pending-external",
+    "sepoliaV2": "pending-external",
+    "cloudflareV2": "pending-external",
+    "deploymentPerformed": false
+  }
+}

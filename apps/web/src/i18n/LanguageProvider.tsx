@@ -28,15 +28,22 @@ export function LanguageProvider({ children, storage }: PropsWithChildren<{ stor
 export function useLanguage(): LanguageValue { return useContext(LanguageContext); }
 
 const stringProps = new Set(["aria-label", "description", "eyebrow", "label", "note", "placeholder", "title"]);
-function localizeNode(node: ReactNode, locale: Locale): ReactNode {
+function localizeNode(node: ReactNode, locale: Locale, path = "root"): ReactNode {
   if (typeof node === "string") return translateVisibleText(locale, node);
-  if (Array.isArray(node)) return node.map((item) => localizeNode(item, locale));
+  if (Array.isArray(node)) {
+    return node.map((item, index) => {
+      const localized = localizeNode(item, locale, `${path}.${index}`);
+      return isValidElement(localized) && localized.key == null
+        ? cloneElement(localized, { key: `localized-${path}-${index}` })
+        : localized;
+    });
+  }
   if (!isValidElement(node)) return node;
   const element = node as ReactElement<Record<string, unknown>>;
   const nextProps: Record<string, unknown> = {};
   for (const prop of stringProps) { const value = element.props[prop]; if (typeof value === "string") nextProps[prop] = translateVisibleText(locale, value); }
   if (typeof element.props.src === "string") nextProps.src = localizeAssetPath(element.props.src, locale);
-  if ("children" in element.props) nextProps.children = localizeNode(element.props.children as ReactNode, locale);
+  if ("children" in element.props) nextProps.children = localizeNode(element.props.children as ReactNode, locale, `${path}.children`);
   return cloneElement(element, nextProps);
 }
 export function Localized({ children }: PropsWithChildren) { const { locale } = useLanguage(); return <>{localizeNode(children, locale)}</>; }

@@ -1,0 +1,7 @@
+{
+  "task":"T2",
+  "round":1,
+  "verdict":"repair",
+  "issues":{"high":3,"medium":2},
+  "repairs":["preflight all deployment inputs","strict runtime manifest allowlist and redacted errors","independent bond/yield invariants for both winners","complete requestRef event coverage","ABI snapshot and root verification"]
+}

@@ -1,0 +1,61 @@
+{
+  "taskId": "T5",
+  "status": "partial",
+  "verifiedAt": "2026-08-21T17:39:47Z",
+  "checks": [
+    {
+      "name": "gofmt",
+      "command": "gofmt -w <T5 Go files>",
+      "exitCode": 0
+    },
+    {
+      "name": "go-test",
+      "command": "go test ./... -count=1",
+      "exitCode": 0,
+      "packagesChecked": 7
+    },
+    {
+      "name": "go-vet",
+      "command": "go vet ./...",
+      "exitCode": 0
+    },
+    {
+      "name": "postgres-pgvector-integration",
+      "result": "skipped",
+      "detail": "Local Docker daemon and pgvector image were unavailable; no container or database was created"
+    }
+  ],
+  "repairCoverage": [
+    "strict matching lifecycle predicate shared by task lock and target recall",
+    "unit rollback coverage for lifecycle mismatch and cancellation",
+    "integration coverage prepared for committed and concurrent lifecycle changes",
+    "canonical UUID validation before database processing",
+    "SNS Notification type and TopicArn allowlist validation",
+    "raw message support and poison partial-batch coverage",
+    "harness-created random empty database with external advisory lock and whole-database cleanup"
+  ],
+  "sourceHashesSha256": {
+    "internal/store/postgres.go": "6df93f572011b3811c1b6675c7069e4b0459ff679803a6c92baa24fefe250c62",
+    "internal/store/postgres_test.go": "2ce1c3316519f744807817d8e962fdff27ad97afdacb39a8551691bc7ffabb2a",
+    "internal/store/postgres_integration_test.go": "fe4655cf604bd56f808dbeb5d5d6ce40865f7ad987dd82a085c7a89fbc1dd9dc",
+    "internal/contracts/events.go": "2a579d2ef90d9f42616a0f685e085a54fdae3fafef31cc1ee41d6396f96606f9",
+    "internal/handler/sqs.go": "761d0a1df3d99efb924c41933f1f935182bd4c1c096e6d659743fcf8310681fd",
+    "cmd/matcher/main.go": "7735edb12bd978cffab35c06265682db7f2e39eac769baa50dbc08e2a845794c",
+    "cmd/integration-harness/main.go": "a17f19b843c9c9bcb3b212561a0982046e36e0cd6f5291b48ac0061fc685b05d",
+    "internal/integrationguard/guard.go": "d6ba8fadcf855aae375c79d655f39848389f6c23107854476747672c11cfc9e1"
+  },
+  "safety": {
+    "database": "integration harness creates a 128-bit random loopback database, verifies it is empty, writes a secret marker, and holds an advisory lock from a separate session",
+    "cleanup": "harness drops only the database name successfully created by the same process; integration test contains no DROP operation",
+    "pullPolicy": "never",
+    "migrationChanged": false
+  },
+  "externalWrites": [],
+  "localEphemeralWrites": [],
+  "notCovered": [
+    "real PostgreSQL and pgvector execution after this repair",
+    "AWS Lambda event-source ReportBatchItemFailures configuration",
+    "production-scale exact recall latency and memory"
+  ],
+  "secretsPublished": false
+}
