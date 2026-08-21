@@ -154,6 +154,25 @@ test("rejects unsafe public content, absent statuses, and V2 production overclai
   assert.ok(violations.includes("phase2-external-overclaim:v2-pending"));
 });
 
+test("accepts scoped V2 Cloudflare production proof only with complete external readback", (t) => {
+  const { root, document } = writeFixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const recordPath = "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json";
+  const screenshot = "apps/web/public/evidence/real-proof.png";
+  document.items[2] = { ...document.items[2], id: "V2-CLOUDFLARE-ACTIONS", status: "verified-production", evidence: [recordPath, screenshot] };
+  document.items.push({ id: "v2-still-pending", phase: "v2", requirement: { en: "AWS gate", zh: "AWS 门禁" }, implementation: { en: "Not deployed", zh: "尚未部署" }, code: ["README.md"], evidence: [], status: "pending-external" });
+  mkdirSync(dirname(join(root, recordPath)), { recursive: true });
+  writeFileSync(join(root, recordPath), `${JSON.stringify({
+    project: "agent-market", status: "verified-production",
+    cloudflare: { project: "agent-market-site", environment: "production", latestStage: "success", deploymentId: "301df641-5b67-455f-99ed-bbb621b3bd53", mergeCommit: "ae743d8c35c83bea1d7542dfc4e5268a903cd67b" },
+    githubActions: [{ conclusion: "success" }, { conclusion: "success" }, { conclusion: "success" }],
+    httpReadback: [{ path: "/", status: 200 }, { path: "/evidence", status: 200 }, { path: "/tasks/task-01/workspace", status: 200 }, { path: "/missing", status: 404 }],
+    browserReadback: { screenshot }, assets: [screenshot],
+  }, null, 2)}\n`);
+  writeFileSync(join(root, "docs/evidence/phase2-local-validation.json"), `${JSON.stringify(document, null, 2)}\n`);
+  assert.deepEqual(evidenceValidator.validateEvidenceRepository(root), []);
+});
+
 test("rejects a text file renamed as PNG", (t) => {
   const { root } = writeFixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));

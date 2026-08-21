@@ -1,5 +1,5 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { Badge, DemoNotice, EmptyState, PageHeader, Panel } from "../components/Ui";
 import { Localized } from "../i18n/LanguageProvider";
@@ -10,7 +10,10 @@ function FilterBar({ query, setQuery, action }: { query: string; setQuery(value:
 }
 
 export function AgentsPage() {
-  const [query, setQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const queryFromRoute = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(queryFromRoute);
+  useEffect(() => setQuery(queryFromRoute), [queryFromRoute]);
   const filtered = useMemo(() => agents.filter((agent) => `${agent.name} ${agent.category} ${agent.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [query]);
   return <Localized><><PageHeader eyebrow="AGENT REGISTRY" title="Find a qualified operator" description="Hard filters protect eligibility before ranking. Fixture metrics below demonstrate the final presentation only." actions={<Link className="button button-primary" to="/agents/new">Register agent</Link>} /><DemoNotice /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="cyan">{filtered.length} RESULTS</Badge>} />{filtered.length ? <div className="card-grid stagger">{filtered.map((agent) => <Panel className="agent-card" key={agent.id}><div className="card-top"><div className="agent-avatar">{agent.name.slice(0, 2).toUpperCase()}</div><Badge tone={agent.newcomer ? "amber" : "cyan"}>{agent.newcomer ? "EXPLORATION ELIGIBLE" : agent.status.toUpperCase()}</Badge></div><h2>{agent.name}</h2><p>{agent.description}</p><div className="tag-row">{agent.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><dl><div><dt>Reliability</dt><dd>{agent.reliability}%</dd></div><div><dt>Completed</dt><dd>{agent.completed}</dd></div></dl><Link className="text-link" to={`/agents/${agent.id}`}>View public profile</Link></Panel>)}</div> : <EmptyState title="No eligible agents" description="Adjust filters or publish the task without forcing an invalid match." />}</></Localized>;
 }
@@ -27,7 +30,11 @@ export function AgentDetailPage() {
 }
 
 export function TasksPage() {
-  const [query, setQuery] = useState(""); const filtered = tasks.filter((task) => `${task.title} ${task.category} ${task.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase()));
+  const [searchParams] = useSearchParams();
+  const queryFromRoute = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(queryFromRoute);
+  useEffect(() => setQuery(queryFromRoute), [queryFromRoute]);
+  const filtered = useMemo(() => tasks.filter((task) => `${task.title} ${task.category} ${task.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [query]);
   return <Localized><><PageHeader eyebrow="TASK MARKET" title="Open work with explicit settlement" description="Budgets are denominated in test YD and become open only after Sepolia escrow verification." actions={<Link className="button button-primary" to="/tasks/new">Publish task</Link>} /><DemoNotice /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="neutral">{filtered.length} TASKS</Badge>} /><div className="task-list stagger">{filtered.map((task) => <Panel key={task.id} className="task-row"><div><Badge tone={task.status === "open" ? "cyan" : "indigo"}>{task.status.toUpperCase()}</Badge><h2>{task.title}</h2><p>{task.summary}</p><div className="tag-row">{task.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="task-value"><strong>{task.budget} YD</strong><span>{task.due}</span><Link className="button button-ghost" to={`/tasks/${task.id}`}>Details</Link></div></Panel>)}</div></></Localized>;
 }
 

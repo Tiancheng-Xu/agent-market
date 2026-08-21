@@ -8,6 +8,7 @@ This directory records reproducible project evidence. Architecture, plans, UI re
 - `testing/2026-08-20-foundation-gates.json`: machine-readable local gate results.
 - `requirements.yaml`: canonical REQ-AM-01 through REQ-AM-15 status ledger.
 - `phase2-local-validation.json`: bilingual V1/V2 truth boundary and public Evidence source. V2 never inherits V1 production status.
+- `deployment/2026-08-21-cloudflare-pages-v2-production.json`: Git-integrated Pages deployment, Actions identifiers, SSR/deep-link/404 readback, and production screenshot binding.
 
 ## Evidence rules
 

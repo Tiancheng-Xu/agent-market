@@ -22,6 +22,6 @@
 <rect class="lane" x="35" y="800" width="1530" height="180" rx="12"/><text x="58" y="830" class="l">OPERATIONS + DELIVERY</text>
 <g transform="translate(70 865)"><rect class="box" width="300" height="80" rx="9"/><text x="20" y="32" class="t">Replay / Ops / Pause</text><text x="20" y="58" class="d">bounded, reversible actions</text></g><path class="p" d="M370 905H480"/>
 <g transform="translate(480 865)"><rect class="box" width="300" height="80" rx="9"/><text x="20" y="32" class="t">GitHub Actions</text><text x="20" y="58" class="d">contracts / TS / Go / Python / Evidence</text></g><path class="p" d="M780 905H890"/>
-<g transform="translate(890 865)"><rect class="box external" width="300" height="80" rx="9"/><text x="20" y="32" class="t">Cloudflare Delivery</text><text x="20" y="58" class="d">V2 deployment pending</text></g><path class="p" d="M1190 905H1300"/>
+<g transform="translate(890 865)"><rect class="box" width="300" height="80" rx="9"/><text x="20" y="32" class="t">Cloudflare Delivery</text><text x="20" y="58" class="d">V2 deploy + SSR readback verified</text></g><path class="p" d="M1190 905H1300"/>
 <g transform="translate(1300 865)"><rect class="box" width="215" height="80" rx="9"/><text x="20" y="32" class="t">Evidence</text><text x="20" y="58" class="d">truth boundary</text></g>
 </svg>

@@ -24,6 +24,9 @@ const LIST_FIELDS = [
 ];
 const UNSAFE_VALUE = /(?:^\/Users\/|file:\/\/|private[_-]?key|secret|password|api[_-]?key|0x0{16,}|PLACEHOLDER)/i;
 export const PUBLIC_EVIDENCE_STATUSES = new Set(["verified-local", "verified-production", "pending-external", "deferred"]);
+const V2_PRODUCTION_RECORDS = new Map([
+  ["V2-CLOUDFLARE-ACTIONS", "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json"],
+]);
 const REQUIRED_PUBLIC_ARTIFACTS = [
   "README.md", "docs/evidence/phase2-local-validation.json", "docs/architecture/adr/0001-defer-the-graph.md", "apps/web/src/pages/EvidencePage.tsx",
   "apps/web/public/architecture/system-context.svg", "apps/web/public/architecture/system-context.zh-CN.svg",
@@ -178,6 +181,23 @@ function readSvgContract(path) {
   return { width, height, actors: attribute("data-actors"), lanes: attribute("data-lanes") };
 }
 
+function validateV2ProductionRecord(root, item, violations) {
+  const recordPath = V2_PRODUCTION_RECORDS.get(item.id);
+  if (recordPath === undefined) { violations.push(`phase2-external-overclaim:${item.id}`); return; }
+  if (!item.evidence.includes(recordPath)) violations.push(`phase2-production-record-missing:${item.id}`);
+  const absolute = resolve(root, recordPath);
+  if (!existsSync(absolute)) return;
+  let record;
+  try { record = JSON.parse(readFileSync(absolute, "utf8")); } catch { violations.push(`phase2-production-record-invalid:${item.id}`); return; }
+  const routes = new Map((record.httpReadback ?? []).map((entry) => [entry.path, entry.status]));
+  const actions = record.githubActions ?? [];
+  const screenshot = record.browserReadback?.screenshot;
+  if (record.project !== "agent-market" || record.status !== "verified-production" || record.cloudflare?.project !== "agent-market-site" || record.cloudflare?.environment !== "production" || record.cloudflare?.latestStage !== "success" || !/^[0-9a-f-]{36}$/.test(record.cloudflare?.deploymentId ?? "") || !/^[0-9a-f]{40}$/.test(record.cloudflare?.mergeCommit ?? "") || routes.get("/") !== 200 || routes.get("/evidence") !== 200 || routes.get("/tasks/task-01/workspace") !== 200 || routes.get("/missing") !== 404 || actions.length < 3 || actions.some((run) => run.conclusion !== "success") || !item.evidence.includes(screenshot) || !record.assets?.includes(screenshot)) {
+    violations.push(`phase2-production-record-invalid:${item.id}`);
+  }
+  for (const [location, value] of stringsIn(record)) if (PRIVATE_OR_SECRET.test(value)) violations.push(`unsafe-production-record:${item.id}:${location}`);
+}
+
 export function validateEvidenceRepository(root = process.cwd()) {
   const violations = [];
   for (const path of REQUIRED_PUBLIC_ARTIFACTS) if (!existsSync(resolve(root, path))) violations.push(`required-artifact-missing:${path}`);
@@ -192,7 +212,7 @@ export function validateEvidenceRepository(root = process.cwd()) {
     if (!item?.id || seen.has(item.id)) violations.push(`phase2-item-id-invalid:${item?.id ?? "missing"}`); seen.add(item?.id);
     if (item.phase !== "v1" && item.phase !== "v2") violations.push(`phase-invalid:${item.id}`);
     if (!PUBLIC_EVIDENCE_STATUSES.has(item.status)) violations.push(`public-status-invalid:${item.id}`);
-    if (item.phase === "v2" && item.status === "verified-production") violations.push(`phase2-external-overclaim:${item.id}`);
+    if (item.phase === "v2" && item.status === "verified-production") validateV2ProductionRecord(root, item, violations);
     for (const field of ["requirement", "implementation"]) if (!item[field]?.en || !item[field]?.zh) violations.push(`bilingual-copy-missing:${item.id}:${field}`);
     for (const field of ["code", "evidence"]) {
       if (!Array.isArray(item[field])) { violations.push(`phase2-list-invalid:${item.id}:${field}`); continue; }
