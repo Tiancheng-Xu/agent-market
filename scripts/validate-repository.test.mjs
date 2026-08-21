@@ -22,6 +22,7 @@ test("verification workflows use Node 24 action runtimes and never deploy", () =
   assert.match(workflows, /actions\/setup-node@v5/);
   assert.match(workflows, /actions\/setup-go@v6/);
   assert.match(workflows, /actions\/setup-python@v6/);
+  assert.equal([...workflows.matchAll(/actions\/setup-node@v5[\s\S]{0,160}?package-manager-cache:\s*false/g)].length, 2);
   assert.doesNotMatch(workflows, /\b(?:deploy|wrangler deploy|terraform apply)\b/i);
 });
 
