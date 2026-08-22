@@ -1,12 +1,25 @@
 {
   "schemaVersion": 1,
   "profile": "full",
-  "status": "planned",
-  "summary": "The Agent Market performance foundation and database migrations are deployed, but the production browser-to-public-Evidence closure is not yet presented as verified.",
+  "status": "verified-archived-production-sample",
+  "summary": "The Agent Market performance chain has one archived production browser-to-public-Evidence sample, and the project-specific AWS consumer was reversibly paused after readback.",
   "evidenceUrl": "https://agent-market.baby2b.online/evidence",
   "limitations": [
-    "No real production browser event has completed the Cloudflare, AWS, PostgreSQL, and public Evidence readback chain yet.",
-    "The AWS consumer remains enabled only for the controlled acceptance run and will be paused after public Evidence readback succeeds."
+    "The verified sample count is one; treat it as delivery evidence, not an ongoing production SLO.",
+    "The AWS consumer is paused after verification; new samples require an explicitly authorized controlled run."
   ],
-  "nextStep": "Deploy the Cloudflare production site, run one controlled Web Vitals event end to end, publish the sanitized readback, and reversibly pause the AWS consumer."
+  "verifiedSample": {
+    "requestId": "38979d29-2ef6-4006-b120-6cc95e59eef4",
+    "runId": "44c41841-3d20-4856-9f71-76750075c3a4",
+    "route": "/evidence",
+    "lcpMs": 1192,
+    "errorRate": 0,
+    "readBackAt": "2026-08-21T01:06:51Z"
+  },
+  "supportingEvidence": [
+    "docs/evidence/testing/2026-08-20-performance-observability.json",
+    "docs/evidence/deployment/2026-08-21-aws-reversible-pause.json",
+    "apps/web/public/evidence/aws-runtime-exit-zero.png"
+  ],
+  "nextStep": "For a new release, run a fresh preview or production Web Vitals smoke after Cloudflare deployment and record it separately without overwriting the archived sample."
 }

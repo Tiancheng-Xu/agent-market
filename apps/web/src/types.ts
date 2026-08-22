@@ -26,6 +26,7 @@ export type WalletState = {
   chainId: string | null;
   status: "disconnected" | "connecting" | "connected" | "unavailable" | "error";
   error: string | null;
+  message: string | null;
 };
 
 export type EthereumProvider = {

@@ -5,6 +5,8 @@ import { Badge, DemoNotice, EmptyState, PageHeader, Panel } from "../components/
 import { Localized } from "../i18n/LanguageProvider";
 import { agents, tasks } from "../data";
 
+const expertTypes = ["Research agent", "Data analyst", "Content operator", "Code agent", "Security reviewer", "Final arbiter"];
+
 function FilterBar({ query, setQuery, action }: { query: string; setQuery(value: string): void; action: React.ReactNode }) {
   return <div className="filter-bar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, category, or tag" />{action}</div>;
 }
@@ -33,7 +35,17 @@ export function TasksPage() {
 
 export function TaskNewPage() {
   const [step, setStep] = useState<"draft" | "wallet" | "ready">("draft");
-  return <Localized><><PageHeader eyebrow="TASK PUBLISHING" title="Fund a verifiable task" description="Publishing separates draft validation, YD approval, escrow submission, and independent RPC verification." /><Panel className="form-panel"><div className="stepper"><span className="active">1 Draft</span><span className={step !== "draft" ? "active" : ""}>2 Wallet</span><span className={step === "ready" ? "active" : ""}>3 Verify</span></div><form className="form-grid" onSubmit={(event) => { event.preventDefault(); setStep("wallet"); }}><label className="span-two">Task title<input required /></label><label>Category<select><option>Research</option><option>Data</option><option>Content</option></select></label><label>Budget<input required type="number" min="1" step="1" /><span className="input-suffix">YD</span></label><label className="span-two">Acceptance criteria<textarea required rows={5} /></label><label>Completion window<input required placeholder="48 hours" /></label><label>Expert type<input required placeholder="Research agent" /></label><div className="form-actions span-two"><button className="button button-primary">Validate draft</button><button type="button" className="button button-ghost" onClick={() => setStep("ready")}>Preview transaction states</button></div></form><div className="transaction-rail"><div className={step !== "draft" ? "complete" : "active"}>Draft validated</div><div className={step === "wallet" ? "active" : ""}>Await YD approval</div><div>Escrow submitted</div><div>RPC receipt verified</div></div></Panel></></Localized>;
+  const [message, setMessage] = useState("Draft not validated yet.");
+  function validateDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStep("wallet");
+    setMessage("Draft validated locally. Next: connect MetaMask, approve YD, then submit escrow.");
+  }
+  function previewTransactionStates() {
+    setStep("ready");
+    setMessage("Preview only: approve YD -> submit escrow -> wait for RPC receipt. No wallet transaction was sent.");
+  }
+  return <Localized><><PageHeader eyebrow="TASK PUBLISHING" title="Fund a verifiable task" description="Publishing separates draft validation, YD approval, escrow submission, and independent RPC verification." /><Panel className="form-panel"><div className="stepper"><span className="active">1 Draft</span><span className={step !== "draft" ? "active" : ""}>2 Wallet</span><span className={step === "ready" ? "active" : ""}>3 Verify</span></div><form className="form-grid" onSubmit={validateDraft} onInvalid={() => setMessage("Complete the required fields before validating the draft.")}><label className="span-two">Task title<input required /></label><label>Category<select required defaultValue="Research"><option>Research</option><option>Data</option><option>Content</option></select></label><label>Budget<input required type="number" min="1" step="1" /><span className="input-suffix">YD</span></label><label className="span-two">Acceptance criteria<textarea required rows={5} /></label><label>Completion window<input required placeholder="48 hours" /></label><label>Expert type<select required defaultValue="Research agent">{expertTypes.map((type) => <option key={type}>{type}</option>)}</select></label><div className="form-actions span-two"><button className="button button-primary">Validate draft</button><button type="button" className="button button-ghost" onClick={previewTransactionStates}>Preview transaction states</button></div></form><div className="inline-state" role="status" aria-live="polite">{message}</div><div className="transaction-rail"><div className={step !== "draft" ? "complete" : "active"}>Draft validated</div><div className={step === "wallet" ? "active" : step === "ready" ? "complete" : ""}>Await YD approval</div><div className={step === "ready" ? "active" : ""}>Escrow submitted</div><div className={step === "ready" ? "active" : ""}>RPC receipt verified</div></div></Panel></></Localized>;
 }
 
 export function TaskDetailPage() {
