@@ -38,6 +38,24 @@ jobs:
           fi
           echo "operator-role-shape-ok"
 
+      - name: Report bounded OIDC claims
+        shell: bash
+        run: |
+          node <<'NODE'
+          const response = await fetch(`${process.env.ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com`, {
+            headers: { authorization: `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}` },
+          });
+          if (!response.ok) throw new Error(`OIDC request failed: ${response.status}`);
+          const { value } = await response.json();
+          const claims = JSON.parse(Buffer.from(value.split('.')[1], 'base64url').toString('utf8'));
+          console.log(JSON.stringify({
+            aud: claims.aud,
+            sub: claims.sub,
+            repository: claims.repository,
+            ref: claims.ref,
+          }));
+          NODE
+
       - name: Acquire short-lived AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
