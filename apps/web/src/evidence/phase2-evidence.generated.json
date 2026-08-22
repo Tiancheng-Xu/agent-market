@@ -2,7 +2,7 @@
   "evidenceVersion": 2,
   "project": "agent-market",
   "snapshot": "phase2-local-validation",
-  "capturedAt": "2026-08-22T01:12:43.885Z",
+  "capturedAt": "2026-08-22T01:52:50.047Z",
   "truthBoundary": {
     "en": "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
     "zh": "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。"
@@ -109,8 +109,8 @@
         "zh": "由服务端生成 unsigned transaction intent，并在 Sepolia 合约执行 V2 生命周期。"
       },
       "implementation": {
-        "en": "Local schemas and contract tests cover intent fields, escrow, settlement, staking and arbitration. The T4 real PostgreSQL chain-state gate passed 1/1; no V2 Sepolia transaction is claimed.",
-        "zh": "本地 schema 与合约测试覆盖 intent 字段、托管、结算、质押和仲裁。T4 真实 PostgreSQL 链状态 Gate 已通过 1/1；当前不声称已有 V2 Sepolia 交易。"
+        "en": "Local schemas and contract tests cover intent fields, escrow, settlement, staking and arbitration. The same contracts were deployed on Sepolia and exercised through normal settlement, publisher-winning dispute, and stake/unstake flows.",
+        "zh": "本地 schema 与合约测试覆盖 intent 字段、托管、结算、质押和仲裁；同一套合约已部署到 Sepolia，并真实执行正常结算、发布方胜诉争议及质押/解押流程。"
       },
       "code": [
         "apps/transaction-engine/src",
@@ -119,7 +119,9 @@
       ],
       "evidence": [
         "docs/evidence/requirements.yaml",
-        "docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+        "docs/evidence/testing/2026-08-21-phase2-local-gates.json",
+        "docs/evidence/deployment/sepolia-contracts.json",
+        "docs/evidence/deployment/2026-08-21-sepolia-v2-closure.json"
       ],
       "status": "verified-local"
     },
@@ -131,15 +133,19 @@
         "zh": "只有精确回读 receipt、合约地址和事件后才接受链上成功。"
       },
       "implementation": {
-        "en": "RPC receipt and log verification is reconciled with Blockscout; a V2 Sepolia transaction has not been submitted.",
-        "zh": "使用 RPC 回执和日志校验并与 Blockscout 对账；尚未提交 V2 Sepolia 交易。"
+        "en": "Sepolia normal settlement and publisher-winning dispute both reached successful receipts and emitted one matching TaskSettled event. Tenderly RPC and public Etherscan HTML independently agree; Blockscout remains explicitly pending because the current MCP session requires a PRO key.",
+        "zh": "Sepolia 正常结算与发布方胜诉争议均取得成功回执，并各自发出 1 条匹配的 TaskSettled 事件。Tenderly RPC 与公开 Etherscan HTML 独立一致；由于当前 MCP 会话要求 PRO key，Blockscout 明确保留为待补验。"
       },
       "code": [
         "scripts/blockchain/readback-agent-market.mjs",
         "scripts/blockchain/readback-agent-market.test.mjs"
       ],
-      "evidence": [],
-      "status": "pending-external"
+      "evidence": [
+        "docs/evidence/deployment/sepolia-contracts.json",
+        "docs/evidence/deployment/2026-08-21-sepolia-v2-closure.json",
+        "docs/evidence/deployment/2026-08-21-sepolia-public-readback.json"
+      ],
+      "status": "verified-production"
     },
     {
       "id": "V2-MATCHER",

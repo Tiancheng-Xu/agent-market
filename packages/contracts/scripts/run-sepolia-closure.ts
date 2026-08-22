@@ -1,14 +1,14 @@
 import { ethers, network } from "hardhat";
 import type { TransactionReceipt, TransactionResponse } from "ethers";
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 
 import type { AgentMarketEscrow, ArbitrationCommittee, StakeYieldVault, YDToken } from "../typechain-types";
 import { createDeploymentManifest, SEPOLIA_CHAIN_ID, writeDeploymentManifest, type ContractDeploymentRecord } from "../src/deployment-manifest";
 import { createSepoliaClosureEvidence, deriveRoleAddresses, type ScenarioEvidence, type TransactionEvidence } from "../src/sepolia-closure";
 
-const MANIFEST_PATH = "docs/evidence/deployment/sepolia-contracts.json";
-const CLOSURE_PATH = "docs/evidence/deployment/2026-08-21-sepolia-v2-closure.json";
+const MANIFEST_PATH = resolve(__dirname, "../../../docs/evidence/deployment/sepolia-contracts.json");
+const CLOSURE_PATH = resolve(__dirname, "../../../docs/evidence/deployment/2026-08-21-sepolia-v2-closure.json");
 
 function required(name: string): string {
   const value = process.env[name]?.trim();

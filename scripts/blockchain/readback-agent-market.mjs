@@ -109,7 +109,7 @@ export async function main(argv = process.argv.slice(2)) {
   const eventTopic = eventTopicInput.toLowerCase();
   await call("unlock_blockchain_analysis");
   const [transaction, logs] = await Promise.all([
-    call("get_transaction_info", { chain_id: chainId, hash: txHash, include_raw_input: true }),
+    call("get_transaction_info", { chain_id: chainId, transaction_hash: txHash, include_raw_input: true }),
     call("direct_api_call", {
       chain_id: chainId,
       endpoint_path: `/api/v2/transactions/${txHash}/logs`,

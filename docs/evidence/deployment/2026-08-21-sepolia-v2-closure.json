@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "project": "agent-market",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "status": "rpc-and-etherscan-verified-blockscout-pro-pending",
+  "capturedAt": "2026-08-22T01:46:49.136Z",
+  "deployment": {
+    "schemaVersion": 1,
+    "network": "sepolia",
+    "chainId": 11155111,
+    "deployer": "0x24218a3017e9fB19C3b38d33A2282C7D37864FdB",
+    "platformTreasury": "0x0880386F9eEbEd9c3b32a36277ef00e0e5C65430",
+    "deployedAt": "2026-08-22T01:40:38.060Z",
+    "contracts": {
+      "YDToken": {
+        "address": "0x2f3462CE1cA78b3d1F21108C0785422B7Ca4A880",
+        "transactionHash": "0xba212568795908460850979bf86b84ba495f3d0ff06529932db3f6b5cb494cec",
+        "blockNumber": 11539858
+      },
+      "ArbitrationCommittee": {
+        "address": "0x19dC9ED85AE09409DC2777E63E1E9eB31E37aD96",
+        "transactionHash": "0xe9e922f92135b7f9581b30e376425998c8e2fccce654ed5c005a7037afc0ac0d",
+        "blockNumber": 11539859
+      },
+      "AgentMarketEscrow": {
+        "address": "0xFE0E6CE1b992f341A173d80Da94Df739B507cB50",
+        "transactionHash": "0xa3c235193bd374f36617512fcad573ef360319a7cc332d612e58d0d2b58fe805",
+        "blockNumber": 11539860
+      },
+      "StakeYieldVault": {
+        "address": "0x40D49DbC36b8b7ac1B6E1A6Cd0dd3cafF099a110",
+        "transactionHash": "0x8ea91dcbe3ee9ede56d4a51d45a2a0cc4897ff2fdbba1aaa8a09979d530da721",
+        "blockNumber": 11539861
+      }
+    }
+  },
+  "roles": {
+    "deployer": "0x24218a3017e9fB19C3b38d33A2282C7D37864FdB",
+    "committee": [
+      "0xDE24859a3F796F8d1BC2d779d3E372633B0eE182",
+      "0x3b357F2440eBE303379951064Fe2324Be78c5192",
+      "0xD422cc2725527483dF33f4BaA40F9bDF3cDDB0B5",
+      "0xFc0850E5d95bD59945500d3c585ECef174272887",
+      "0x2AdD2Dd26B1b0B96f401397Ec38307898B7022f9"
+    ],
+    "publisher": "0x131Ce13bb1b81bFfB8dA9337FeCC8fC933B615AA",
+    "agent": "0x310a921AE3c66F49f4E648C7Ce6625913d29eCBd",
+    "treasury": "0x0880386F9eEbEd9c3b32a36277ef00e0e5C65430"
+  },
+  "normalSettlement": {
+    "taskId": "0x2b5aed56bccbb28010bceb3ecebd320fa4975e8572f6b51f6494ab5b386795d2",
+    "requestRef": "0x6d8e5b03cfbc00e675b6c49314ae278cb53ba89f01a512957434684b5fb06d54",
+    "finalState": "SETTLED",
+    "agentWins": true,
+    "budgetAtomic": "100000000000000000000",
+    "bondPaidToPlatformAtomic": "6000000000000000000",
+    "yieldPaidAtomic": "6849315068493",
+    "transactions": [
+      {
+        "action": "normal.approve-budget",
+        "transactionHash": "0xf442d44a0ec6eabf042f6766ea0565967118a24ad520128949348352ae3b2e27",
+        "blockNumber": 11539869,
+        "status": 1
+      },
+      {
+        "action": "normal.create-task",
+        "transactionHash": "0xeba35bd31bcfc4d9348af845f76ea2a99bc248c15db425b0803b8ab46fb68028",
+        "blockNumber": 11539871,
+        "status": 1
+      },
+      {
+        "action": "normal.assign-agent",
+        "transactionHash": "0x36ab5fb18ba9fcd9f3a9f6fdde3635d5019f2cef8e75142bf99f7a2c6d1db15c",
+        "blockNumber": 11539872,
+        "status": 1
+      },
+      {
+        "action": "normal.approve-bond",
+        "transactionHash": "0xc165a67ccf664b914dddf30cc251ebef527600defd23f040757bf182ee4d508f",
+        "blockNumber": 11539873,
+        "status": 1
+      },
+      {
+        "action": "normal.accept-task",
+        "transactionHash": "0xaed3869013f1fbfabdf53ec755170b3c41b408437b19d4cfe7d4395dcbde1939",
+        "blockNumber": 11539874,
+        "status": 1
+      },
+      {
+        "action": "normal.submit-work",
+        "transactionHash": "0x1914f4a4abb97e670820ba3a2c29d223efdf84cbcb206bc115c1681c776c9cfc",
+        "blockNumber": 11539875,
+        "status": 1
+      },
+      {
+        "action": "normal.accept-work",
+        "transactionHash": "0x54cc367c4fa656edc8995dc6b86bf43654fe5bac7831beb7fe2fd18672be622f",
+        "blockNumber": 11539876,
+        "status": 1
+      }
+    ]
+  },
+  "disputeSettlement": {
+    "taskId": "0x90644bd1e5b8f90db5a7b1689350845c1f338c8d82c11bbdb2c9da15d8892a85",
+    "requestRef": "0xa250f4f2ff879c15439f11a489e7a289d321b1de719e1912fcbf54fc855a38aa",
+    "finalState": "REFUNDED",
+    "agentWins": false,
+    "budgetAtomic": "80000000000000000000",
+    "bondPaidToPlatformAtomic": "4800000000000000000",
+    "yieldPaidAtomic": "9132420091324",
+    "transactions": [
+      {
+        "action": "dispute.approve-budget",
+        "transactionHash": "0x68cca1bee4c54e67070d7ea2d94bdacc38f14bcb47212dcfaae4fd6f019dfcd9",
+        "blockNumber": 11539877,
+        "status": 1
+      },
+      {
+        "action": "dispute.create-task",
+        "transactionHash": "0xf87f6ca896e76b39dd596494a57d86423b5f7bd9ea850846281c922834ee98de",
+        "blockNumber": 11539878,
+        "status": 1
+      },
+      {
+        "action": "dispute.assign-agent",
+        "transactionHash": "0x431829ec4a759445a0518dad426d279f3c69c6d07499528de67df0e50c2037b6",
+        "blockNumber": 11539879,
+        "status": 1
+      },
+      {
+        "action": "dispute.approve-bond",
+        "transactionHash": "0x3fac4884ead9986894acef7ff9fc6a5ff208c0d1f7e1f38b2f16662b5f3c44f1",
+        "blockNumber": 11539880,
+        "status": 1
+      },
+      {
+        "action": "dispute.accept-task",
+        "transactionHash": "0x6801e12948fd2f0285dd00883848f243d79048986f092aa387752b1b0c833d33",
+        "blockNumber": 11539881,
+        "status": 1
+      },
+      {
+        "action": "dispute.submit-work",
+        "transactionHash": "0xa9db3106dea68b66c950fde80a8dd9107d485dc5c0d1fc7132e8678eaae11678",
+        "blockNumber": 11539882,
+        "status": 1
+      },
+      {
+        "action": "dispute.open",
+        "transactionHash": "0x9827d7e80dfebfbba9a661e780539627276ae1363db0cf6a0910fd8937a859c2",
+        "blockNumber": 11539884,
+        "status": 1
+      },
+      {
+        "action": "dispute.vote-1:publisher",
+        "transactionHash": "0xa976d7d5b587868273da6a1a58eaf051817ef6be9ea7eb19ae54fc4e5e101045",
+        "blockNumber": 11539885,
+        "status": 1
+      },
+      {
+        "action": "dispute.vote-2:publisher",
+        "transactionHash": "0x12e73757b526c6fbeffa40619682c7e2ba48ab157b16a36c982a783f335a885c",
+        "blockNumber": 11539886,
+        "status": 1
+      }
+    ]
+  },
+  "staking": {
+    "principalAtomic": "50000000000000000000",
+    "finalPrincipalAtomic": "0",
+    "transactions": [
+      {
+        "action": "staking.approve",
+        "transactionHash": "0xf17ff228f10aa17ee9357d41c37e2087cc74f118e78567a11d2c5813e3cad97a",
+        "blockNumber": 11539889,
+        "status": 1
+      },
+      {
+        "action": "staking.stake",
+        "transactionHash": "0xa312c7e94bd65f05ae0391d828f6897e8159628bcb464b5061c58adfb534b3b6",
+        "blockNumber": 11539890,
+        "status": 1
+      },
+      {
+        "action": "staking.unstake",
+        "transactionHash": "0x5e2858d7708b9d9749ef434c4ea99b68825a379126971b9b18b601d8396fd9da",
+        "blockNumber": 11539891,
+        "status": 1
+      }
+    ]
+  },
+  "rpcReadback": {
+    "checkedTransactions": 29,
+    "allReceiptsSuccessful": true
+  },
+  "externalReadback": "docs/evidence/deployment/2026-08-21-sepolia-public-readback.json"
+}

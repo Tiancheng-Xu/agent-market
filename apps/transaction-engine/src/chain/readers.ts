@@ -141,7 +141,7 @@ export class BlockscoutMcpChainReader implements ChainReader {
     await this.unlock();
     const transactionPayload = await this.call("get_transaction_info", {
       chain_id: this.chainId,
-      hash: txHash,
+      transaction_hash: txHash,
       include_raw_input: "true",
     });
     const tx = unwrap(transactionPayload);

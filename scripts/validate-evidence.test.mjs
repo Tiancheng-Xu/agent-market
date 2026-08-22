@@ -173,6 +173,27 @@ test("accepts scoped V2 Cloudflare production proof only with complete external 
   assert.deepEqual(evidenceValidator.validateEvidenceRepository(root), []);
 });
 
+test("accepts scoped V2 Sepolia proof with dual public readback and explicit Blockscout boundary", (t) => {
+  const { root, document } = writeFixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const recordPath = "docs/evidence/deployment/2026-08-21-sepolia-public-readback.json";
+  const transaction = (hash) => ({
+    transactionHash: hash, blockNumber: 11539876, status: 1, matchingEventCount: 1,
+    etherscan: { url: `https://sepolia.etherscan.io/tx/${hash}`, statusMarker: "Success", pageSha256: "a".repeat(64) },
+  });
+  document.items[2] = { ...document.items[2], id: "V2-SEPOLIA-READBACK", status: "verified-production", evidence: [recordPath] };
+  document.items.push({ id: "v2-still-pending", phase: "v2", requirement: { en: "AWS gate", zh: "AWS 门禁" }, implementation: { en: "Not deployed", zh: "尚未部署" }, code: ["README.md"], evidence: [], status: "pending-external" });
+  mkdirSync(dirname(join(root, recordPath)), { recursive: true });
+  writeFileSync(join(root, recordPath), `${JSON.stringify({
+    project: "agent-market", status: "verified-production", network: "sepolia", chainId: 11155111,
+    source: "tenderly-rpc-and-etherscan-public-html", secondaryRpc: { checkedChainId: 11155111 },
+    blockscout: { status: "pending-pro-api-key" },
+    transactions: { normal: transaction(`0x${"1".repeat(64)}`), dispute: transaction(`0x${"2".repeat(64)}`) },
+  }, null, 2)}\n`);
+  writeFileSync(join(root, "docs/evidence/phase2-local-validation.json"), `${JSON.stringify(document, null, 2)}\n`);
+  assert.deepEqual(evidenceValidator.validateEvidenceRepository(root), []);
+});
+
 test("rejects a text file renamed as PNG", (t) => {
   const { root } = writeFixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0x24218a3017e9fB19C3b38d33A2282C7D37864FdB",
+  "platformTreasury": "0x0880386F9eEbEd9c3b32a36277ef00e0e5C65430",
+  "deployedAt": "2026-08-22T01:40:38.060Z",
+  "contracts": {
+    "YDToken": {
+      "address": "0x2f3462CE1cA78b3d1F21108C0785422B7Ca4A880",
+      "transactionHash": "0xba212568795908460850979bf86b84ba495f3d0ff06529932db3f6b5cb494cec",
+      "blockNumber": 11539858
+    },
+    "ArbitrationCommittee": {
+      "address": "0x19dC9ED85AE09409DC2777E63E1E9eB31E37aD96",
+      "transactionHash": "0xe9e922f92135b7f9581b30e376425998c8e2fccce654ed5c005a7037afc0ac0d",
+      "blockNumber": 11539859
+    },
+    "AgentMarketEscrow": {
+      "address": "0xFE0E6CE1b992f341A173d80Da94Df739B507cB50",
+      "transactionHash": "0xa3c235193bd374f36617512fcad573ef360319a7cc332d612e58d0d2b58fe805",
+      "blockNumber": 11539860
+    },
+    "StakeYieldVault": {
+      "address": "0x40D49DbC36b8b7ac1B6E1A6Cd0dd3cafF099a110",
+      "transactionHash": "0x8ea91dcbe3ee9ede56d4a51d45a2a0cc4897ff2fdbba1aaa8a09979d530da721",
+      "blockNumber": 11539861
+    }
+  }
+}
