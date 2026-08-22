@@ -57,7 +57,6 @@ async function writePagesRoutes(directory) {
     exclude: [
       "/assets/*",
       "/architecture/*",
-      "/evidence/*",
       "/favicon.svg",
       "/robots.txt",
     ],
