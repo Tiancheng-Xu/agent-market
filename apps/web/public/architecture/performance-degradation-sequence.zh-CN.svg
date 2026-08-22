@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Market 性能降级时序</title>
+  <desc id="desc">路由请求、边缘 SSR、水合、健康路径、弱客户端降级、Runtime 超时和脱敏 Evidence 记录。</desc>
+  <rect width="1200" height="760" rx="28" fill="#071020"/>
+  <defs>
+    <style>
+      .lane{stroke:#263553;stroke-width:2;stroke-dasharray:6 8}
+      .head{fill:#101b33;stroke:#4cdbf7;stroke-width:2}
+      .box{fill:#101b33;stroke:#2d3d60;stroke-width:2}
+      .warn{fill:#2a2115;stroke:#ffb454;stroke-width:2}
+      .title{font:700 22px Arial,sans-serif;fill:#f3f6ff}
+      .label{font:600 14px Arial,sans-serif;fill:#eaf2ff}
+      .small{font:500 12px Arial,sans-serif;fill:#9fb0d0}
+      .arrow{stroke:#4cdbf7;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .arrowWarn{stroke:#ffb454;stroke-width:2.5;fill:none;marker-end:url(#arrowWarn)}
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#4cdbf7"/></marker>
+    <marker id="arrowWarn" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#ffb454"/></marker>
+  </defs>
+  <text x="60" y="70" class="title">性能降级时序</text>
+  <g>
+    <rect x="60" y="110" width="150" height="46" rx="10" class="head"/><text x="95" y="140" class="label">Browser</text><line x1="135" y1="156" x2="135" y2="690" class="lane"/>
+    <rect x="285" y="110" width="150" height="46" rx="10" class="head"/><text x="318" y="140" class="label">边缘 SSR</text><line x1="360" y1="156" x2="360" y2="690" class="lane"/>
+    <rect x="510" y="110" width="150" height="46" rx="10" class="head"/><text x="552" y="140" class="label">React</text><line x1="585" y1="156" x2="585" y2="690" class="lane"/>
+    <rect x="735" y="110" width="150" height="46" rx="10" class="head"/><text x="772" y="140" class="label">健康/API</text><line x1="810" y1="156" x2="810" y2="690" class="lane"/>
+    <rect x="960" y="110" width="150" height="46" rx="10" class="head"/><text x="1000" y="140" class="label">Evidence</text><line x1="1035" y1="156" x2="1035" y2="690" class="lane"/>
+  </g>
+  <path d="M135 200 H360" class="arrow"/><text x="170" y="190" class="small">请求路由</text>
+  <path d="M360 245 H135" class="arrow"/><text x="175" y="235" class="small">SSR HTML + 渲染头</text>
+  <path d="M135 290 H585" class="arrow"/><text x="180" y="280" class="small">精确水合路由</text>
+  <rect x="500" y="320" width="190" height="58" rx="10" class="box"/><text x="525" y="345" class="label">采集信号</text><text x="525" y="366" class="small">paint、网络、health</text>
+  <path d="M585 420 H810" class="arrow"/><text x="615" y="410" class="small">健康请求</text>
+  <path d="M810 465 H585" class="arrow"/><text x="615" y="455" class="small">在线响应</text>
+  <rect x="490" y="500" width="215" height="74" rx="10" class="warn"/><text x="516" y="528" class="label">弱客户端路径</text><text x="516" y="550" class="small">延后媒体，减少动画</text>
+  <path d="M585 585 H1035" class="arrowWarn"/><text x="640" y="575" class="small">记录原因码</text>
+  <rect x="720" y="620" width="205" height="58" rx="10" class="warn"/><text x="746" y="645" class="label">超时路径</text><text x="746" y="666" class="small">局部 fallback，不伪造成功</text>
+</svg>

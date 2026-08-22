@@ -11,6 +11,7 @@
     "typecheck": "node ../../scripts/generate-public-evidence.mjs && tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@agent-market/shared-contracts": "workspace:*",
     "@tailwindcss/vite": "4.1.17",
     "react": "19.2.8",
     "react-dom": "19.2.8",

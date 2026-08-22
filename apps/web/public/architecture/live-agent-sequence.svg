@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Market live agent request sequence</title>
+  <desc id="desc">Browser calls Cloudflare Worker; Worker signs requests to local runtime; runtime calls local Ollama or hosted provider APIs and streams SSE back.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#071020"/><stop offset="1" stop-color="#11263f"/></linearGradient>
+    <style>
+      text{font-family:Arial,Helvetica,sans-serif;fill:#e8f2ff}.muted{fill:#9eb4cc}.lane{stroke:#314761;stroke-width:2}.msg{stroke:#60a5fa;stroke-width:2;fill:none;marker-end:url(#arrow)}.return{stroke:#22d3ee;stroke-width:2;fill:none;stroke-dasharray:7 7;marker-end:url(#arrow2)}.box{fill:#0f1d33;stroke:#2f7de1;stroke-width:2}.runtime{fill:#102d34;stroke:#22d3ee}.small{font-size:16px}.tiny{font-size:13px}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#60a5fa"/></marker>
+    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#22d3ee"/></marker>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="42" y="52" class="title">Live Agent request sequence</text>
+  <text x="42" y="84" class="muted small">No browser access to Ollama 11434 or provider keys; every runtime call is signed by the edge gateway.</text>
+  <g transform="translate(40 120)">
+    <rect x="0" y="0" width="150" height="48" rx="12" class="box"/><text x="35" y="30" class="head">Browser</text>
+    <rect x="210" y="0" width="170" height="48" rx="12" class="box"/><text x="245" y="30" class="head">Worker</text>
+    <rect x="450" y="0" width="200" height="48" rx="12" class="runtime"/><text x="480" y="30" class="head">Local Runtime</text>
+    <rect x="730" y="0" width="150" height="48" rx="12" class="box"/><text x="770" y="30" class="head">Ollama</text>
+    <rect x="950" y="0" width="170" height="48" rx="12" class="box"/><text x="975" y="30" class="head">Providers</text>
+    <line x1="75" y1="55" x2="75" y2="545" class="lane"/><line x1="295" y1="55" x2="295" y2="545" class="lane"/><line x1="550" y1="55" x2="550" y2="545" class="lane"/><line x1="805" y1="55" x2="805" y2="545" class="lane"/><line x1="1035" y1="55" x2="1035" y2="545" class="lane"/>
+    <path d="M75 95 H295" class="msg"/><text x="95" y="86" class="tiny">GET /agent/healthz</text>
+    <path d="M295 135 H550" class="msg"/><text x="322" y="126" class="tiny">signed GET /healthz</text>
+    <path d="M550 175 H295" class="return"/><text x="345" y="166" class="tiny">public health snapshot</text>
+    <path d="M295 215 H75" class="return"/><text x="120" y="206" class="tiny">online / degraded / offline</text>
+    <path d="M75 265 H295" class="msg"/><text x="95" y="256" class="tiny">POST /agent/chat</text>
+    <path d="M295 305 H550" class="msg"/><text x="322" y="296" class="tiny">origin, size, Turnstile, HMAC</text>
+    <path d="M550 352 H805" class="msg"/><text x="600" y="343" class="tiny">local agent: /api/chat</text>
+    <path d="M550 405 H1035" class="msg"/><text x="640" y="396" class="tiny">provider agent: chat completions</text>
+    <path d="M805 455 H550" class="return"/><text x="622" y="446" class="tiny">token chunks</text>
+    <path d="M1035 495 H550" class="return"/><text x="690" y="486" class="tiny">DeepSeek / Kimi / Qwen / Zhipu answer</text>
+    <path d="M550 535 H295" class="return"/><text x="342" y="526" class="tiny">SSE meta / delta / done / error</text>
+    <path d="M295 575 H75" class="return"/><text x="110" y="566" class="tiny">same SSE stream</text>
+  </g>
+</svg>

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, readFile, rm, stat } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { validateBuiltRenderingRuntime } from "./validate-rendering-runtime.mjs";
 
@@ -23,15 +24,20 @@ function runVite(args) {
 async function verifyPagesOutput(directory) {
   const indexPath = resolve(directory, "index.html");
   const workerPath = resolve(directory, "_worker.js");
+  const routesPath = resolve(directory, "_routes.json");
   const [index, worker, indexStats, workerStats] = await Promise.all([
     readFile(indexPath, "utf8"),
     readFile(workerPath, "utf8"),
     stat(indexPath),
     stat(workerPath),
   ]);
+  const routes = JSON.parse(await readFile(routesPath, "utf8"));
 
   if (!index.includes('<div id="root"></div>')) {
     throw new Error("Built index.html is missing the exact SSR root marker.");
+  }
+  if (!routes.include?.includes("/*")) {
+    throw new Error("Cloudflare Pages routes must include all SSR document routes.");
   }
   if (indexStats.size < 256 || workerStats.size < 1_024) {
     throw new Error("Cloudflare Pages output is unexpectedly empty.");
@@ -42,6 +48,52 @@ async function verifyPagesOutput(directory) {
     }
   }
   return { indexBytes: indexStats.size, workerBytes: workerStats.size };
+}
+
+async function writePagesRoutes(directory) {
+  await writeFile(resolve(directory, "_routes.json"), `${JSON.stringify({
+    version: 1,
+    include: ["/*"],
+    exclude: [
+      "/assets/*",
+      "/architecture/*",
+      "/favicon.svg",
+      "/robots.txt",
+    ],
+  }, null, 2)}\n`);
+}
+
+async function verifyPagesFunctionEntry(directory) {
+  const entryPath = resolve(webRoot, "..", "..", "functions", "[[path]].js");
+  const module = await import(`${pathToFileURL(entryPath).href}?v=${Date.now()}`);
+  if (typeof module.onRequest !== "function") {
+    throw new Error("Cloudflare Pages function entry is missing onRequest().");
+  }
+  const index = await readFile(resolve(directory, "index.html"), "utf8");
+  const response = await module.onRequest({
+    request: new Request("https://agent-market.test/evidence", {
+      headers: { accept: "text/html" },
+    }),
+    env: {
+      ASSETS: {
+        fetch() {
+          return Promise.resolve(new Response(index, {
+            headers: { "content-type": "text/html; charset=utf-8" },
+          }));
+        },
+      },
+    },
+    params: {},
+    data: {},
+    next() {
+      return Promise.resolve(new Response("unexpected-next", { status: 500 }));
+    },
+    waitUntil() {},
+    passThroughOnException() {},
+  });
+  if (response.headers.get("x-agent-market-render-mode") !== "ssr") {
+    throw new Error("Cloudflare Pages function entry did not run the SSR handler.");
+  }
 }
 
 await Promise.all([
@@ -60,11 +112,21 @@ await cp(
   resolve(workerDirectory, "_worker.js"),
   resolve(outputDirectory, "_worker.js"),
 );
+await cp(
+  resolve(workerDirectory, "_worker.js"),
+  resolve(clientDirectory, "_worker.js"),
+);
+await Promise.all([
+  writePagesRoutes(outputDirectory),
+  writePagesRoutes(clientDirectory),
+]);
 
 const output = await verifyPagesOutput(outputDirectory);
+await verifyPagesOutput(clientDirectory);
+await verifyPagesFunctionEntry(outputDirectory);
 const runtime = await validateBuiltRenderingRuntime(
   resolve(outputDirectory, "_worker.js"),
 );
 console.log(
-  `Cloudflare Pages edge build ready: index=${output.indexBytes} bytes, worker=${output.workerBytes} bytes, runtime-cases=${runtime.cases}.`,
+  `Cloudflare Pages edge build ready: index=${output.indexBytes} bytes, worker=${output.workerBytes} bytes, runtime-cases=${runtime.cases}, dual-output-worker=true.`,
 );

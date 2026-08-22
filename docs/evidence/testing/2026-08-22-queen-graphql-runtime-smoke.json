@@ -1,0 +1,19 @@
+{
+  "createdAt": "2026-08-22T06:23:18.034Z",
+  "status": "verified",
+  "runtime": "local-agent-runtime",
+  "entrypoint": "http://127.0.0.1:8789/graphql",
+  "operations": [
+    "ProposeTaskGraph",
+    "SubmitNodeOutput"
+  ],
+  "taskId": "97bfdb4f-7b31-4f89-acaf-111a8658a786",
+  "graphRevision": 1,
+  "riskLevel": "low",
+  "startPolicy": "auto",
+  "executorAgentId": "personal-ai-agent-runtime-v4-1",
+  "outputId": "74b71b13-820c-4054-b4ec-1a10fb6f29ff",
+  "outputSha256": "1b63f6d3e0a8a33dd26c4ab3a4276a315647c8dd01ff0c8beb5464ef46121002",
+  "outputPreview": "PASS。已按最小目标执行，结论来源是 [S1]；未编造任何资料。\n处理范围：Smoke test only. For execute node, reply with a short sentence containing QUEEN_SMOKE_OK",
+  "publicSafety": "No secrets, local paths, provider keys, or model weights are stored."
+}

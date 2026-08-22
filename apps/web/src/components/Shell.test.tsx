@@ -10,6 +10,7 @@ const disconnectedWallet = {
   chainId: null,
   status: "disconnected" as const,
   error: null,
+  message: null,
 };
 
 describe("Shell visual gates", () => {

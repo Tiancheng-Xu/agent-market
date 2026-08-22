@@ -1,0 +1,80 @@
+{
+  "project": "agent-market",
+  "capturedAt": "2026-08-22T00:00:00-04:00",
+  "scope": "local-preview",
+  "url": "http://127.0.0.1:4173/evidence",
+  "method": "Chrome DevTools Protocol Runtime.evaluate on local Vite preview after production build",
+  "awsResourcesStarted": false,
+  "navigationTimingMs": {
+    "responseEnd": 19,
+    "domContentLoaded": 109,
+    "loadEvent": 260
+  },
+  "paintTimingMs": {
+    "firstPaint": 116,
+    "firstContentfulPaint": 176,
+    "largestContentfulPaint": 176
+  },
+  "largestContentfulPaintElement": {
+    "tag": "IMG",
+    "size": 59664
+  },
+  "documentBytes": {
+    "encodedBodySize": 636,
+    "transferSize": 300
+  },
+  "resourceSummary": {
+    "count": 11,
+    "encodedBodySize": 152844,
+    "transferSize": 2100,
+    "byType": {
+      "css": 4,
+      "fetch": 1,
+      "img": 4,
+      "link": 1,
+      "script": 1
+    }
+  },
+  "largestResources": [
+    {
+      "name": "index-DEBuf4b5.js",
+      "initiatorType": "script",
+      "encodedBodySize": 101116,
+      "transferSize": 300,
+      "durationMs": 16
+    },
+    {
+      "name": "Space Grotesk woff2",
+      "initiatorType": "css",
+      "encodedBodySize": 22320,
+      "transferSize": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "IBM Plex Mono woff2",
+      "initiatorType": "css",
+      "encodedBodySize": 10120,
+      "transferSize": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "IBM Plex Mono woff2",
+      "initiatorType": "css",
+      "encodedBodySize": 10060,
+      "transferSize": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "index-DZOJ7Xx9.css",
+      "initiatorType": "link",
+      "encodedBodySize": 8462,
+      "transferSize": 300,
+      "durationMs": 15
+    }
+  ],
+  "limits": [
+    "Local preview timing is not production latency evidence.",
+    "Archived AWS production sample remains the production performance source for this checkpoint.",
+    "No new AWS consumer, ECS task, queue workload, or paid resource was started for this capture."
+  ]
+}

@@ -1,12 +1,68 @@
 {
   "schemaVersion": 1,
-  "profile": "full",
-  "status": "planned",
-  "summary": "The Agent Market performance foundation and database migrations are deployed, but the production browser-to-public-Evidence closure is not yet presented as verified.",
+  "profile": "compact",
+  "status": "verified",
+  "summary": "The Agent Market performance chain has one archived production browser-to-public-Evidence sample, and the project-specific AWS consumer was reversibly paused after readback.",
   "evidenceUrl": "https://agent-market.baby2b.online/evidence",
-  "limitations": [
-    "No real production browser event has completed the Cloudflare, AWS, PostgreSQL, and public Evidence readback chain yet.",
-    "The AWS consumer remains enabled only for the controlled acceptance run and will be paused after public Evidence readback succeeds."
+  "dataMode": "live",
+  "metrics": ["LCP", "CLS", "INP", "FCP", "TTFB"],
+  "percentiles": ["p50", "p75", "p95"],
+  "dimensions": ["sample_count", "time_window", "route", "release"],
+  "pipeline": ["browser-sdk", "api", "sqs-dlq", "ecs-cleaner", "storage", "dashboard"],
+  "safety": [
+    "schema-validation",
+    "pii-redaction",
+    "no-browser-aws-credentials",
+    "sdk-failure-isolation"
   ],
-  "nextStep": "Deploy the Cloudflare production site, run one controlled Web Vitals event end to end, publish the sanitized readback, and reversibly pause the AWS consumer."
+  "proof": [
+    {
+      "kind": "live-event",
+      "location": "docs/evidence/testing/2026-08-20-performance-observability.json",
+      "proves": "A controlled browser event produced request_id 38979d29-2ef6-4006-b120-6cc95e59eef4 and run_id 44c41841-3d20-4856-9f71-76750075c3a4."
+    },
+    {
+      "kind": "queue",
+      "location": "docs/evidence/testing/2026-08-20-performance-observability.json",
+      "proves": "The performance work queue accepted and drained the sample workload."
+    },
+    {
+      "kind": "ecs-cleaner",
+      "location": "apps/web/public/evidence/aws-runtime-exit-zero.png",
+      "proves": "The one-time ECS cleaner run exited successfully for the archived sample."
+    },
+    {
+      "kind": "aggregate",
+      "location": "docs/evidence/testing/2026-08-20-performance-observability.json",
+      "proves": "The aggregate readback reported sampleCount 1, LCP 1192 ms, and errorRate 0."
+    },
+    {
+      "kind": "dashboard",
+      "location": "https://agent-market.baby2b.online/evidence",
+      "proves": "The public Evidence page exposes the delivery and performance status without exposing credentials."
+    },
+    {
+      "kind": "failure-retry",
+      "location": "docs/evidence/deployment/2026-08-21-aws-reversible-pause.json",
+      "proves": "The project-specific AWS consumer was paused reversibly after verification; DLQ/queue state was inspected during shutdown."
+    }
+  ],
+  "limitations": [
+    "The verified sample count is one; treat it as delivery evidence, not an ongoing production SLO.",
+    "The AWS consumer is paused after verification; new samples require an explicitly authorized controlled run."
+  ],
+  "verifiedSample": {
+    "requestId": "38979d29-2ef6-4006-b120-6cc95e59eef4",
+    "runId": "44c41841-3d20-4856-9f71-76750075c3a4",
+    "route": "/evidence",
+    "lcpMs": 1192,
+    "errorRate": 0,
+    "readBackAt": "2026-08-21T01:06:51Z"
+  },
+  "supportingEvidence": [
+    "docs/evidence/testing/2026-08-20-performance-observability.json",
+    "docs/evidence/deployment/2026-08-21-aws-reversible-pause.json",
+    "apps/web/public/evidence/aws-runtime-exit-zero.png"
+  ],
+  "nextStep": "For a new release, run a fresh preview or production Web Vitals smoke after Cloudflare deployment and record it separately without overwriting the archived sample."
 }
