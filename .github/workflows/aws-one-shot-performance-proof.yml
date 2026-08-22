@@ -26,6 +26,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate operator role input
+        shell: bash
+        env:
+          OPERATOR_ROLE_ARN: ${{ secrets.AGENT_MARKET_AWS_OPERATOR_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$OPERATOR_ROLE_ARN" =~ ^arn:aws:iam::[0-9]{12}:role/agent-market-one-shot-operator-20260821$ ]]; then
+            echo "::error::Operator role ARN has an invalid shape (length=${#OPERATOR_ROLE_ARN})."
+            exit 1
+          fi
+          echo "operator-role-shape-ok"
+
       - name: Acquire short-lived AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
