@@ -30,13 +30,40 @@ export type LocalStreamRuntimeOptions = {
   requestTimeoutMs?: number;
 };
 
+type CallerAccess = {
+  scope: "public" | "owner";
+};
+
 export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
   const manifests = new Map(options.manifests.map((manifest) => [manifest.id, manifest]));
   const now = options.now ?? (() => new Date());
-  const queenOrchestrator = createQueenOrchestrator({
+  const queenAgents = agentCandidatesFromManifests([...manifests.values()], now);
+  const publicQueenOrchestrator = createQueenOrchestrator({
+    agents: queenAgents,
+    queenAgentId: "queen-router-v1",
+    now,
+    executeAgentText: async (request) => {
+      const manifest = manifests.get(request.agentId);
+      if (manifest === undefined || manifest.health.status === "offline") {
+        throw new Error(`Agent ${request.agentId} is unavailable`);
+      }
+      if (!canSelectManifest(manifest, { scope: "public" })) {
+        throw new Error(`Agent ${request.agentId} is owner-only for this caller`);
+      }
+      return executeAgentText({
+        manifest,
+        messages: request.messages,
+        ollamaClient: options.ollamaClient,
+        providerClients: options.providerClients ?? {},
+        signal: AbortSignal.timeout(options.requestTimeoutMs ?? manifest.limits.timeoutMs),
+      });
+    },
+  });
+  const ownerQueenOrchestrator = createQueenOrchestrator({
     agents: agentCandidatesFromManifests([...manifests.values()], now),
     queenAgentId: "queen-router-v1",
     now,
+    allowOwnerOnlyAgents: true,
     executeAgentText: async (request) => {
       const manifest = manifests.get(request.agentId);
       if (manifest === undefined || manifest.health.status === "offline") {
@@ -82,7 +109,8 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
           manifests,
           ollamaClient: options.ollamaClient,
           providerClients: options.providerClients ?? {},
-          queenOrchestrator,
+          callerAccess: callerAccessFromHeaders(request.headers),
+          queenOrchestrator: callerAccessFromHeaders(request.headers).scope === "owner" ? ownerQueenOrchestrator : publicQueenOrchestrator,
           requestSignal: request.signal,
           requestTimeoutMs: options.requestTimeoutMs ?? 120_000,
         });
@@ -98,6 +126,9 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
       const manifest = manifests.get(payload.agentId);
       if (manifest === undefined || manifest.health.status === "offline") {
         return jsonError("MODEL_UNAVAILABLE", "Requested agent is unavailable", payload.requestId, true, 503);
+      }
+      if (!canSelectManifest(manifest, callerAccessFromHeaders(request.headers))) {
+        return jsonError("FORBIDDEN", "Requested agent is owner-only for this caller", payload.requestId, false, 403);
       }
 
       return streamChat({
@@ -119,6 +150,7 @@ async function handleGraphqlOrchestration(options: {
   ollamaClient: OllamaStreamingClient;
   providerClients: ProviderClients;
   queenOrchestrator: ReturnType<typeof createQueenOrchestrator>;
+  callerAccess: CallerAccess;
   requestSignal: AbortSignal;
   requestTimeoutMs: number;
 }): Promise<Response> {
@@ -158,6 +190,7 @@ async function handleGraphqlOrchestration(options: {
       input: { ...request.variables.input, requestId },
       runId,
       manifests: options.manifests,
+      callerAccess: options.callerAccess,
       ollamaClient: options.ollamaClient,
       providerClients: options.providerClients,
       signal,
@@ -181,15 +214,17 @@ async function runSequentialOrchestration(options: {
   input: LiveAgentOrchestrationInput & { requestId: string };
   runId: string;
   manifests: Map<string, AgentManifest>;
+  callerAccess: CallerAccess;
   ollamaClient: OllamaStreamingClient;
   providerClients: ProviderClients;
   signal: AbortSignal;
 }) {
   const prompt = options.input.messages[options.input.messages.length - 1]?.content ?? "";
   const outputs: Array<{ agentId: string; modelTag: string; provider: AgentManifest["provider"]; output: string }> = [];
+  assertDistinctModels(options.input.agentIds, options.manifests);
 
   for (const [index, agentId] of options.input.agentIds.entries()) {
-    const manifest = assertManifest(agentId, options.manifests);
+    const manifest = assertManifest(agentId, options.manifests, options.callerAccess);
     const messages = index === 0 ? options.input.messages : [{ role: "user" as const, content: buildStepPrompt(prompt, outputs) }];
     const output = await executeAgentText({
       manifest,
@@ -201,7 +236,7 @@ async function runSequentialOrchestration(options: {
     outputs.push({ agentId, modelTag: manifest.model.tag, provider: manifest.provider, output });
   }
 
-  const lead = assertManifest(options.input.agentIds[0]!, options.manifests);
+  const lead = assertManifest(options.input.agentIds[0]!, options.manifests, options.callerAccess);
   const finalOutput = await executeAgentText({
     manifest: lead,
     messages: [{ role: "user", content: buildFinalPrompt(prompt, outputs) }],
@@ -228,6 +263,8 @@ function publicHealth(manifests: AgentManifest[], now: () => Date) {
     ownership: manifest.ownership,
     modelTag: manifest.model.tag,
     modelDigest: manifest.model.digest,
+    visibility: manifest.access.visibility,
+    selectableBy: manifest.access.selectableBy,
     status: manifest.health.status,
     lastVerifiedAt: manifest.health.lastVerifiedAt,
   }));
@@ -254,8 +291,10 @@ function agentCandidatesFromManifests(manifests: AgentManifest[], now: () => Dat
       agentId: "queen-router-v1",
       displayName: "Queen Router",
       capabilities: ["plan", "completion"],
+      tags: ["planner", "local-private"],
       provider: "codex",
       ownership: "local-private",
+      selectableBy: "assigned-task",
       status: "online",
       costPer1kTokensUsd: 0,
       latencyMs: 0,
@@ -269,8 +308,17 @@ function agentCandidatesFromManifests(manifests: AgentManifest[], now: () => Dat
       agentId: manifest.id,
       displayName: manifest.displayName,
       capabilities: [...new Set([...manifest.capabilities, "judge", "red_team", "final_arbitration"])],
+      tags: [
+        manifest.provider,
+        manifest.ownership,
+        manifest.access.selectableBy,
+        manifest.model.license,
+        ...manifest.capabilities,
+      ],
+      license: manifest.model.license,
       provider: manifest.provider,
       ownership: manifest.ownership,
+      selectableBy: manifest.access.selectableBy,
       status: manifest.health.status,
       costPer1kTokensUsd: manifest.provider === "ollama" ? 0 : 0.004,
       latencyMs: manifest.provider === "ollama" ? 1_200 : 900,
@@ -371,12 +419,37 @@ function toChatMessages(messages: LiveChatMessage[]): ChatMessage[] {
   return messages.map((message) => ({ role: message.role, content: message.content }));
 }
 
-function assertManifest(agentId: string, manifests: Map<string, AgentManifest>): AgentManifest {
+function assertManifest(agentId: string, manifests: Map<string, AgentManifest>, callerAccess: CallerAccess): AgentManifest {
   const manifest = manifests.get(agentId);
   if (manifest === undefined || manifest.health.status === "offline") {
     throw new Error(`Agent ${agentId} is unavailable`);
   }
+  if (!canSelectManifest(manifest, callerAccess)) {
+    throw new Error(`Agent ${agentId} is owner-only for this caller`);
+  }
   return manifest;
+}
+
+function assertDistinctModels(agentIds: string[], manifests: Map<string, AgentManifest>): void {
+  const seen = new Map<string, string>();
+  for (const agentId of agentIds) {
+    const manifest = manifests.get(agentId);
+    const modelTag = manifest?.model.tag.toLowerCase() ?? agentId.toLowerCase();
+    const previousAgentId = seen.get(modelTag);
+    if (previousAgentId !== undefined) {
+      throw new Error(`Sequential orchestration requires distinct models; ${previousAgentId} and ${agentId} both use ${modelTag}`);
+    }
+    seen.set(modelTag, agentId);
+  }
+}
+
+function callerAccessFromHeaders(headers: Headers): CallerAccess {
+  return headers.get("x-agent-caller-scope") === "owner" ? { scope: "owner" } : { scope: "public" };
+}
+
+function canSelectManifest(manifest: AgentManifest, callerAccess: CallerAccess): boolean {
+  if (manifest.access.selectableBy !== "owner-only") return true;
+  return callerAccess.scope === "owner";
 }
 
 async function executeAgentText(options: {

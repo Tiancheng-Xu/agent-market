@@ -61,6 +61,11 @@ export function providerManifestForModel(
       timeoutMs: config.timeoutMs,
       maxPayloadBytes: config.maxPayloadBytes,
     },
+    access: {
+      visibility: "marketplace",
+      selectableBy: "public-market",
+      ownerScope: "platform",
+    },
   });
 }
 

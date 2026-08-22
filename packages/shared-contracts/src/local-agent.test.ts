@@ -39,6 +39,11 @@ const manifest = {
     timeoutMs: 120000,
     maxPayloadBytes: 1048576,
   },
+  access: {
+    visibility: "private",
+    selectableBy: "owner-only",
+    ownerScope: "local-runtime-owner",
+  },
 };
 
 const deepSeekManifest = {
@@ -66,6 +71,11 @@ const deepSeekManifest = {
     maxConcurrency: 1,
     timeoutMs: 120000,
     maxPayloadBytes: 1048576,
+  },
+  access: {
+    visibility: "marketplace",
+    selectableBy: "public-market",
+    ownerScope: "platform",
   },
 };
 
@@ -95,6 +105,11 @@ const kimiManifest = {
     timeoutMs: 120000,
     maxPayloadBytes: 1048576,
   },
+  access: {
+    visibility: "marketplace",
+    selectableBy: "public-market",
+    ownerScope: "platform",
+  },
 };
 
 const qwenManifest = {
@@ -123,6 +138,11 @@ const qwenManifest = {
     timeoutMs: 120000,
     maxPayloadBytes: 1048576,
   },
+  access: {
+    visibility: "marketplace",
+    selectableBy: "public-market",
+    ownerScope: "platform",
+  },
 };
 
 const zhipuManifest = {
@@ -150,6 +170,11 @@ const zhipuManifest = {
     maxConcurrency: 1,
     timeoutMs: 120000,
     maxPayloadBytes: 1048576,
+  },
+  access: {
+    visibility: "marketplace",
+    selectableBy: "public-market",
+    ownerScope: "platform",
   },
 };
 
@@ -263,6 +288,21 @@ describe("local agent shared contracts", () => {
       AgentManifestSchema.parse({
         ...deepSeekManifest,
         model: { ...deepSeekManifest.model, digest: "a".repeat(64) },
+      }),
+    ).toThrow();
+  });
+
+  it("enforces owner-only local agents and public-market provider agents", () => {
+    expect(() =>
+      AgentManifestSchema.parse({
+        ...manifest,
+        access: { visibility: "marketplace", selectableBy: "public-market", ownerScope: "platform" },
+      }),
+    ).toThrow();
+    expect(() =>
+      AgentManifestSchema.parse({
+        ...deepSeekManifest,
+        access: { visibility: "private", selectableBy: "owner-only", ownerScope: "local-runtime-owner" },
       }),
     ).toThrow();
   });

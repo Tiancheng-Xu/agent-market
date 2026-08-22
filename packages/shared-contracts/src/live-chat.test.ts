@@ -53,6 +53,27 @@ describe("live chat contracts", () => {
     expect(JSON.stringify(health)).not.toContain("11434");
   });
 
+  it("carries public-safe agent access policy in runtime health", () => {
+    const health = LiveChatHealthSchema.parse({
+      status: "online",
+      checkedAt: "2026-08-22T12:00:00.000Z",
+      runtime: "local-runtime",
+      agents: [{
+        agentId: "personal-ai-agent-runtime-v4-1",
+        displayName: "Personal AI Agent Runtime v4.1",
+        provider: "ollama",
+        ownership: "owner-trained",
+        modelTag: "personal-ai-agent-runtime:v4.1",
+        modelDigest: "2c422ec890241b8492e08d4ba69f79f25efcf8ae4220e83797d2df9cbc7eb52a",
+        visibility: "private",
+        selectableBy: "owner-only",
+        status: "online",
+      }],
+    });
+
+    expect(health.agents[0]!.selectableBy).toBe("owner-only");
+  });
+
   it("accepts a sequential GraphQL orchestration input", () => {
     const request = LiveAgentGraphqlRequestSchema.parse({
       query: "mutation OrchestrateAgents($input: AgentOrchestrationInput!) { orchestrateAgents(input: $input) { finalOutput } }",

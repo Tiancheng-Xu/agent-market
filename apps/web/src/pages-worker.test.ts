@@ -133,6 +133,7 @@ describe("Cloudflare Pages edge renderer", () => {
     });
 
     expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(calls[0]?.headers.get("x-agent-caller-scope")).toBe("public");
     expect(calls[0]?.headers.get("x-agent-signature")).toMatch(/^[0-9a-f]{64}$/);
     expect(await response.text()).toContain("ok");
   });
@@ -182,6 +183,7 @@ describe("Cloudflare Pages edge renderer", () => {
 
     expect(response.headers.get("content-type")).toContain("application/json");
     expect(new URL(calls[0]?.url ?? "https://missing.test").pathname).toBe("/graphql");
+    expect(calls[0]?.headers.get("x-agent-caller-scope")).toBe("public");
     expect(calls[0]?.headers.get("x-agent-signature")).toMatch(/^[0-9a-f]{64}$/);
     expect(payload).toMatchObject({
       data: {

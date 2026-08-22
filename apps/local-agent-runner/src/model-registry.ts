@@ -94,6 +94,11 @@ export function ollamaMetadataToManifest(
       timeoutMs: config.timeoutMs,
       maxPayloadBytes: config.maxPayloadBytes,
     },
+    access: {
+      visibility: "private",
+      selectableBy: "owner-only",
+      ownerScope: "local-runtime-owner",
+    },
   });
 }
 

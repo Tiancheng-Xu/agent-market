@@ -19,10 +19,17 @@ export type RankedAgentCandidate = AgentCandidate & {
 };
 
 export function rankAgentCandidates(input: RankAgentCandidatesInput): RankedAgentCandidate[] {
-  return input.candidates
+  const ranked = input.candidates
     .filter((candidate) => isAgentEligible(candidate, input))
     .map((candidate) => scoreCandidate(candidate, input))
     .sort((left, right) => right.rankingScore - left.rankingScore || left.agentId.localeCompare(right.agentId));
+  const seenModels = new Set<string>();
+  return ranked.filter((candidate) => {
+    const modelKey = candidate.modelTag.toLowerCase();
+    if (seenModels.has(modelKey)) return false;
+    seenModels.add(modelKey);
+    return true;
+  });
 }
 
 export function isAgentEligible(
@@ -30,7 +37,9 @@ export function isAgentEligible(
   input: Pick<RankAgentCandidatesInput, "requiredCapabilities" | "now">,
 ): boolean {
   if (candidate.status === "offline") return false;
+  if (candidate.selectableBy === "owner-only") return false;
   if (!input.requiredCapabilities.every((capability) => candidate.capabilities.includes(capability))) return false;
+  if (candidate.qualityScore === 0 && modelAgeDays(candidate, input.now) <= OLD_MODEL_DAYS) return true;
   if (candidate.qualityScore < HARD_QUALITY_FLOOR) return false;
   if (candidate.qualityScore < OLD_MODEL_QUALITY_FLOOR && modelAgeDays(candidate, input.now) > OLD_MODEL_DAYS) return false;
   return true;
@@ -42,20 +51,25 @@ function scoreCandidate(candidate: AgentCandidate, input: RankAgentCandidatesInp
   const latencyPenalty = (candidate.latencyMs ?? 1_000) / 10;
   const qualityScore = candidate.qualityScore * 100;
   const protectionBoost = isProtectedNewModel(candidate, input.now) ? NEW_MODEL_BOOST : 0;
-  const rankingScore = 10_000 - costPenalty + availabilityScore - latencyPenalty + qualityScore + protectionBoost;
+  const baselineExplorationBoost = candidate.qualityScore === 0 && modelAgeDays(candidate, input.now) <= OLD_MODEL_DAYS ? NEW_MODEL_BOOST : 0;
+  const rankingScore = 10_000 - costPenalty + availabilityScore - latencyPenalty + qualityScore + protectionBoost + baselineExplorationBoost;
   const rankingReasons = [
     "capability-match",
+    "model-pool-draw",
     `cost:${candidate.costPer1kTokensUsd}`,
     `status:${candidate.status}`,
     `quality:${candidate.qualityScore}`,
+    ...(candidate.tags.length > 0 ? [`tags:${candidate.tags.join("|")}`] : []),
+    ...(candidate.license !== undefined ? [`license:${candidate.license}`] : []),
     ...(protectionBoost > 0 ? ["new-model-protection"] : []),
+    ...(baselineExplorationBoost > 0 ? ["new-model-exploration"] : []),
   ];
 
   return { ...candidate, rankingScore, rankingReasons };
 }
 
 function isProtectedNewModel(candidate: AgentCandidate, now: Date): boolean {
-  return candidate.qualityScore >= NEW_MODEL_QUALITY_FLOOR && modelAgeDays(candidate, now) <= OLD_MODEL_DAYS;
+  return (candidate.qualityScore >= NEW_MODEL_QUALITY_FLOOR || candidate.qualityScore === 0) && modelAgeDays(candidate, now) <= OLD_MODEL_DAYS;
 }
 
 function modelAgeDays(candidate: AgentCandidate, now: Date): number {

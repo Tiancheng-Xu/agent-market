@@ -45,6 +45,12 @@ const AgentLimitsSchema = z.strictObject({
   maxPayloadBytes: z.number().int().min(1024).max(1048576),
 });
 
+const AgentAccessSchema = z.strictObject({
+  visibility: z.enum(["private", "listed", "marketplace"]),
+  selectableBy: z.enum(["owner-only", "assigned-task", "public-market"]),
+  ownerScope: z.enum(["local-runtime-owner", "workspace-owner", "platform"]).optional(),
+});
+
 export const AgentManifestSchema = z
   .strictObject({
     id: z.string().min(1),
@@ -56,6 +62,7 @@ export const AgentManifestSchema = z
     model: AgentModelSchema,
     health: AgentHealthSchema,
     limits: AgentLimitsSchema,
+    access: AgentAccessSchema,
   })
   .refine((value) => value.capabilities.includes("completion"), {
     message: "An agent must support completion",
@@ -88,6 +95,22 @@ export const AgentManifestSchema = z
   .refine((value) => value.ownership !== "owner-trained" || value.model.digest === OwnerTrainedModel.digest, {
     message: "Owner-trained ownership is reserved for the canonical trained model digest",
     path: ["model", "digest"],
+  })
+  .refine((value) => value.provider !== "ollama" || value.access.selectableBy === "owner-only", {
+    message: "Local Ollama agents are owner-only by default",
+    path: ["access", "selectableBy"],
+  })
+  .refine((value) => value.provider !== "ollama" || value.access.visibility === "private", {
+    message: "Local Ollama agents must not be exposed as public marketplace agents",
+    path: ["access", "visibility"],
+  })
+  .refine((value) => value.provider === "ollama" || value.access.selectableBy === "public-market", {
+    message: "Provider API agents must be selectable through the public market policy",
+    path: ["access", "selectableBy"],
+  })
+  .refine((value) => value.provider === "ollama" || value.access.visibility === "marketplace", {
+    message: "Provider API agents must use marketplace visibility",
+    path: ["access", "visibility"],
   });
 
 export type AgentManifest = z.infer<typeof AgentManifestSchema>;

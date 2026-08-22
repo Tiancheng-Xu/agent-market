@@ -290,7 +290,7 @@ async function handleAgentGraphql(
     );
     const upstream = await upstreamFetch(new Request(new URL("/graphql", normalizedOrigin(environment.AGENT_RUNTIME_ORIGIN)), {
       method: "POST",
-      headers: { "content-type": "application/json", ...headers },
+      headers: { "content-type": "application/json", "x-agent-caller-scope": "public", ...headers },
       body: runtimeBody,
       signal: AbortSignal.timeout(120_000),
     }));
@@ -430,7 +430,7 @@ async function handleAgentChat(
     );
     const upstream = await upstreamFetch(new Request(new URL("/agent/chat", normalizedOrigin(environment.AGENT_RUNTIME_ORIGIN)), {
       method: "POST",
-      headers: { "content-type": "application/json", ...headers },
+      headers: { "content-type": "application/json", "x-agent-caller-scope": "public", ...headers },
       body: runtimeBody,
       signal: AbortSignal.timeout(120_000),
     }));

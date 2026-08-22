@@ -176,6 +176,56 @@ describe("queen orchestrator state machine", () => {
       "final_arbiter",
     ]);
   });
+
+  it("runs Queen mutations through the Mastra/LangGraph framework boundary", async () => {
+    const frameworkRuntime = { mastra: {} as any, execute: vi.fn(async (input) => ({ ...input, runtime: { mastra: "registered", langGraph: "compiled" }, stages: ["test"] })) };
+    const orchestrator = createQueenOrchestrator({
+      agents: agents(),
+      now,
+      queenAgentId: "queen-router-v1",
+      frameworkRuntime,
+    });
+
+    await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+
+    expect(frameworkRuntime.execute).toHaveBeenCalledWith(expect.objectContaining({
+      operationName: "ProposeTaskGraph",
+      stages: [],
+    }));
+  });
+
+  it("rejects owner-only local agents from public workflow selection", async () => {
+    const orchestrator = createQueenOrchestrator({
+      agents: [
+        ...agents(),
+        candidate("owner-local", {
+          provider: "ollama",
+          ownership: "owner-trained",
+          selectableBy: "owner-only",
+          modelTag: "personal-ai-agent-runtime:v4.1",
+          modelDigest: "2c422ec890241b8492e08d4ba69f79f25efcf8ae4220e83797d2df9cbc7eb52a",
+        }),
+      ],
+      now,
+      queenAgentId: "queen-router-v1",
+    });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+
+    const selected = await mutate(orchestrator, "SelectNodeAgent", {
+      taskId: proposed.data.proposeTaskGraph.taskId,
+      nodeId: "execute-1",
+      selectedAgentId: "owner-local",
+    });
+
+    expect(selected.errors[0].extensions.code).toBe("STATE_ERROR");
+    expect(selected.errors[0].message).toContain("owner-only");
+  });
 });
 
 async function mutate(
@@ -207,8 +257,10 @@ function candidate(agentId: string, overrides: Partial<AgentCandidate>): AgentCa
     agentId,
     displayName: agentId,
     capabilities: ["completion"],
+    tags: [],
     provider: "qwen",
     ownership: "third-party/provider-api",
+    selectableBy: "public-market",
     status: "online",
     costPer1kTokensUsd: 0.01,
     latencyMs: 800,

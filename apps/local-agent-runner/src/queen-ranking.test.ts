@@ -60,6 +60,61 @@ describe("queen agent ranking", () => {
 
     expect(ranked.map((item) => item.agentId)).toEqual(["judge-ready"]);
   });
+
+  it("keeps only one candidate per model in the three-choice pool", () => {
+    const ranked = rankAgentCandidates({
+      nodeType: "execute",
+      requiredCapabilities: ["completion"],
+      now: new Date("2026-08-22T12:00:00.000Z"),
+      candidates: [
+        candidate("same-model-a", { modelTag: "qwen-plus", costPer1kTokensUsd: 0.001, qualityScore: 0.81 }),
+        candidate("same-model-b", { modelTag: "qwen-plus", costPer1kTokensUsd: 0.002, qualityScore: 0.99 }),
+        candidate("other-model", { modelTag: "deepseek-v4-flash", costPer1kTokensUsd: 0.003, qualityScore: 0.83 }),
+      ],
+    });
+
+    expect(ranked.map((item) => item.modelTag)).toEqual(["qwen-plus", "deepseek-v4-flash"]);
+  });
+
+  it("excludes owner-only local agents from public ranking", () => {
+    const ranked = rankAgentCandidates({
+      nodeType: "execute",
+      requiredCapabilities: ["completion"],
+      now: new Date("2026-08-22T12:00:00.000Z"),
+      candidates: [
+        candidate("local-private", { selectableBy: "owner-only", costPer1kTokensUsd: 0, qualityScore: 0.99 }),
+        candidate("provider-public", { costPer1kTokensUsd: 0.004, qualityScore: 0.8 }),
+      ],
+    });
+
+    expect(ranked.map((item) => item.agentId)).toEqual(["provider-public"]);
+  });
+
+  it("gives brand-new zero-score models an exploration reason without pretending quality history exists", () => {
+    const ranked = rankAgentCandidates({
+      nodeType: "execute",
+      requiredCapabilities: ["completion"],
+      now: new Date("2026-08-22T12:00:00.000Z"),
+      candidates: [
+        candidate("new-model", {
+          costPer1kTokensUsd: 0.004,
+          qualityScore: 0,
+          firstSeenAt: "2026-08-22T00:00:00.000Z",
+          tags: ["new-model", "fast-draft"],
+          license: "provider terms pending metadata",
+        }),
+        candidate("old-low", {
+          costPer1kTokensUsd: 0,
+          qualityScore: 0.3,
+          firstSeenAt: "2026-01-01T00:00:00.000Z",
+        }),
+      ],
+    });
+
+    expect(ranked.map((item) => item.agentId)).toEqual(["new-model"]);
+    expect(ranked[0]!.rankingReasons).toContain("new-model-exploration");
+    expect(ranked[0]!.rankingReasons).toContain("tags:new-model|fast-draft");
+  });
 });
 
 function candidate(
@@ -70,8 +125,10 @@ function candidate(
     agentId,
     displayName: agentId,
     capabilities: ["completion"],
+    tags: [],
     provider: "qwen",
     ownership: "third-party/provider-api",
+    selectableBy: "public-market",
     status: "online",
     latencyMs: 900,
     firstSeenAt: "2026-01-01T00:00:00.000Z",

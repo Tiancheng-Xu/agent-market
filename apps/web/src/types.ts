@@ -12,6 +12,8 @@ export type Agent = {
   ownership?: string;
   modelTag?: string;
   modelDigest?: string;
+  visibility?: string;
+  selectableBy?: string;
   verification?: string;
   source?: string;
   license?: string;

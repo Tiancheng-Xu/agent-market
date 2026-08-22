@@ -3,6 +3,8 @@ import type { Agent } from "./types";
 export type CatalogProvider = "ollama" | "deepseek" | "kimi" | "qwen" | "zhipu";
 export type AgentOwnership = "owner-trained" | "third-party/local-served" | "third-party/provider-api";
 export type AgentVerification = "verified" | "implemented" | "pending-smoke" | "pending-credential" | "planned";
+export type AgentVisibility = "private" | "listed" | "marketplace";
+export type AgentSelectableBy = "owner-only" | "assigned-task" | "public-market";
 
 export type PublicAgentCatalogEntry = {
   id: string;
@@ -13,6 +15,8 @@ export type PublicAgentCatalogEntry = {
   ownership: AgentOwnership;
   modelTag: string;
   modelDigest: string;
+  visibility: AgentVisibility;
+  selectableBy: AgentSelectableBy;
   capabilities: string[];
   verification: AgentVerification;
   source: string;
@@ -154,9 +158,14 @@ export const publicAgentCatalogResponse = {
   ],
   redaction: [
     "No API keys, shared secrets, cookies, private local paths, model weights, or raw sensitive prompts are returned.",
-    "Provider models expose only public model tags, provider labels, capability tags, and verification state.",
-    "Local Ollama models are served through the runtime boundary; the browser never receives a direct local model port.",
+    "Provider models expose only public model tags, provider labels, capability tags, access policy, and verification state.",
+    "Local Ollama models are listed as private owner-only agents; the browser never receives a direct local model port.",
   ],
+  selectionPolicy: {
+    localUserAgents: "owner-only by default; public tasks cannot select them without an authenticated owner scope",
+    threeChoicePool: "candidate ranking deduplicates by modelTag so one model cannot occupy multiple choices",
+    scoreLifecycle: "new models start with no historical score and receive exploration boost; completed outcomes later add or subtract score; old low-score models are retired",
+  },
   agents: publicAgentCatalog,
 } as const;
 
@@ -169,6 +178,7 @@ export function catalogEntryToAgent(entry: PublicAgentCatalogEntry): Agent {
     tags: [
       entry.provider,
       entry.ownership,
+      entry.selectableBy,
       entry.verification,
       ...entry.capabilities,
     ],
@@ -179,6 +189,8 @@ export function catalogEntryToAgent(entry: PublicAgentCatalogEntry): Agent {
     ownership: entry.ownership,
     modelTag: entry.modelTag,
     modelDigest: entry.modelDigest,
+    visibility: entry.visibility,
+    selectableBy: entry.selectableBy,
     verification: entry.verification,
     source: entry.source,
     license: entry.license,
@@ -189,7 +201,7 @@ export function agentProviderLabel(provider: CatalogProvider): string {
   return providerLabels[provider];
 }
 
-function localAgent(entry: Omit<PublicAgentCatalogEntry, "category" | "provider" | "providerLabel" | "source" | "license" | "verifiedOperations"> & { verifiedOperations?: number }): PublicAgentCatalogEntry {
+function localAgent(entry: Omit<PublicAgentCatalogEntry, "category" | "provider" | "providerLabel" | "source" | "license" | "visibility" | "selectableBy" | "verifiedOperations"> & { verifiedOperations?: number }): PublicAgentCatalogEntry {
   return {
     ...entry,
     category: entry.ownership === "owner-trained" ? "Local owner-trained" : "Local served",
@@ -197,6 +209,8 @@ function localAgent(entry: Omit<PublicAgentCatalogEntry, "category" | "provider"
     providerLabel: providerLabels.ollama,
     source: "Local Ollama runtime",
     license: entry.ownership === "owner-trained" ? "owner training artifact" : "upstream model terms pending metadata",
+    visibility: "private",
+    selectableBy: "owner-only",
     verifiedOperations: entry.verifiedOperations ?? 0,
   };
 }
@@ -219,6 +233,8 @@ function providerAgent(
     ownership: "third-party/provider-api",
     modelTag,
     modelDigest: "provider-managed",
+    visibility: "marketplace",
+    selectableBy: "public-market",
     capabilities,
     verification,
     source: providerLabels[provider],

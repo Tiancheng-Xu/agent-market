@@ -55,6 +55,16 @@ export function TaskDetailPage() {
 
 export function MatchesPage() {
   const { id } = useParams();
-  const candidates = agents.filter((agent) => agent.verification === "verified").slice(0, 3);
-  return <Localized><><PageHeader eyebrow={`MATCH JOB / ${id ?? "TASK"}`} title="Three explainable candidates" description="Verified catalog agents are ranked first. Pending smoke models stay visible in the registry but do not enter default task matching." /><DemoNotice /><div className="match-grid stagger">{candidates.map((agent, index) => <Panel key={agent.id} className={index === 0 ? "match-card recommended" : "match-card"}><div className="rank">0{index + 1}</div><Badge tone={index === 0 ? "cyan" : "neutral"}>{index === 0 ? "TOP MATCH" : "RANKED"}</Badge><h2>{agent.name}</h2><strong className="match-score">{agent.reliability}<small>/100</small></strong><ul><li>Capability tags satisfy the task filter</li><li>Smoke evidence exists for this Agent Market runtime/provider path</li><li>Model identity is recorded as {agent.modelTag}</li></ul><Link className="button button-ghost" to={`/tasks/${id}/workspace`}>Select candidate</Link></Panel>)}</div></></Localized>;
+  const candidates = uniqueByModel(agents.filter((agent) => agent.verification === "verified" && agent.selectableBy === "public-market")).slice(0, 3);
+  return <Localized><><PageHeader eyebrow={`MATCH JOB / ${id ?? "TASK"}`} title="Three explainable candidates" description="Verified public-market agents are ranked first. Owner-only local agents stay visible to their owner, but do not enter default public task matching." /><DemoNotice /><div className="match-grid stagger">{candidates.map((agent, index) => <Panel key={agent.id} className={index === 0 ? "match-card recommended" : "match-card"}><div className="rank">0{index + 1}</div><Badge tone={index === 0 ? "cyan" : "neutral"}>{index === 0 ? "TOP MATCH" : "RANKED"}</Badge><h2>{agent.name}</h2><strong className="match-score">{agent.reliability}<small>/100</small></strong><ul><li>Capability, license, and model tags satisfy the task filter</li><li>Smoke evidence exists for this Agent Market runtime/provider path</li><li>Model identity is unique in this three-choice pool: {agent.modelTag}</li></ul><Link className="button button-ghost" to={`/tasks/${id}/workspace`}>Select candidate</Link></Panel>)}</div></></Localized>;
+}
+
+function uniqueByModel<T extends { modelTag?: string; id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = (item.modelTag ?? item.id).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

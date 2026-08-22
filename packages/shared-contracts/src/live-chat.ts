@@ -58,6 +58,8 @@ export const LiveAgentHealthSchema = z.strictObject({
   ownership: z.enum(["owner-trained", "third-party/local-served", "third-party/provider-api"]),
   modelTag: z.string().min(1),
   modelDigest: z.union([z.string().regex(/^[0-9a-f]{64}$/), z.literal("provider-managed")]),
+  visibility: z.enum(["private", "listed", "marketplace"]),
+  selectableBy: z.enum(["owner-only", "assigned-task", "public-market"]),
   status: z.enum(["online", "offline", "degraded"]),
   reasonCode: LiveChatErrorCodeSchema.optional(),
   lastVerifiedAt: z.string().datetime().optional(),

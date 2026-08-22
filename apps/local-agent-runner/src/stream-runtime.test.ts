@@ -57,7 +57,7 @@ describe("local stream runtime", () => {
 
     const response = await runtime.fetch(new Request("http://127.0.0.1:8789/agent/chat", {
       method: "POST",
-      headers: { "content-type": "application/json", ...signedHeaders(headers) },
+      headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(headers) },
       body,
     }));
     const text = await response.text();
@@ -134,7 +134,7 @@ describe("local stream runtime", () => {
 
     const response = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
       method: "POST",
-      headers: { "content-type": "application/json", ...signedHeaders(headers) },
+      headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(headers) },
       body,
     }));
     const payload = await response.json();
@@ -230,7 +230,7 @@ describe("local stream runtime", () => {
     const proposedHeaders = signRequest("POST", "/graphql", proposedBody, { key: signingKey, now, nonce: () => "nonce-propose-exec" });
     const proposed = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
       method: "POST",
-      headers: { "content-type": "application/json", ...signedHeaders(proposedHeaders) },
+      headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(proposedHeaders) },
       body: proposedBody,
     }));
     const proposedPayload = await proposed.json();
@@ -249,7 +249,7 @@ describe("local stream runtime", () => {
 
     const response = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
       method: "POST",
-      headers: { "content-type": "application/json", ...signedHeaders(submitHeaders) },
+      headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(submitHeaders) },
       body: submitBody,
     }));
     const payload = await response.json();
@@ -284,6 +284,11 @@ function manifest(): AgentManifest {
       maxConcurrency: 1,
       timeoutMs: 120000,
       maxPayloadBytes: 1048576,
+    },
+    access: {
+      visibility: "private",
+      selectableBy: "owner-only",
+      ownerScope: "local-runtime-owner",
     },
   };
 }

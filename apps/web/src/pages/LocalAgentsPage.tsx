@@ -20,6 +20,8 @@ type HealthAgent = {
   provider: "ollama" | "deepseek" | "kimi" | "qwen" | "zhipu";
   ownership: string;
   modelTag: string;
+  visibility?: string;
+  selectableBy?: string;
   status: "online" | "offline" | "degraded";
 };
 type Health = { status: "online" | "offline" | "degraded"; agents: HealthAgent[]; reasonCode?: string };
@@ -29,6 +31,8 @@ type DisplayAgent = {
   provider: string;
   ownership: string;
   model: string;
+  visibility: string;
+  selectableBy: string;
   note: string;
   verification: string;
 };
@@ -187,6 +191,8 @@ const fallbackAgents: DisplayAgent[] = publicAgentCatalog.map((agent) => ({
   provider: agent.providerLabel,
   ownership: agent.ownership,
   model: agent.modelTag,
+  visibility: agent.visibility,
+  selectableBy: agent.selectableBy,
   note: `${agent.note} Verification: ${agent.verification}.`,
   verification: agent.verification,
 }));
@@ -222,8 +228,10 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
   );
   const canAddSelected = !busy
     && orchestrationIds.length < MAX_ORCHESTRATION_AGENTS
-    && !orchestrationIds.includes(selectedAgent.id);
-  const canRunOrchestration = !busy && orchestrationAgents.length >= 2 && draft.trim().length > 0;
+    && !orchestrationIds.includes(selectedAgent.id)
+    && !orchestrationAgents.some((agent) => agent.model.toLowerCase() === selectedAgent.model.toLowerCase());
+  const orchestrationModelConflict = hasDuplicateModels(orchestrationAgents);
+  const canRunOrchestration = !busy && orchestrationAgents.length >= 2 && !orchestrationModelConflict && draft.trim().length > 0;
 
   useEffect(() => {
     let active = true;
@@ -732,7 +740,7 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
                     <span className={`agent-status agent-status-${status}`} />
                     <strong>{agent.name}</strong>
                     <small>{agent.provider} / {agent.model}</small>
-                    <em>{agent.ownership}</em>
+                    <em>{agent.ownership} / {agent.selectableBy}</em>
                   </button>
                 );
               })}
@@ -744,6 +752,7 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
             <div className="orchestration-builder">
               <span>Sequential orchestration</span>
               <p>Pick the lead agent first. The next slot unlocks only after the previous slot is selected; final orchestration runs after at least two agents are chosen.</p>
+              <p>One model can occupy only one slot. Local Ollama agents are owner-only and require an authenticated owner runtime scope before public selection.</p>
               <div className="orchestration-slots">
                 {Array.from({ length: MAX_ORCHESTRATION_AGENTS }).map((_, index) => {
                   const agent = orchestrationAgents[index];
@@ -771,6 +780,7 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
                 <span>{selectedAgent.provider}</span>
                 <strong>{selectedAgent.name}</strong>
                 <small>{selectedAgent.note}</small>
+                <small>{selectedAgent.visibility} / {selectedAgent.selectableBy}</small>
               </div>
               <Badge tone={healthById.get(selectedAgent.id)?.status === "online" ? "cyan" : "amber"}>
                 {(healthById.get(selectedAgent.id)?.status ?? "pending runtime").toUpperCase()}
@@ -916,12 +926,24 @@ function buildDisplayAgents(healthAgents: HealthAgent[]) {
       provider: providerLabel(agent.provider),
       ownership: agent.ownership,
       model: agent.modelTag,
+      visibility: agent.visibility ?? "private",
+      selectableBy: agent.selectableBy ?? "owner-only",
       note: fallback?.note ?? liveAgentNote(agent),
       verification: fallback?.verification ?? agent.status,
     };
   });
   const liveIds = new Set(liveAgents.map((agent) => agent.id));
   return [...liveAgents, ...fallbackAgents.filter((agent) => !liveIds.has(agent.id))];
+}
+
+function hasDuplicateModels(agents: DisplayAgent[]): boolean {
+  const seen = new Set<string>();
+  for (const agent of agents) {
+    const key = agent.model.toLowerCase();
+    if (seen.has(key)) return true;
+    seen.add(key);
+  }
+  return false;
 }
 
 function providerLabel(provider: HealthAgent["provider"]) {

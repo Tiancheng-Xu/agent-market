@@ -11,6 +11,7 @@ import {
 } from "@agent-market/shared-contracts";
 
 import { rankAgentCandidates } from "./queen-ranking";
+import { createQueenFrameworkRuntime, type QueenFrameworkRuntime } from "./queen-workflow-runtime";
 
 type QueenTaskRecord = {
   taskId: string;
@@ -37,6 +38,8 @@ export type QueenOrchestratorOptions = {
   queenAgentId: string;
   now?: () => Date;
   executeAgentText?: (request: QueenAgentExecutionRequest) => Promise<string>;
+  frameworkRuntime?: QueenFrameworkRuntime;
+  allowOwnerOnlyAgents?: boolean;
 };
 
 export type QueenGraphqlResponse = {
@@ -50,6 +53,7 @@ export type QueenGraphqlResponse = {
 export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
   const now = options.now ?? (() => new Date());
   const tasks = new Map<string, QueenTaskRecord>();
+  const frameworkRuntime = options.frameworkRuntime ?? createQueenFrameworkRuntime();
 
   return {
     async handleGraphql(request: QueenGraphqlRequest): Promise<QueenGraphqlResponse> {
@@ -61,6 +65,12 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       const input = parsed.data.variables.input;
 
       try {
+        await frameworkRuntime.execute({
+          operationName,
+          taskId: typeof input["taskId"] === "string" ? input["taskId"] : undefined,
+          nodeId: typeof input["nodeId"] === "string" ? input["nodeId"] : undefined,
+          stages: [],
+        });
         switch (operationName) {
           case "ProposeTaskGraph":
             return data("proposeTaskGraph", proposeTaskGraph(input));
@@ -172,7 +182,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       nodeId,
       candidates,
       autoSelectedAgentId,
-      rankingPolicy: "capability-cost-availability-latency-quality-new-model-protection",
+      rankingPolicy: "model-pool-draw-license-tags-capability-cost-availability-latency-quality-old-model-retirement-new-model-exploration-distinct-model",
     };
   }
 
@@ -186,6 +196,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     if (override && riskCodes.length > 0 && input["riskNoticeAccepted"] !== true) {
       throw new Error("User override risk notice must be accepted");
     }
+    assertSelectableAgent(selectedAgentId);
     const assignment: NodeAssignment = {
       nodeId,
       selectedAgentId,
@@ -206,6 +217,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const selectedAgentId = optionalStringInput(input, "agentId") ?? optionalStringInput(input, "selectedAgentId");
     const existing = task.assignments.get(nodeId);
     if (existing === undefined && selectedAgentId === undefined) throw new Error("Node assignment is not selected");
+    if (selectedAgentId !== undefined) assertSelectableAgent(selectedAgentId);
     const assignment: NodeAssignment = {
       nodeId,
       selectedAgentId: selectedAgentId ?? existing!.selectedAgentId,
@@ -245,6 +257,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const task = taskFor(input);
     const nodeId = stringInput(input, "nodeId");
     const executorAgentId = stringInput(input, "executorAgentId");
+    assertSelectableAgent(executorAgentId);
     const output = optionalStringInput(input, "output") ?? await executeAgentText({
       taskId: task.taskId,
       nodeId,
@@ -261,6 +274,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const task = taskFor(input);
     const nodeId = stringInput(input, "nodeId");
     const judgeAgentId = stringInput(input, "judgeAgentId");
+    assertSelectableAgent(judgeAgentId);
     const output = task.outputs.get(nodeId);
     if (output === undefined) return graphqlError("NODE_OUTPUT_NOT_FOUND", "Node output must be submitted before judging");
     if (judgeAgentId === task.queenAgentId || judgeAgentId === output.executorAgentId) {
@@ -293,6 +307,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const task = taskFor(input);
     const nodeId = stringInput(input, "nodeId");
     const redTeamAgentId = stringInput(input, "redTeamAgentId");
+    assertSelectableAgent(redTeamAgentId);
     const findings = optionalStringInput(input, "findings") ?? await executeAgentText({
       taskId: task.taskId,
       nodeId,
@@ -314,6 +329,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const parentNodeId = stringInput(input, "parentNodeId");
     const repairAgentId = optionalStringInput(input, "repairAgentId") ?? optionalStringInput(input, "agentId") ?? task.outputs.get(parentNodeId)?.executorAgentId;
     if (repairAgentId === undefined) throw new Error("Repair agent is required");
+    assertSelectableAgent(repairAgentId);
     const output = optionalStringInput(input, "output") ?? await executeAgentText({
       taskId: task.taskId,
       nodeId: parentNodeId,
@@ -327,6 +343,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
   async function finalArbitrate(input: Record<string, unknown>): Promise<QueenGraphqlResponse> {
     const task = taskFor(input);
     const finalArbiterAgentId = stringInput(input, "finalArbiterAgentId");
+    assertSelectableAgent(finalArbiterAgentId);
     if (finalArbiterAgentId === task.queenAgentId) {
       return graphqlError("FINAL_ARBITER_NOT_INDEPENDENT", "Final Arbiter must be independent from Queen");
     }
@@ -362,6 +379,13 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
   async function executeAgentText(request: QueenAgentExecutionRequest): Promise<string> {
     if (options.executeAgentText === undefined) throw new Error("Agent execution hook is not configured");
     return options.executeAgentText(request);
+  }
+
+  function assertSelectableAgent(agentId: string): void {
+    const agent = options.agents.find((item) => item.agentId === agentId);
+    if (agent === undefined) throw new Error(`Agent ${agentId} does not exist`);
+    if (agent.status === "offline") throw new Error(`Agent ${agentId} is offline`);
+    if (agent.selectableBy === "owner-only" && options.allowOwnerOnlyAgents !== true) throw new Error(`Agent ${agentId} is owner-only and cannot be selected from the public workflow`);
   }
 }
 
