@@ -2,7 +2,7 @@
   "evidenceVersion": 2,
   "project": "agent-market",
   "snapshot": "phase2-local-validation",
-  "capturedAt": "2026-08-21T21:50:00Z",
+  "capturedAt": "2026-08-22T01:12:43.885Z",
   "truthBoundary": {
     "en": "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
     "zh": "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。"
@@ -27,7 +27,8 @@
       "apps/web/public/evidence/aws-runtime-exit-zero.png",
       "apps/web/public/evidence/github-actions-success.png",
       "apps/web/public/evidence/cloudflare-edge-ssr.png",
-      "apps/web/public/evidence/cloudflare-v2-edge-ssr.png"
+      "apps/web/public/evidence/cloudflare-v2-edge-ssr.png",
+      "apps/web/public/evidence/aws-pause-live-readback.png"
     ]
   },
   "items": [
@@ -39,8 +40,8 @@
         "zh": "把一条真实浏览器性能样本追踪到 AWS 与 PostgreSQL，并安全暂停消费端。"
       },
       "implementation": {
-        "en": "API Gateway, ingestion Lambda, SNS, SQS/DLQ, ECS Fargate and PostgreSQL preserve request_id.",
-        "zh": "API Gateway、接入 Lambda、SNS、SQS/DLQ、ECS Fargate 与 PostgreSQL 保持 request_id 连续。"
+        "en": "The recorded V1 chain remains verified. Fresh read-only AWS console readback shows UPDATE_COMPLETE, consumer Disabled, ECS running tasks 0, DLQ 0, and two retained work-queue messages; compute is paused but the queue is not drained.",
+        "zh": "既有 V1 全链路证据保持有效。最新 AWS 控制台只读回读显示 UPDATE_COMPLETE、消费端 Disabled、ECS 运行任务 0、DLQ 0，工作队列保留 2 条消息；计算已暂停，但队列未清空。"
       },
       "code": [
         "infra/aws/template.yaml",
@@ -51,7 +52,9 @@
         "docs/evidence/testing/2026-08-20-performance-observability.json",
         "docs/evidence/deployment/2026-08-21-aws-reversible-pause.json",
         "apps/web/public/evidence/aws-cloudformation-stack.png",
-        "apps/web/public/evidence/aws-runtime-exit-zero.png"
+        "apps/web/public/evidence/aws-runtime-exit-zero.png",
+        "docs/evidence/deployment/2026-08-21-aws-current-pause-readback.json",
+        "apps/web/public/evidence/aws-pause-live-readback.png"
       ],
       "status": "verified-production"
     },

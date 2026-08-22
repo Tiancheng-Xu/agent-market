@@ -6,7 +6,9 @@
     "build": "hardhat compile",
     "check": "pnpm typecheck",
     "test": "hardhat test",
-    "typecheck": "hardhat compile && tsc -p tsconfig.json"
+    "typecheck": "hardhat compile && tsc -p tsconfig.json",
+    "deploy:sepolia": "hardhat run scripts/deploy-sepolia.ts --network sepolia",
+    "close:sepolia": "hardhat run scripts/run-sepolia-closure.ts --network sepolia"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
