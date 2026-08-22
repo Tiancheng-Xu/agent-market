@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, stat } from "node:fs/promises";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { validateBuiltRenderingRuntime } from "./validate-rendering-runtime.mjs";
 
@@ -44,6 +45,39 @@ async function verifyPagesOutput(directory) {
   return { indexBytes: indexStats.size, workerBytes: workerStats.size };
 }
 
+async function verifyPagesFunctionEntry(directory) {
+  const entryPath = resolve(webRoot, "..", "..", "functions", "[[path]].js");
+  const module = await import(`${pathToFileURL(entryPath).href}?v=${Date.now()}`);
+  if (typeof module.onRequest !== "function") {
+    throw new Error("Cloudflare Pages function entry is missing onRequest().");
+  }
+  const index = await readFile(resolve(directory, "index.html"), "utf8");
+  const response = await module.onRequest({
+    request: new Request("https://agent-market.test/evidence", {
+      headers: { accept: "text/html" },
+    }),
+    env: {
+      ASSETS: {
+        fetch() {
+          return Promise.resolve(new Response(index, {
+            headers: { "content-type": "text/html; charset=utf-8" },
+          }));
+        },
+      },
+    },
+    params: {},
+    data: {},
+    next() {
+      return Promise.resolve(new Response("unexpected-next", { status: 500 }));
+    },
+    waitUntil() {},
+    passThroughOnException() {},
+  });
+  if (response.headers.get("x-agent-market-render-mode") !== "ssr") {
+    throw new Error("Cloudflare Pages function entry did not run the SSR handler.");
+  }
+}
+
 await Promise.all([
   rm(clientDirectory, { recursive: true, force: true }),
   rm(workerDirectory, { recursive: true, force: true }),
@@ -67,6 +101,7 @@ await cp(
 
 const output = await verifyPagesOutput(outputDirectory);
 await verifyPagesOutput(clientDirectory);
+await verifyPagesFunctionEntry(outputDirectory);
 const runtime = await validateBuiltRenderingRuntime(
   resolve(outputDirectory, "_worker.js"),
 );
