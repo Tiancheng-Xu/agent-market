@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, readFile, rm, stat } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -24,15 +24,20 @@ function runVite(args) {
 async function verifyPagesOutput(directory) {
   const indexPath = resolve(directory, "index.html");
   const workerPath = resolve(directory, "_worker.js");
+  const routesPath = resolve(directory, "_routes.json");
   const [index, worker, indexStats, workerStats] = await Promise.all([
     readFile(indexPath, "utf8"),
     readFile(workerPath, "utf8"),
     stat(indexPath),
     stat(workerPath),
   ]);
+  const routes = JSON.parse(await readFile(routesPath, "utf8"));
 
   if (!index.includes('<div id="root"></div>')) {
     throw new Error("Built index.html is missing the exact SSR root marker.");
+  }
+  if (!routes.include?.includes("/*")) {
+    throw new Error("Cloudflare Pages routes must include all SSR document routes.");
   }
   if (indexStats.size < 256 || workerStats.size < 1_024) {
     throw new Error("Cloudflare Pages output is unexpectedly empty.");
@@ -43,6 +48,20 @@ async function verifyPagesOutput(directory) {
     }
   }
   return { indexBytes: indexStats.size, workerBytes: workerStats.size };
+}
+
+async function writePagesRoutes(directory) {
+  await writeFile(resolve(directory, "_routes.json"), `${JSON.stringify({
+    version: 1,
+    include: ["/*"],
+    exclude: [
+      "/assets/*",
+      "/architecture/*",
+      "/evidence/*",
+      "/favicon.svg",
+      "/robots.txt",
+    ],
+  }, null, 2)}\n`);
 }
 
 async function verifyPagesFunctionEntry(directory) {
@@ -98,6 +117,10 @@ await cp(
   resolve(workerDirectory, "_worker.js"),
   resolve(clientDirectory, "_worker.js"),
 );
+await Promise.all([
+  writePagesRoutes(outputDirectory),
+  writePagesRoutes(clientDirectory),
+]);
 
 const output = await verifyPagesOutput(outputDirectory);
 await verifyPagesOutput(clientDirectory);
