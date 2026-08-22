@@ -7,3 +7,4 @@
 - [x] T4b：按 C 方案新增 Live Chat 协议、Worker `/agent/chat`/`/agent/healthz`、Local Stream Runtime 和 Mastra-style playground。
 - [ ] T5：生成架构图、时序图、manifest 与 mock/真实 smoke Evidence；运行一次默认模型真实本机调用并保留诚实边界。
 - [ ] T6：完成全仓 QA、敏感内容扫描、375/390/430/1440、Repository Policy、PR 与 Preview；生产保持 manual-pending。
+- [ ] T7（二期）：用户手动添加 Agent registry。真实注册表写控制面数据库（优先 D1，必要时 PostgreSQL），浏览器只保存表单草稿、最近选择和 UI cache；API key、模型权重、私有 endpoint 不进入浏览器存储或公开 Evidence。

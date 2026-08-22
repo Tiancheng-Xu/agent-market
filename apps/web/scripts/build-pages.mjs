@@ -60,11 +60,16 @@ await cp(
   resolve(workerDirectory, "_worker.js"),
   resolve(outputDirectory, "_worker.js"),
 );
+await cp(
+  resolve(workerDirectory, "_worker.js"),
+  resolve(clientDirectory, "_worker.js"),
+);
 
 const output = await verifyPagesOutput(outputDirectory);
+await verifyPagesOutput(clientDirectory);
 const runtime = await validateBuiltRenderingRuntime(
   resolve(outputDirectory, "_worker.js"),
 );
 console.log(
-  `Cloudflare Pages edge build ready: index=${output.indexBytes} bytes, worker=${output.workerBytes} bytes, runtime-cases=${runtime.cases}.`,
+  `Cloudflare Pages edge build ready: index=${output.indexBytes} bytes, worker=${output.workerBytes} bytes, runtime-cases=${runtime.cases}, dual-output-worker=true.`,
 );
