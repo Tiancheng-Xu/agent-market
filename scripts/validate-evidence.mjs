@@ -26,6 +26,7 @@ const UNSAFE_VALUE = /(?:^\/Users\/|file:\/\/|private[_-]?key|secret|password|ap
 export const PUBLIC_EVIDENCE_STATUSES = new Set(["verified-local", "verified-production", "pending-external", "deferred"]);
 const V2_PRODUCTION_RECORDS = new Map([
   ["V2-CLOUDFLARE-ACTIONS", "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json"],
+  ["V2-SEPOLIA-READBACK", "docs/evidence/deployment/2026-08-21-sepolia-public-readback.json"],
 ]);
 const REQUIRED_PUBLIC_ARTIFACTS = [
   "README.md", "docs/evidence/phase2-local-validation.json", "docs/architecture/adr/0001-defer-the-graph.md", "apps/web/src/pages/EvidencePage.tsx",
@@ -189,10 +190,17 @@ function validateV2ProductionRecord(root, item, violations) {
   if (!existsSync(absolute)) return;
   let record;
   try { record = JSON.parse(readFileSync(absolute, "utf8")); } catch { violations.push(`phase2-production-record-invalid:${item.id}`); return; }
-  const routes = new Map((record.httpReadback ?? []).map((entry) => [entry.path, entry.status]));
-  const actions = record.githubActions ?? [];
-  const screenshot = record.browserReadback?.screenshot;
-  if (record.project !== "agent-market" || record.status !== "verified-production" || record.cloudflare?.project !== "agent-market-site" || record.cloudflare?.environment !== "production" || record.cloudflare?.latestStage !== "success" || !/^[0-9a-f-]{36}$/.test(record.cloudflare?.deploymentId ?? "") || !/^[0-9a-f]{40}$/.test(record.cloudflare?.mergeCommit ?? "") || routes.get("/") !== 200 || routes.get("/evidence") !== 200 || routes.get("/tasks/task-01/workspace") !== 200 || routes.get("/missing") !== 404 || actions.length < 3 || actions.some((run) => run.conclusion !== "success") || !item.evidence.includes(screenshot) || !record.assets?.includes(screenshot)) {
+  let valid = false;
+  if (item.id === "V2-CLOUDFLARE-ACTIONS") {
+    const routes = new Map((record.httpReadback ?? []).map((entry) => [entry.path, entry.status]));
+    const actions = record.githubActions ?? [];
+    const screenshot = record.browserReadback?.screenshot;
+    valid = record.project === "agent-market" && record.status === "verified-production" && record.cloudflare?.project === "agent-market-site" && record.cloudflare?.environment === "production" && record.cloudflare?.latestStage === "success" && /^[0-9a-f-]{36}$/.test(record.cloudflare?.deploymentId ?? "") && /^[0-9a-f]{40}$/.test(record.cloudflare?.mergeCommit ?? "") && routes.get("/") === 200 && routes.get("/evidence") === 200 && routes.get("/tasks/task-01/workspace") === 200 && routes.get("/missing") === 404 && actions.length >= 3 && actions.every((run) => run.conclusion === "success") && item.evidence.includes(screenshot) && record.assets?.includes(screenshot);
+  } else if (item.id === "V2-SEPOLIA-READBACK") {
+    const transactions = [record.transactions?.normal, record.transactions?.dispute];
+    valid = record.project === "agent-market" && record.status === "verified-production" && record.network === "sepolia" && record.chainId === 11155111 && record.source === "tenderly-rpc-and-etherscan-public-html" && record.secondaryRpc?.checkedChainId === 11155111 && record.blockscout?.status === "pending-pro-api-key" && transactions.every((transaction) => /^0x[0-9a-f]{64}$/i.test(transaction?.transactionHash ?? "") && Number.isSafeInteger(transaction?.blockNumber) && transaction.status === 1 && transaction.matchingEventCount === 1 && transaction.etherscan?.statusMarker === "Success" && transaction.etherscan?.url === `https://sepolia.etherscan.io/tx/${transaction.transactionHash}` && /^[0-9a-f]{64}$/.test(transaction.etherscan?.pageSha256 ?? ""));
+  }
+  if (!valid) {
     violations.push(`phase2-production-record-invalid:${item.id}`);
   }
   for (const [location, value] of stringsIn(record)) if (PRIVATE_OR_SECRET.test(value)) violations.push(`unsafe-production-record:${item.id}:${location}`);

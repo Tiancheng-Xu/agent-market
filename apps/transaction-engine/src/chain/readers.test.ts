@@ -12,7 +12,9 @@ describe("Blockscout MCP reader", () => {
       const url = new URL(String(input));
       calls.push(url.pathname);
       if (url.pathname.endsWith("/unlock_blockchain_analysis")) return Response.json({ ok: true });
-      if (url.pathname.endsWith("/get_transaction_info")) return Response.json({ data: {
+      if (url.pathname.endsWith("/get_transaction_info")) {
+        expect(url.searchParams.get("transaction_hash")).toBe(txHash);
+        return Response.json({ data: {
         hash: txHash,
         block_number: 100,
         block_hash: transactionBlockHash,
@@ -21,7 +23,8 @@ describe("Blockscout MCP reader", () => {
         to: { hash: "0x2222222222222222222222222222222222222222" },
         raw_input: "0x1234",
         value: "0",
-      } });
+        } });
+      }
       if (url.pathname.endsWith("/direct_api_call")) return Response.json({ data: { items: [] } });
       if (url.pathname.endsWith("/get_block_number")) return Response.json({ data: { block_number: 101 } });
       if (url.pathname.endsWith("/get_block_info")) return Response.json({ data: { hash: canonicalBlockHash } });

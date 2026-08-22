@@ -8,11 +8,13 @@ const networks: HardhatUserConfig["networks"] = {
   },
 };
 
-if (process.env.SEPOLIA_RPC_URL && process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY) {
+if (process.env.SEPOLIA_RPC_URL && (process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY || process.env.SEPOLIA_ROLE_MNEMONIC)) {
   networks.sepolia = {
     chainId: 11155111,
     url: process.env.SEPOLIA_RPC_URL,
-    accounts: [process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY],
+    accounts: process.env.SEPOLIA_ROLE_MNEMONIC
+      ? { mnemonic: process.env.SEPOLIA_ROLE_MNEMONIC, count: 9 }
+      : [process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY!],
   };
 }
 

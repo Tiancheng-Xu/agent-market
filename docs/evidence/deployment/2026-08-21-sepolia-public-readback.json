@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "project": "agent-market",
+  "capturedAt": "2026-08-22T01:51:19.972Z",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "source": "tenderly-rpc-and-etherscan-public-html",
+  "secondaryRpc": {
+    "provider": "Tenderly Sepolia Gateway",
+    "checkedChainId": 11155111
+  },
+  "blockscout": {
+    "status": "pending-pro-api-key",
+    "reason": "Current Blockscout MCP session requires a PRO API key and forbids retry."
+  },
+  "transactions": {
+    "normal": {
+      "transactionHash": "0x54cc367c4fa656edc8995dc6b86bf43654fe5bac7831beb7fe2fd18672be622f",
+      "blockNumber": 11539876,
+      "status": 1,
+      "contractAddress": "0xFE0E6CE1b992f341A173d80Da94Df739B507cB50",
+      "eventTopic": "0xbb25ca986b5ffa9cf1672af9fe993f2e85b999273745e9d0195aa80d6221e0ea",
+      "matchingEventCount": 1,
+      "event": {
+        "logIndex": 96,
+        "taskId": "0x2b5aed56bccbb28010bceb3ecebd320fa4975e8572f6b51f6494ab5b386795d2",
+        "requestRef": "0x6d8e5b03cfbc00e675b6c49314ae278cb53ba89f01a512957434684b5fb06d54"
+      },
+      "etherscan": {
+        "url": "https://sepolia.etherscan.io/tx/0x54cc367c4fa656edc8995dc6b86bf43654fe5bac7831beb7fe2fd18672be622f",
+        "statusMarker": "Success",
+        "pageSha256": "e298006f5db972b9c6deda8885f6d9ffa663f1a75fc3bbb8002bf7b3e06c9a5d"
+      }
+    },
+    "dispute": {
+      "transactionHash": "0x12e73757b526c6fbeffa40619682c7e2ba48ab157b16a36c982a783f335a885c",
+      "blockNumber": 11539886,
+      "status": 1,
+      "contractAddress": "0xFE0E6CE1b992f341A173d80Da94Df739B507cB50",
+      "eventTopic": "0xbb25ca986b5ffa9cf1672af9fe993f2e85b999273745e9d0195aa80d6221e0ea",
+      "matchingEventCount": 1,
+      "event": {
+        "logIndex": 9310,
+        "taskId": "0x90644bd1e5b8f90db5a7b1689350845c1f338c8d82c11bbdb2c9da15d8892a85",
+        "requestRef": "0xa250f4f2ff879c15439f11a489e7a289d321b1de719e1912fcbf54fc855a38aa"
+      },
+      "etherscan": {
+        "url": "https://sepolia.etherscan.io/tx/0x12e73757b526c6fbeffa40619682c7e2ba48ab157b16a36c982a783f335a885c",
+        "statusMarker": "Success",
+        "pageSha256": "ac1325185d2379833686663e7b585370c6aa8a8c8f2067a5fd1111fafad30d99"
+      }
+    }
+  },
+  "status": "verified-production"
+}

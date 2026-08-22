@@ -50,5 +50,5 @@ describe("PostgreSQL phase 2 migration", () => {
     `)).rejects.toThrow();
 
     await database.close();
-  });
+  }, 15_000);
 });

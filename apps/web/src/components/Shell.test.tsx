@@ -49,4 +49,11 @@ describe("Shell visual gates", () => {
     expect(css).toContain("@media (max-width:420px){.topbar{padding-inline:10px}");
     expect(css).not.toContain(".language-toggle button{min-width:42px}");
   });
+  it("lets content panels size themselves instead of stretching to the tallest peer", () => {
+    const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+
+    expect(css).toContain(".panel{align-self:start}");
+    expect(css).toContain(".match-grid{align-items:start}");
+    expect(css).toContain(".match-card ul{min-height:0}");
+  });
 });
