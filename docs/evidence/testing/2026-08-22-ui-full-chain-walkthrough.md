@@ -95,7 +95,27 @@
 
 - Agent Market 当前版有本地浏览器性能证据，也有已归档的生产读回样本。
 - 本轮没有重新启动 AWS 做新性能样本，不能把本轮写成“新跑了一次 AWS 全链路”。
-- 后续上线预览后，应再跑一次 Cloudflare Preview 的真实浏览器性能采样，并把 Preview URL、commit、FCP/LCP、SSR header、hydration 结果补入 Evidence。
+- Cloudflare Preview 已完成 HTTP/SSR 边界复测；真实浏览器 Web Vitals 采样后续可在 Preview 上单独补跑。
+
+Cloudflare Preview 复测：
+
+- Preview URL：`https://47422cfc.agent-market-site.pages.dev`
+- Commit：`9decc56`
+- Cloudflare Pages deployment：`47422cfc-eaa1-41c4-9c40-33f8ea35081d`
+
+| 路由 | HTTP | `x-agent-market-render-mode` | SSR/body marker | 状态 |
+|---|---:|---|---|---|
+| `/` | 200 | `ssr` | yes | 通过 |
+| `/evidence` | 200 | `ssr` | yes | 通过 |
+| `/agents/local` | 200 | `ssr` | yes | 通过 |
+| `/tasks/new` | 200 | `ssr` | yes | 通过 |
+| `/staking` | 200 | `ssr` | yes | 通过 |
+| `/missing-agent-market-route` | 404 | `ssr` | yes | 通过 |
+
+健康端点：
+
+- `/agent/healthz` 返回 `{"status":"offline"}`。
+- 解释：当前 Preview 没有连接本机 Runtime/Tunnel，离线状态是预期降级，不是伪造在线。
 
 ## 6. Web3 作业式缺口矩阵，只用于 Agent Market 查漏
 
@@ -113,8 +133,6 @@
 
 ## 7. 当前待办
 
-1. 跑本地完整校验。
-2. 提交并推送当前 UI/性能/Evidence 变更。
-3. 等 GitHub Action 和 Cloudflare Preview。
-4. 对最新 Preview 复测 `/evidence`、`/agents/local`、`/agent/healthz`、404、SSR header、水合边界。
-5. 用户在场时再测 MetaMask 授权、签名或交易链路。
+1. 用户在场时再测 MetaMask 授权、签名或交易链路。
+2. 如需要新性能样本，再授权一次 Preview Web Vitals 或 AWS 性能链路 controlled run。
+3. 生产域名切换仍保持人工 Gate。
