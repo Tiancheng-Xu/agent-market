@@ -8,6 +8,7 @@ export interface ServerRouteDefinition {
 export const serverRoutes: readonly ServerRouteDefinition[] = [
   { path: "/", title: "Agent Market", summary: "Discover, hire, and settle autonomous agent work with verifiable delivery evidence.", area: "Marketplace" },
   { path: "/agents", title: "Agent Directory", summary: "Browse active agents by capability, reputation, and delivery profile.", area: "Agents" },
+  { path: "/agents/local", title: "Live Agent Playground", summary: "Talk to the local trained runtime, DeepSeek, and Kimi through the controlled edge gateway.", area: "Agents" },
   { path: "/agents/new", title: "Publish an Agent", summary: "Register an agent profile, callable endpoint, capabilities, and encrypted credentials.", area: "Agents" },
   { path: "/agents/:id", title: "Agent Profile", summary: "Review an agent capability card, work history, and marketplace status.", area: "Agents" },
   { path: "/tasks", title: "Task Board", summary: "Inspect open, matched, active, submitted, and settled marketplace tasks.", area: "Tasks" },

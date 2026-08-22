@@ -77,4 +77,166 @@ describe("Cloudflare Pages edge renderer", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.text()).toContain('data-render-mode="csr-fallback"');
   });
+
+  it("reports live agent health as offline when no runtime is configured", async () => {
+    const handler = createPagesHandler({ logger: { info() {}, error() {} } });
+
+    const response = await handler.fetch(new Request("https://agent-market.test/agent/healthz"), environment());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ status: "offline", reasonCode: "RUNTIME_OFFLINE" });
+    expect(JSON.stringify(body)).not.toContain("11434");
+  });
+
+  it("proxies signed live chat requests as SSE", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        const request = new Request(input, init);
+        calls.push(request);
+        return new Response('event: delta\ndata: {"event":"delta","requestId":"11111111-1111-4111-8111-111111111111","delta":"ok"}\n\n', {
+          headers: { "content-type": "text/event-stream" },
+        });
+      },
+    });
+
+    const response = await handler.fetch(new Request("https://agent-market.test/agent/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://agent-market.test" },
+      body: JSON.stringify({
+        requestId: "11111111-1111-4111-8111-111111111111",
+        agentId: "deepseek-deepseek-v4-flash",
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    }), {
+      ...environment(),
+      AGENT_RUNTIME_ORIGIN: "https://runtime.agent-market.test",
+      AGENT_RUNTIME_SHARED_SECRET: "runtime-secret",
+    });
+
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(calls[0]?.headers.get("x-agent-signature")).toMatch(/^[0-9a-f]{64}$/);
+    expect(await response.text()).toContain("ok");
+  });
+
+  it("proxies signed GraphQL orchestration requests to the runtime resolver", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        const request = new Request(input, init);
+        calls.push(request);
+        return Response.json({
+          data: {
+            orchestrateAgents: {
+              requestId: "11111111-1111-4111-8111-111111111111",
+              runId: "22222222-2222-4222-8222-222222222222",
+              status: "succeeded",
+              leadAgentId: "personal-ai-agent-runtime-v4-1",
+              steps: [],
+              finalOutput: "lead synthesis",
+            },
+          },
+        });
+      },
+    });
+
+    const response = await handler.fetch(new Request("https://agent-market.test/agent/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://agent-market.test" },
+      body: JSON.stringify({
+        query: "mutation OrchestrateAgents($input: AgentOrchestrationInput!) { orchestrateAgents(input: $input) { finalOutput } }",
+        operationName: "OrchestrateAgents",
+        variables: {
+          input: {
+            requestId: "11111111-1111-4111-8111-111111111111",
+            agentIds: ["personal-ai-agent-runtime-v4-1", "deepseek-deepseek-v4-flash"],
+            messages: [{ role: "user", content: "compare two answers" }],
+          },
+        },
+      }),
+    }), {
+      ...environment(),
+      AGENT_RUNTIME_ORIGIN: "https://runtime.agent-market.test",
+      AGENT_RUNTIME_SHARED_SECRET: "runtime-secret",
+    });
+    const payload = await response.json();
+
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(new URL(calls[0]?.url ?? "https://missing.test").pathname).toBe("/graphql");
+    expect(calls[0]?.headers.get("x-agent-signature")).toMatch(/^[0-9a-f]{64}$/);
+    expect(payload).toMatchObject({
+      data: {
+        orchestrateAgents: {
+          status: "succeeded",
+          finalOutput: "lead synthesis",
+        },
+      },
+    });
+  });
+
+  it("validates and signs Queen GraphQL state-machine mutations to runtime /graphql", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        const request = new Request(input, init);
+        calls.push(request);
+        return Response.json({
+          data: {
+            proposeTaskGraph: {
+              taskId: "11111111-1111-4111-8111-111111111111",
+              graphRevision: 1,
+              rescuePolicy: { mode: "auto", visibleToUser: false, evidenceVisible: true },
+            },
+          },
+        });
+      },
+    });
+
+    const response = await handler.fetch(new Request("https://agent-market.test/agent/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://agent-market.test" },
+      body: JSON.stringify({
+        query: "mutation ProposeTaskGraph($input: ProposeTaskGraphInput!) { proposeTaskGraph(input: $input) { taskId } }",
+        operationName: "ProposeTaskGraph",
+        variables: {
+          input: {
+            requirement: "Build a verified Queen-led workflow",
+            queenAgentId: "queen-router-v1",
+          },
+        },
+      }),
+    }), {
+      ...environment(),
+      AGENT_RUNTIME_ORIGIN: "https://runtime.agent-market.test",
+      AGENT_RUNTIME_SHARED_SECRET: "runtime-secret",
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(new URL(calls[0]?.url ?? "https://missing.test").pathname).toBe("/graphql");
+    expect(calls[0]?.headers.get("x-agent-signature")).toMatch(/^[0-9a-f]{64}$/);
+    expect(payload.data.proposeTaskGraph.rescuePolicy).toMatchObject({ mode: "auto", visibleToUser: false });
+  });
+
+  it("returns GraphQL errors for Queen mutations when runtime is offline", async () => {
+    const handler = createPagesHandler({ logger: { info() {}, error() {} } });
+
+    const response = await handler.fetch(new Request("https://agent-market.test/agent/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://agent-market.test" },
+      body: JSON.stringify({
+        query: "mutation ProposeTaskGraph($input: ProposeTaskGraphInput!) { proposeTaskGraph(input: $input) { taskId } }",
+        operationName: "ProposeTaskGraph",
+        variables: { input: { requirement: "Build workflow", queenAgentId: "queen-router-v1" } },
+      }),
+    }), environment());
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.errors[0].extensions.code).toBe("RUNTIME_OFFLINE");
+  });
 });

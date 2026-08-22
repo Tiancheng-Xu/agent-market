@@ -1,0 +1,84 @@
+{
+  "evidenceType": "live-agent-chat-smoke",
+  "capturedAt": "2026-08-22T00:00:00-04:00",
+  "feature": "local-ollama-and-provider-api-agents",
+  "architecture": "C: Cloudflare edge gateway plus Cloudflare Tunnel plus local stream runtime; local Ollama and hosted provider APIs share one signed runtime protocol.",
+  "secretPolicy": "No API keys, shared secrets, prompts beyond smoke text, or raw private logs are stored in this evidence.",
+  "runtimeBoundary": {
+    "localRuntimeHost": "127.0.0.1",
+    "localRuntimePort": 8789,
+    "ollamaExposure": "127.0.0.1:11434 only; never exposed through the browser or public tunnel",
+    "browserCredentialExposure": "none"
+  },
+  "smokePrompt": "Reply with exactly: Agent Market smoke OK",
+  "results": [
+    {
+      "agentId": "personal-ai-agent-runtime-v4-1",
+      "provider": "ollama",
+      "ownership": "owner-trained",
+      "status": "verified",
+      "httpStatus": 200,
+      "events": ["meta", "delta", "done"],
+      "excerpt": "PASS: ... Agent Market smoke OK",
+      "notes": "Local trained runtime answered through signed local runtime request after Ollama thinking was disabled with think:false. The model added extra framing, so exact-output behavior is not asserted for this trained model."
+    },
+    {
+      "agentId": "deepseek-deepseek-v4-flash",
+      "provider": "deepseek",
+      "ownership": "third-party/provider-api",
+      "status": "verified",
+      "httpStatus": 200,
+      "events": ["meta", "delta", "done"],
+      "excerpt": "Agent Market smoke OK",
+      "notes": "DeepSeek API key remained server-side in the local runtime."
+    },
+    {
+      "agentId": "qwen-qwen-plus",
+      "provider": "qwen",
+      "ownership": "third-party/provider-api",
+      "status": "verified",
+      "httpStatus": 200,
+      "events": ["meta", "delta", "done"],
+      "excerpt": "Agent Market smoke OK",
+      "notes": "Qwen API key remained server-side in the local runtime. The default OpenAI-compatible DashScope endpoint answered with qwen-plus."
+    },
+    {
+      "agentId": "zhipu-glm-5-3",
+      "provider": "zhipu",
+      "ownership": "third-party/provider-api",
+      "status": "verified",
+      "httpStatus": 200,
+      "events": ["meta", "delta", "done"],
+      "excerpt": "Agent Market smoke OK",
+      "notes": "Zhipu/Z.AI API key remained server-side in the local runtime. The default OpenAI-compatible endpoint answered with glm-5.3."
+    },
+    {
+      "agentId": "kimi-kimi-k3",
+      "provider": "kimi",
+      "ownership": "third-party/provider-api",
+      "status": "pending-credential",
+      "httpStatus": 200,
+      "events": ["meta", "error"],
+      "errorCode": "MODEL_UNAVAILABLE",
+      "safeProviderProbe": [
+        { "model": "kimi-k3", "status": 401, "error": "Invalid Authentication" },
+        { "model": "kimi-k2.6", "status": 401, "error": "Invalid Authentication" }
+      ],
+      "notes": "The Kimi adapter and manifest are implemented, but the currently configured key failed provider authentication. A valid Moonshot key is required before this agent can be marked verified."
+    }
+  ],
+  "verified": [
+    "signed local runtime request",
+    "local owner-trained Ollama answer path",
+    "DeepSeek provider API answer path",
+    "Qwen provider API answer path",
+    "Zhipu provider API answer path",
+    "Kimi provider adapter registration and safe credential failure handling",
+    "browser has no direct Ollama or provider credential access"
+  ],
+  "pending": [
+    "Kimi real answer smoke with a valid Moonshot API key",
+    "Cloudflare Tunnel public preview smoke after runtime hostname is configured",
+    "full Evidence page binding after final gate"
+  ]
+}

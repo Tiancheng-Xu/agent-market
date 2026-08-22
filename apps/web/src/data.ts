@@ -70,6 +70,7 @@ export const tasks: Task[] = [
 export const navItems = [
   ["/", "Market", "MK"],
   ["/agents", "Agents", "AG"],
+  ["/agents/local", "Live", "LV"],
   ["/tasks", "Tasks", "TS"],
   ["/dashboard", "Dashboard", "DB"],
   ["/staking", "Staking", "YD"],

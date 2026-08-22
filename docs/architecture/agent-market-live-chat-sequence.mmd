@@ -1,0 +1,28 @@
+sequenceDiagram
+  autonumber
+  participant Browser
+  participant Worker as Cloudflare Worker
+  participant Runtime as Local Stream Runtime
+  participant Ollama as Ollama 127.0.0.1
+  participant Provider as DeepSeek/Kimi/Qwen/Zhipu API
+  participant Runner as Local Agent Runner
+
+  Runner->>Worker: register manifests / heartbeat / evidence state
+  Browser->>Worker: GET /agent/healthz
+  Worker->>Runtime: signed GET /healthz
+  Runtime-->>Worker: public health snapshot
+  Worker-->>Browser: online / degraded / offline
+  Browser->>Worker: POST /agent/chat
+  Worker->>Worker: origin, size, optional Turnstile, timeout
+  Worker->>Runtime: signed POST /agent/chat
+  Runtime->>Runtime: verify HMAC and agent manifest
+  alt owner-trained local agent
+    Runtime->>Ollama: streaming /api/chat on loopback
+    Ollama-->>Runtime: token chunks
+  else provider API agent
+    Runtime->>Provider: OpenAI-compatible chat completion
+    Provider-->>Runtime: hosted model answer
+  end
+  Runtime-->>Worker: SSE meta / delta / done / error
+  Worker-->>Browser: same SSE stream
+  Runtime-->>Runner: optional future chat.completed audit event

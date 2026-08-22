@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Market live agent architecture arbitration</title>
+  <desc id="desc">Candidate C wins by combining signed synchronous chat through Worker and local runtime with asynchronous runner identity, heartbeat, lease, result, and evidence.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#071020"/><stop offset="1" stop-color="#10233f"/></linearGradient>
+    <style>
+      text{font-family:Arial,Helvetica,sans-serif;fill:#e8f2ff}.muted{fill:#9eb4cc}.box{fill:#0f1d33;stroke:#2f7de1;stroke-width:2}.winner{fill:#102d34;stroke:#22d3ee}.warn{fill:#2d2416;stroke:#f59e0b}.line{stroke:#6aa4ff;stroke-width:2;fill:none;marker-end:url(#arrow)}.dash{stroke-dasharray:7 7}.small{font-size:18px}.tiny{font-size:14px}.title{font-size:28px;font-weight:700}.label{font-size:20px;font-weight:700}
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#6aa4ff"/></marker>
+  </defs>
+  <rect width="1100" height="620" fill="url(#bg)"/>
+  <text x="44" y="56" class="title">Live Agent candidate arbitration</text>
+  <text x="44" y="88" class="muted small">V1 selects C: real chat now, safe async control plane preserved for long tasks.</text>
+  <rect x="55" y="130" width="290" height="120" rx="18" class="warn"/><text x="85" y="170" class="label">A: outbound runner only</text><text x="85" y="205" class="muted tiny">Safe, no inbound Mac surface</text><text x="85" y="228" class="muted tiny">But V1 only async final text</text>
+  <rect x="405" y="130" width="290" height="120" rx="18" class="warn"/><text x="435" y="170" class="label">B: Worker + Tunnel</text><text x="435" y="205" class="muted tiny">True SSE chat</text><text x="435" y="228" class="muted tiny">Tunnel is transport, not auth</text>
+  <rect x="755" y="130" width="290" height="120" rx="18" class="winner"/><text x="785" y="170" class="label">C: hybrid winner</text><text x="785" y="205" class="muted tiny">Signed sync chat data plane</text><text x="785" y="228" class="muted tiny">Async identity and evidence plane</text>
+  <path d="M200 250 V310 H900 V250" class="line"/><path d="M550 250 V310" class="line"/><path d="M900 250 V310" class="line"/>
+  <rect x="355" y="310" width="390" height="74" rx="16" class="box"/><text x="410" y="356" class="label">Arbitration result: use C for V1</text>
+  <path d="M550 384 V445" class="line"/>
+  <rect x="70" y="445" width="270" height="92" rx="16" class="box"/><text x="100" y="480" class="label">Sync data plane</text><text x="100" y="512" class="muted tiny">Browser -> Worker -> Tunnel -> Runtime</text>
+  <rect x="415" y="445" width="270" height="92" rx="16" class="box"/><text x="445" y="480" class="label">Model adapters</text><text x="445" y="512" class="muted tiny">Ollama + DeepSeek + Kimi + Qwen + Zhipu</text>
+  <rect x="760" y="445" width="270" height="92" rx="16" class="box"/><text x="790" y="480" class="label">Async control plane</text><text x="790" y="512" class="muted tiny">Register, heartbeat, lease, result, evidence</text>
+  <path d="M340 491 H415" class="line"/><path d="M685 491 H760" class="line dash"/>
+</svg>

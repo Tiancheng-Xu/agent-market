@@ -1,0 +1,19 @@
+flowchart TD
+  U[User asks for real public Agent chat] --> A[A candidate: outbound runner only]
+  U --> B[B candidate: Worker + Tunnel + Runtime]
+  U --> C[C candidate: hybrid]
+  A --> AS[Safe, no inbound Mac surface, but only async final text in V1]
+  B --> BS[True SSE chat, but Tunnel is not authorization]
+  C --> CS[Use B for sync chat and A for identity, heartbeat, lease, evidence]
+  AS --> J[Arbitration]
+  BS --> J
+  CS --> J
+  J --> V1[V1 winner: C]
+  V1 --> DP[Sync data plane: Browser -> Worker -> Tunnel -> Local Runtime]
+  V1 --> CP[Async control plane: Runner -> register, heartbeat, lease, result]
+  DP --> OL[Ollama loopback personal runtime]
+  DP --> DS[DeepSeek provider API]
+  DP --> KM[Kimi provider API]
+  DP --> QW[Qwen provider API]
+  DP --> ZP[Zhipu provider API]
+  CP --> EV[Evidence and future long task workflow]
