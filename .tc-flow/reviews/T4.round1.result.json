@@ -1,0 +1,16 @@
+{
+  "taskId":"T4",
+  "round":1,
+  "verdict":"repair",
+  "repairs":[
+    "Made confirmed protection and confirmed-to-reorg transitions atomic and added a real PostgreSQL integration gate",
+    "Required canonical block hash and observed requestRef for confirmed persistence",
+    "Derived contract target, taskId, and requestRef from server allowlist and resource binding",
+    "Strengthened event argument validation including createTask deadline and settlement value invariants",
+    "Added zero-row update detection and differentiated not-found/conflict paths",
+    "Made intentId deterministic from requestId and detected idempotency payload conflicts",
+    "Used independent get_block_info hash for Blockscout canonical comparison",
+    "Added machine-readable budget_only refund scope and platform_treasury bond disposition",
+    "Made readback timeout-bounded and fail-closed on incomplete required fields"
+  ]
+}

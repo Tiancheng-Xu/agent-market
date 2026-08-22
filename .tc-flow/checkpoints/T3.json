@@ -1,0 +1,10 @@
+{
+  "runId": "0424cdbc-cf90-45fd-86a8-ca719680cbef",
+  "taskId": "T3",
+  "status": "completed",
+  "nextTask": "T4",
+  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
+  "result": ".tc-flow/results/T3.result.json",
+  "review": ".tc-flow/reviews/T3.round3.result.json",
+  "createdAt": "2026-08-21"
+}

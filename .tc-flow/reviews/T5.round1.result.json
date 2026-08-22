@@ -1,0 +1,11 @@
+{
+  "taskId":"T5","round":1,"verdict":"repair",
+  "repairs":[
+    "Bound task_id to request_id before recall and classify mismatch",
+    "Materialized the hard-filtered eligible set before exact pgvector distance ranking",
+    "Added non-zero vector constraints and query defenses",
+    "Accepted raw SQS events and bounded standard SNS envelopes; added mixed partial-batch test",
+    "Ran a real ephemeral pgvector PostgreSQL integration covering filters, three real candidates, duplicate event, and task/request mismatch",
+    "Ran go mod tidy so direct dependencies are classified correctly"
+  ]
+}

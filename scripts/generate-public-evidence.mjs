@@ -1,8 +1,8 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { readEvidence, validateEvidence } from "./validate-evidence.mjs";
+import { readEvidence, validateEvidence, validateEvidenceRepository } from "./validate-evidence.mjs";
 
 const TITLES = [
   "Agent full-fields onboarding and wallet binding",
@@ -27,6 +27,7 @@ const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export function generatePublicEvidence(root = REPOSITORY_ROOT) {
   const document = readEvidence(resolve(root, "docs/evidence/requirements.yaml"));
   const violations = validateEvidence(document);
+  violations.push(...validateEvidenceRepository(root));
   if (violations.length > 0) throw new Error(violations.join("\n"));
 
   const requirements = document.requirements.map((requirement, index) => ({
@@ -36,6 +37,8 @@ export function generatePublicEvidence(root = REPOSITORY_ROOT) {
   const output = resolve(root, "apps/web/src/generated/requirements.json");
   mkdirSync(resolve(root, "apps/web/src/generated"), { recursive: true });
   writeFileSync(output, `${JSON.stringify({ requirements }, null, 2)}\n`);
+  const phase2 = JSON.parse(readFileSync(resolve(root, "docs/evidence/phase2-local-validation.json"), "utf8"));
+  writeFileSync(resolve(root, "apps/web/src/evidence/phase2-evidence.generated.json"), `${JSON.stringify(phase2, null, 2)}\n`);
   return output;
 }
 

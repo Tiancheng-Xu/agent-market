@@ -1,11 +1,24 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Agent Market project-owned performance evidence chain. Reuses the protected shared course foundation.
 
+Metadata:
+  SharedEcsClusterTransition:
+    DirectUpdateProhibited: true
+    RequiredMarkerParameter: ClusterTransitionMarkerSha256
+    Phase1: Before this template, update the deployed stack once with DeletionPolicy and UpdateReplacePolicy set to Retain on logical resource PerformanceCluster; verify UPDATE_COMPLETE.
+    Phase2: Have the shared-foundation owner adopt or replace the retained cluster and provide its verified ARN, then deploy this template with SharedEcsClusterArn. Never delete the retained cluster from the project stack.
+    Rollback: Roll back to the Phase1 retained template; do not recreate or delete a cluster from this workload stack.
+  CostBoundary:
+    DispatcherReservedConcurrency: 1
+    EcsTaskLease: ECS control-plane task identity and tags; no DynamoDB lease table
+    LifecycleState: One project-owned SSM Standard parameter; no dedicated compute or DynamoDB capacity
+
 Parameters:
   ProjectName:
     Type: String
     Default: agent-market
     AllowedPattern: "[a-z0-9-]+"
+    MaxLength: 20
   SharedVpcId:
     Type: AWS::EC2::VPC::Id
   PrivateSubnetIds:
@@ -15,12 +28,23 @@ Parameters:
   SharedDatabaseSecretArn:
     Type: String
     NoEcho: true
+  SharedEcsClusterArn:
+    Type: String
+    AllowedPattern: "arn:[a-z0-9-]+:ecs:[a-z0-9-]+:[0-9]{12}:cluster/.+"
+  ClusterTransitionMarkerSha256:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Name of the SSM Standard parameter written by the approved cluster transition gate; Ref resolves its marker SHA-256.
+  IngestionAuthSecretArn:
+    Type: String
+    NoEcho: true
+    AllowedPattern: "arn:[a-z0-9-]+:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+"
   AllowedOrigin:
     Type: String
     Default: https://agent-market.baby2b.online
-  AggregatorImageTag:
+  AggregatorImageDigest:
     Type: String
-    Default: latest
+    AllowedPattern: '^sha256:[a-f0-9]{64}$'
+    ConstraintDescription: Supply an immutable sha256 image manifest digest; tags and latest are rejected.
 
 Resources:
   AggregatorRepository:
@@ -31,21 +55,10 @@ Resources:
       RepositoryName: !Sub ${ProjectName}-performance-aggregator
       ImageScanningConfiguration:
         ScanOnPush: true
-      ImageTagMutability: MUTABLE
+      ImageTagMutability: IMMUTABLE
       LifecyclePolicy:
         LifecyclePolicyText: >-
           {"rules":[{"rulePriority":1,"description":"Retain five newest images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":5},"action":{"type":"expire"}}]}
-      Tags:
-        - Key: Project
-          Value: !Ref ProjectName
-
-  PerformanceCluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: !Sub ${ProjectName}-performance
-      ClusterSettings:
-        - Name: containerInsights
-          Value: enabled
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -77,7 +90,9 @@ Resources:
   PerformanceTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: !Sub ${ProjectName}-performance
+      TopicName: !Sub ${ProjectName}-performance.fifo
+      FifoTopic: true
+      ContentBasedDeduplication: false
       KmsMasterKeyId: alias/aws/sns
       Tags:
         - Key: Project
@@ -86,9 +101,15 @@ Resources:
   PerformanceDeadLetterQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub ${ProjectName}-performance-dlq
+      QueueName: !Sub ${ProjectName}-performance-dlq.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: false
       SqsManagedSseEnabled: true
       MessageRetentionPeriod: 1209600
+      RedriveAllowPolicy:
+        redrivePermission: byQueue
+        sourceQueueArns:
+          - !Sub arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:${ProjectName}-performance-work.fifo
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -96,7 +117,9 @@ Resources:
   PerformanceWorkQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub ${ProjectName}-performance-work
+      QueueName: !Sub ${ProjectName}-performance-work.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: false
       SqsManagedSseEnabled: true
       MessageRetentionPeriod: 345600
       VisibilityTimeout: 5400
@@ -112,6 +135,7 @@ Resources:
     Properties:
       Queues:
         - !Ref PerformanceWorkQueue
+        - !Ref PerformanceDeadLetterQueue
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -123,6 +147,35 @@ Resources:
             Condition:
               ArnEquals:
                 aws:SourceArn: !Ref PerformanceTopic
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: sqs:*
+            Resource:
+              - !GetAtt PerformanceWorkQueue.Arn
+              - !GetAtt PerformanceDeadLetterQueue.Arn
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  PerformanceTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref PerformanceTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: sns:*
+            Resource: !Ref PerformanceTopic
+            Condition:
+              Bool:
+                aws:SecureTransport: false
 
   PerformanceSubscription:
     Type: AWS::SNS::Subscription
@@ -131,6 +184,16 @@ Resources:
       Protocol: sqs
       Endpoint: !GetAtt PerformanceWorkQueue.Arn
       RawMessageDelivery: true
+
+  LifecycleStateParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /agent-market/${ProjectName}/lifecycle-state
+      Type: String
+      Tier: Standard
+      Value: '{"version":1,"state":"never_paused"}'
+      Tags:
+        Project: !Ref ProjectName
 
   IngestionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -151,13 +214,16 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
-        - PolicyName: PublishPerformanceEvents
+        - PolicyName: PublishAuthenticatedPerformanceEvents
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: sns:Publish
                 Resource: !Ref PerformanceTopic
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref IngestionAuthSecretArn
 
   IngestionFunction:
     Type: AWS::Lambda::Function
@@ -173,10 +239,14 @@ Resources:
         Variables:
           TOPIC_ARN: !Ref PerformanceTopic
           ALLOWED_ORIGIN: !Ref AllowedOrigin
+          AUTH_SECRET_ARN: !Ref IngestionAuthSecretArn
+          AUTH_WINDOW_SECONDS: "300"
       Code:
         ZipFile: |
-          import base64, boto3, json, math, os, uuid
+          import base64, boto3, hashlib, hmac, json, math, os, time, uuid
           sns = boto3.client("sns")
+          secrets = boto3.client("secretsmanager")
+          auth_secret = None
           KEYS = {"schemaVersion","requestId","route","version","observedAt","metrics"}
           METRICS = {"TTFB","FCP","LCP","CLS","INP"}
           def response(status, payload):
@@ -184,24 +254,47 @@ Resources:
           def valid(value):
               try:
                   if not isinstance(value,dict) or set(value) != KEYS or value["schemaVersion"] != 1: return False
-                  uuid.UUID(value["requestId"])
+                  if not isinstance(value["requestId"],str): return False
+                  parsed=uuid.UUID(value["requestId"])
+                  if parsed.version != 7 or str(parsed) != value["requestId"]: return False
                   if not isinstance(value["route"],str) or not value["route"].startswith("/") or len(value["route"]) > 256 or "?" in value["route"] or "#" in value["route"]: return False
                   if not isinstance(value["version"],str) or len(value["version"]) > 64: return False
                   metrics=value["metrics"]
                   if not isinstance(metrics,dict) or not metrics or not set(metrics) <= METRICS: return False
                   return all(isinstance(item,(int,float)) and not isinstance(item,bool) and math.isfinite(item) and item >= 0 for item in metrics.values())
               except (KeyError,TypeError,ValueError): return False
+          def get_auth_secret():
+              global auth_secret
+              if auth_secret is None:
+                  value=secrets.get_secret_value(SecretId=os.environ["AUTH_SECRET_ARN"]).get("SecretString")
+                  if not isinstance(value,str) or len(value) < 32: raise RuntimeError("AUTH_SECRET_INVALID")
+                  auth_secret=value.encode("utf-8")
+              return auth_secret
+          def authenticated(headers, raw):
+              timestamp=headers.get("x-agent-market-timestamp","")
+              signature=headers.get("x-agent-market-signature","").lower()
+              try:
+                  observed=int(timestamp)
+                  if abs(int(time.time())-observed) > int(os.environ["AUTH_WINDOW_SECONDS"]): return False
+              except (TypeError,ValueError): return False
+              if len(signature) != 64 or any(item not in "0123456789abcdef" for item in signature): return False
+              expected=hmac.new(get_auth_secret(),(timestamp+"."+raw).encode("utf-8"),hashlib.sha256).hexdigest()
+              return hmac.compare_digest(expected,signature)
           def handler(event, context):
               try:
                   raw=event.get("body") or ""
                   if event.get("isBase64Encoded"): raw=base64.b64decode(raw).decode("utf-8")
-                  payload=json.loads(raw)
+              except Exception: return response(400,{"error":"PERFORMANCE_ENVELOPE_INVALID"})
+              headers={str(k).lower():str(v) for k,v in (event.get("headers") or {}).items()}
+              try:
+                  if not authenticated(headers,raw): return response(401,{"error":"INGESTION_AUTH_INVALID"})
+              except Exception: return response(503,{"error":"INGESTION_AUTH_UNAVAILABLE"})
+              try: payload=json.loads(raw)
               except Exception: return response(400,{"error":"PERFORMANCE_ENVELOPE_INVALID"})
               if not valid(payload): return response(400,{"error":"PERFORMANCE_ENVELOPE_INVALID"})
-              headers={str(k).lower():str(v) for k,v in (event.get("headers") or {}).items()}
               if headers.get("x-request-id") not in (None,payload["requestId"]): return response(409,{"error":"REQUEST_ID_MISMATCH"})
               message={**payload,"eventType":"PerformanceObserved"}
-              sns.publish(TopicArn=os.environ["TOPIC_ARN"],Message=json.dumps(message,separators=(",",":")),MessageAttributes={"request_id":{"DataType":"String","StringValue":payload["requestId"]}})
+              sns.publish(TopicArn=os.environ["TOPIC_ARN"],Message=json.dumps(message,separators=(",",":")),MessageGroupId="performance",MessageDeduplicationId=payload["requestId"],MessageAttributes={"request_id":{"DataType":"String","StringValue":payload["requestId"]}})
               return response(202,{"accepted":True,"requestId":payload["requestId"]})
 
   PerformanceApi:
@@ -265,8 +358,33 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: AuthorizeEcr
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+        - PolicyName: PullAggregatorImage
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: !GetAtt AggregatorRepository.Arn
+        - PolicyName: WriteAggregatorLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub ${AggregatorLogGroup.Arn}:*
 
   AggregatorTaskRole:
     Type: AWS::IAM::Role
@@ -303,7 +421,7 @@ Resources:
         OperatingSystemFamily: LINUX
       ContainerDefinitions:
         - Name: performance-aggregator
-          Image: !Sub ${AggregatorRepository.RepositoryUri}:${AggregatorImageTag}
+          Image: !Sub ${AggregatorRepository.RepositoryUri}@${AggregatorImageDigest}
           Essential: true
           Environment:
             - Name: DATABASE_SECRET_ARN
@@ -336,22 +454,79 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
       Policies:
-        - PolicyName: RunAndInspectAggregator
+        - PolicyName: ConsumePerformanceWorkQueue
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
-                  - ecs:RunTask
-                  - ecs:DescribeTasks
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt PerformanceWorkQueue.Arn
+        - PolicyName: RunAndInspectAggregator
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecs:RunTask
+                Resource: !Ref AggregatorTaskDefinition
+                Condition:
+                  ArnEquals:
+                    ecs:cluster: !Ref SharedEcsClusterArn
+              - Effect: Allow
+                Action: ecs:ListTasks
                 Resource: "*"
+                Condition:
+                  ArnEquals:
+                    ecs:cluster: !Ref SharedEcsClusterArn
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeTasks
+                  - ecs:StopTask
+                Resource:
+                  Fn::Sub:
+                    - arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task/${ClusterName}/*
+                    - ClusterName:
+                        Fn::Select:
+                          - 1
+                          - Fn::Split:
+                              - "/"
+                              - Ref: SharedEcsClusterArn
+                Condition:
+                  ArnEquals:
+                    ecs:cluster: !Ref SharedEcsClusterArn
+                  StringEquals:
+                    aws:ResourceTag/Project: !Ref ProjectName
+              - Effect: Allow
+                Action: ecs:TagResource
+                Resource:
+                  Fn::Sub:
+                    - arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task/${ClusterName}/*
+                    - ClusterName:
+                        Fn::Select:
+                          - 1
+                          - Fn::Split:
+                              - "/"
+                              - Ref: SharedEcsClusterArn
+                Condition:
+                  StringEquals:
+                    ecs:CreateAction: RunTask
+                    aws:RequestTag/Project: !Ref ProjectName
+                  ForAllValues:StringEquals:
+                    aws:TagKeys:
+                      - Project
+                      - HardDeadlineSeconds
+                      - RequestId
               - Effect: Allow
                 Action: iam:PassRole
                 Resource:
                   - !GetAtt TaskExecutionRole.Arn
                   - !GetAtt AggregatorTaskRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
 
   DispatcherFunction:
     Type: AWS::Lambda::Function
@@ -363,32 +538,108 @@ Resources:
       Role: !GetAtt DispatcherRole.Arn
       Timeout: 900
       MemorySize: 256
+      ReservedConcurrentExecutions: 1
       Environment:
         Variables:
-          CLUSTER_ARN: !GetAtt PerformanceCluster.Arn
+          CLUSTER_ARN: !Ref SharedEcsClusterArn
           TASK_DEFINITION_ARN: !Ref AggregatorTaskDefinition
           SUBNET_IDS: !Join [",", !Ref PrivateSubnetIds]
           SECURITY_GROUP_ID: !Ref ProjectSecurityGroup
+          TASK_STARTED_BY: !Sub ${ProjectName}-performance
+          PROJECT_NAME: !Ref ProjectName
+          HARD_TASK_DEADLINE_SECONDS: "720"
       Code:
         ZipFile: |
-          import base64, boto3, os, time
+          import base64, boto3, json, os, time, uuid
           ecs=boto3.client("ecs")
-          def handler(event, context):
-              for record in event.get("Records",[]):
+          def task_tags(task):
+              return {item["key"]:item["value"] for item in task.get("tags",[])}
+          def describe_tasks(task_arns):
+              if not task_arns: return []
+              response=ecs.describe_tasks(cluster=os.environ["CLUSTER_ARN"],tasks=task_arns,include=["TAGS"])
+              if response.get("failures"): raise RuntimeError("ECS_DESCRIBE_TASK_FAILED")
+              return response.get("tasks",[])
+          def project_tasks():
+              task_arns=set()
+              for desired in ("PENDING","RUNNING"):
+                  token=None
+                  while True:
+                      request={"cluster":os.environ["CLUSTER_ARN"],"startedBy":os.environ["TASK_STARTED_BY"],"desiredStatus":desired,"maxResults":100}
+                      if token: request["nextToken"]=token
+                      response=ecs.list_tasks(**request)
+                      task_arns.update(response.get("taskArns",[]))
+                      token=response.get("nextToken")
+                      if not token: break
+              tasks=describe_tasks(sorted(task_arns))
+              for task in tasks:
+                  if task.get("startedBy") != os.environ["TASK_STARTED_BY"] or task_tags(task).get("Project") != os.environ["PROJECT_NAME"]:
+                      raise RuntimeError("ECS_TASK_OWNERSHIP_MISMATCH")
+              return [task for task in tasks if task.get("lastStatus") != "STOPPED"]
+          def stop_task(task_arn):
+              last_error=None
+              for attempt in range(3):
+                  try:
+                      ecs.stop_task(cluster=os.environ["CLUSTER_ARN"],task=task_arn,reason="agent-market dispatcher failure or timeout")
+                      last_error=None
+                      break
+                  except Exception as error:
+                      last_error=error
+                      if attempt < 2: time.sleep(2 ** attempt)
+              if last_error is not None: raise RuntimeError("ECS_STOP_TASK_FAILED") from last_error
+              deadline=time.time()+90
+              while time.time() < deadline:
+                  tasks=describe_tasks([task_arn])
+                  if not tasks or tasks[0].get("lastStatus") == "STOPPED": return
+                  time.sleep(3)
+              raise RuntimeError("ECS_STOP_WAIT_TIMEOUT")
+          def reconcile_existing_tasks():
+              tasks=project_tasks()
+              if not tasks: return
+              now=time.time()
+              for task in tasks:
+                  tags=task_tags(task)
+                  started=task.get("startedAt") or task.get("createdAt")
+                  hard_deadline=int(tags.get("HardDeadlineSeconds","0"))
+                  if started is None or hard_deadline <= 0 or started.timestamp()+hard_deadline <= now:
+                      stop_task(task["taskArn"])
+              raise RuntimeError("ECS_PROJECT_TASK_ACTIVE")
+          def process(record):
+              try:
+                  payload=json.loads(record["body"])
+                  request_id=payload["requestId"]
+                  parsed=uuid.UUID(request_id)
+                  if not isinstance(payload,dict) or payload.get("eventType") != "PerformanceObserved" or parsed.version != 7 or str(parsed) != request_id: raise ValueError()
+              except (KeyError,TypeError,ValueError,json.JSONDecodeError): raise RuntimeError("PERFORMANCE_MESSAGE_INVALID")
+              reconcile_existing_tasks()
+              task_arn=None
+              try:
                   encoded=base64.b64encode(record["body"].encode("utf-8")).decode("ascii")
-                  launched=ecs.run_task(cluster=os.environ["CLUSTER_ARN"],taskDefinition=os.environ["TASK_DEFINITION_ARN"],launchType="FARGATE",count=1,networkConfiguration={"awsvpcConfiguration":{"subnets":os.environ["SUBNET_IDS"].split(","),"securityGroups":[os.environ["SECURITY_GROUP_ID"]],"assignPublicIp":"DISABLED"}},overrides={"containerOverrides":[{"name":"performance-aggregator","environment":[{"name":"PERFORMANCE_EVENT_B64","value":encoded}]}]})
-                  if launched.get("failures") or not launched.get("tasks"): raise RuntimeError("ECS_RUN_TASK_FAILED")
-                  task_arn=launched["tasks"][0]["taskArn"]
-                  deadline=time.time()+780
+                  hard_deadline=int(os.environ["HARD_TASK_DEADLINE_SECONDS"])
+                  launched=ecs.run_task(cluster=os.environ["CLUSTER_ARN"],taskDefinition=os.environ["TASK_DEFINITION_ARN"],launchType="FARGATE",count=1,clientToken=request_id,startedBy=os.environ["TASK_STARTED_BY"],tags=[{"key":"Project","value":os.environ["PROJECT_NAME"]},{"key":"HardDeadlineSeconds","value":str(hard_deadline)},{"key":"RequestId","value":request_id}],networkConfiguration={"awsvpcConfiguration":{"subnets":os.environ["SUBNET_IDS"].split(","),"securityGroups":[os.environ["SECURITY_GROUP_ID"]],"assignPublicIp":"DISABLED"}},overrides={"containerOverrides":[{"name":"performance-aggregator","environment":[{"name":"PERFORMANCE_EVENT_B64","value":encoded}]}]})
+                  if launched.get("tasks"): task_arn=launched["tasks"][0]["taskArn"]
+                  if launched.get("failures") or not task_arn: raise RuntimeError("ECS_RUN_TASK_FAILED")
+                  deadline=time.time()+hard_deadline
                   while time.time() < deadline:
-                      task=ecs.describe_tasks(cluster=os.environ["CLUSTER_ARN"],tasks=[task_arn])["tasks"][0]
+                      tasks=describe_tasks([task_arn])
+                      if not tasks: raise RuntimeError("ECS_TASK_MISSING")
+                      task=tasks[0]
                       if task["lastStatus"] == "STOPPED":
                           containers=task.get("containers",[])
                           if not containers or containers[0].get("exitCode") != 0: raise RuntimeError("ECS_TASK_FAILED")
-                          break
+                          return
                       time.sleep(5)
-                  else: raise RuntimeError("ECS_TASK_TIMEOUT")
-              return {"processed":len(event.get("Records",[]))}
+                  raise RuntimeError("ECS_TASK_TIMEOUT")
+              except Exception as error:
+                  if task_arn:
+                      try: stop_task(task_arn)
+                      except Exception as stop_error: raise stop_error from error
+                  raise
+          def handler(event, context):
+              failures=[]
+              for record in event.get("Records",[]):
+                  try: process(record)
+                  except Exception: failures.append({"itemIdentifier":record.get("messageId","")})
+              return {"batchItemFailures":failures}
 
   PerformanceConsumerMapping:
     Type: AWS::Lambda::EventSourceMapping
@@ -401,15 +652,29 @@ Resources:
       Enabled: true
       BatchSize: 1
       MaximumBatchingWindowInSeconds: 0
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
       ScalingConfig:
+        # AWS requires at least 2 here; ReservedConcurrentExecutions=1 above
+        # is the enforceable one-worker boundary.
         MaximumConcurrency: 2
 
 Outputs:
+  ProjectName:
+    Value: !Ref ProjectName
   ApiOrigin:
     Value: !Sub https://${PerformanceApi}.execute-api.${AWS::Region}.amazonaws.com/
   AggregatorRepositoryUri:
     Value: !GetAtt AggregatorRepository.RepositoryUri
-  ClusterName:
+  SharedEcsClusterArn:
+    Value: !Ref SharedEcsClusterArn
+  ClusterTransitionMarkerSha256:
+    Value: !Ref ClusterTransitionMarkerSha256
+  IngestionFunctionName:
+    Value: !Ref IngestionFunction
+  DispatcherFunctionName:
+    Value: !Ref DispatcherFunction
+  TaskStartedBy:
     Value: !Sub ${ProjectName}-performance
   ConsumerMappingUuid:
     Value: !Ref PerformanceConsumerMapping
@@ -419,3 +684,5 @@ Outputs:
     Value: !Ref PerformanceDeadLetterQueue
   TaskDefinitionArn:
     Value: !Ref AggregatorTaskDefinition
+  LifecycleStateParameterName:
+    Value: !Ref LifecycleStateParameter

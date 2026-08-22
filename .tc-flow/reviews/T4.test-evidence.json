@@ -1,0 +1,16 @@
+{
+  "taskId":"T4",
+  "status":"partial",
+  "verifiedAt":"2026-08-21",
+  "checks":[
+    {"name":"transaction-engine tests","result":"pass","detail":"26 files passed, 80 tests passed, 2 PostgreSQL integrations skipped by the normal environment gate"},
+    {"name":"PostgreSQL transaction-state integration","result":"skipped","detail":"No local Docker PostgreSQL runtime and image were available; no container or database was created"},
+    {"name":"typecheck","result":"pass"},
+    {"name":"production build","result":"pass"},
+    {"name":"readback tests","result":"pass","detail":"2 tests passed"},
+    {"name":"readback syntax","result":"pass"},
+    {"name":"external writes","result":"none"}
+  ],
+  "publicEvidenceAllowlist":["taskId","status","verifiedAt","checks","secretsPublished"],
+  "secretsPublished":false
+}

@@ -7,7 +7,7 @@ export const VERIFY_COMMANDS = [
   { id: "typescript", command: "pnpm -r --if-present test && pnpm -r --if-present typecheck && pnpm -r --if-present build" },
   { id: "contracts", command: "pnpm --filter @agent-market/contracts test" },
   { id: "go", command: "cd services/matcher-go && go vet ./... && go test ./..." },
-  { id: "python", command: "cd services/trainer && .venv/bin/pytest -q" },
+  { id: "python", command: "cd services/trainer && PYTHONPATH=src .venv/bin/pytest -q" },
 ];
 
 export function verifyAll(commands = VERIFY_COMMANDS) {

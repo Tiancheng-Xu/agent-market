@@ -1,0 +1,23 @@
+{
+  "task": "T2",
+  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
+  "commands": [
+    {
+      "command": "pnpm --filter @agent-market/contracts test",
+      "result": "pass",
+      "summary": "13 passing, 0 failing after round-2 arbitration regression repair"
+    },
+    {
+      "command": "pnpm --filter @agent-market/contracts typecheck",
+      "result": "pass",
+      "summary": "Hardhat compile clean; tsc exited 0 after round-2 repair"
+    },
+    {
+      "command": "pnpm verify",
+      "result": "pass",
+      "summary": "repository, evidence, TypeScript workspaces, contracts, Go vet/tests, Python tests, web Edge SSR build, and Next.js build exited 0"
+    }
+  ],
+  "externalWrites": [],
+  "sepoliaTransactions": []
+}

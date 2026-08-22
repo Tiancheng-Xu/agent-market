@@ -1,0 +1,86 @@
+{
+  "evidenceVersion": 1,
+  "project": "agent-market",
+  "capturedAt": "2026-08-22T02:03:35.568Z",
+  "status": "verified-production",
+  "cloudflare": {
+    "project": "agent-market-site",
+    "source": "github",
+    "environment": "production",
+    "deploymentId": "34f92304-c241-4451-a58c-d3ca91e71d08",
+    "deploymentUrl": "https://34f92304.agent-market-site.pages.dev",
+    "canonicalPagesUrl": "https://agent-market-site.pages.dev",
+    "mergeCommit": "b8f062f1eb3578346835487bf72b7cea821ee94a",
+    "buildCommand": "pnpm --filter @agent-market/web build",
+    "destinationDirectory": "apps/web/dist",
+    "latestStage": "success"
+  },
+  "githubActions": [
+    {
+      "runId": 32544828901,
+      "scope": "pull-request",
+      "check": "repository-policy",
+      "conclusion": "success"
+    },
+    {
+      "runId": 32544828754,
+      "scope": "pull-request",
+      "check": "aws-performance-verify",
+      "conclusion": "success"
+    },
+    {
+      "runId": 32544828704,
+      "scope": "pull-request",
+      "check": "full-verify",
+      "conclusion": "success"
+    },
+    {
+      "runId": 32544969008,
+      "scope": "main",
+      "check": "aws-performance-verify",
+      "conclusion": "success"
+    }
+  ],
+  "httpReadback": [
+    {
+      "path": "/",
+      "accept": "text/html",
+      "status": 200,
+      "mode": "edge-ssr",
+      "renderHeader": "ssr"
+    },
+    {
+      "path": "/evidence",
+      "accept": "text/html",
+      "status": 200,
+      "mode": "edge-ssr",
+      "renderHeader": "ssr"
+    },
+    {
+      "path": "/tasks/task-01/workspace",
+      "accept": "text/html",
+      "status": 200,
+      "mode": "edge-ssr",
+      "renderHeader": "ssr"
+    },
+    {
+      "path": "/missing",
+      "accept": "text/html",
+      "status": 404,
+      "mode": "edge-ssr",
+      "renderHeader": "ssr"
+    }
+  ],
+  "browserReadback": {
+    "path": "/evidence",
+    "result": "rendered",
+    "screenshot": "apps/web/public/evidence/cloudflare-v2-edge-ssr.png"
+  },
+  "assets": [
+    "apps/web/public/evidence/cloudflare-v2-edge-ssr.png"
+  ],
+  "truthBoundary": {
+    "verified": "Cloudflare Pages Git Integration, merge commit, successful PR and main Actions, production Edge SSR routes, deep link, real 404, Evidence render, and published Sepolia closure evidence",
+    "pending": "Blockscout MCP PRO-key readback and V2 AWS runtime deployment; both remain explicitly separate from the verified Sepolia RPC plus Etherscan evidence"
+  }
+}

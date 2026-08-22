@@ -1,0 +1,20 @@
+{
+  "taskId": "T1",
+  "verdict": "pass",
+  "reviewRounds": 3,
+  "issuesClosed": 7,
+  "sanitizedDiffSha256": "d1f8d2d99e728c82b496f4b030906a061853d7aaf2c3bab8efa9fd56754a4c62",
+  "secretScan": "pass",
+  "diffCheck": "pass",
+  "tests": {
+    "sharedContracts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "transactionEngine": {
+      "passed": 23,
+      "failed": 0
+    },
+    "postgresMigrationExecution": "0001 -> 0002 -> 0003 -> 0003"
+  }
+}

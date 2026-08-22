@@ -1,33 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="760" viewBox="0 0 1600 760" role="img" aria-labelledby="title desc">
-  <title id="title">Agent Market 全链路交付证据</title>
-  <desc id="desc">从浏览器性能观测，经 Cloudflare 与 AWS，到证据回读和 AWS 可逆暂停的十步链路。</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0l10 5-10 5z" fill="#22271f"/></marker>
-    <style>
-      .box{fill:#fffdf4;stroke:#22271f;stroke-width:2}.verified{fill:#e0ff57}.pending{fill:#ffe0a8}.line{stroke:#22271f;stroke-width:2;fill:none;marker-end:url(#arrow)}
-      .title{font:700 25px PingFang SC,Noto Sans CJK SC,sans-serif;fill:#11150f}.detail{font:15px SFMono-Regular,Menlo,monospace;fill:#4b5147}.num{font:700 16px SFMono-Regular,Menlo,monospace;fill:#11150f}.label{font:700 13px SFMono-Regular,Menlo,monospace;fill:#11150f;letter-spacing:1px}
-    </style>
-  </defs>
-  <rect width="1600" height="760" fill="#f1efe5"/>
-  <text x="70" y="60" class="title" font-size="34">一条请求，贯穿每个边界</text>
-  <text x="70" y="92" class="detail">request_id 从浏览器观测贯穿到公开回读与暂停证明</text>
-
-  <path class="line" d="M290 205H355"/><path class="line" d="M605 205H670"/><path class="line" d="M920 205H985"/><path class="line" d="M1235 205H1300"/>
-  <path class="line" d="M1425 275V375"/><path class="line" d="M1300 445H1235"/><path class="line" d="M985 445H920"/><path class="line" d="M670 445H605"/><path class="line" d="M355 445H290"/>
-
-  <g transform="translate(40 135)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">01</text><text x="18" y="64" class="title">浏览器 Web Vitals</text><text x="18" y="94" class="detail">LCP · CLS · INP</text><text x="18" y="121" class="label">已验证</text></g>
-  <g transform="translate(355 135)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">02</text><text x="18" y="64" class="title">Cloudflare Edge</text><text x="18" y="94" class="detail">SSR + API 代理</text><text x="18" y="121" class="label">已验证</text></g>
-  <g transform="translate(670 135)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">03</text><text x="18" y="64" class="title">API Gateway</text><text x="18" y="94" class="detail">HTTP 接入</text><text x="18" y="121" class="label">已验证</text></g>
-  <g transform="translate(985 135)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">04</text><text x="18" y="64" class="title">接入 Lambda</text><text x="18" y="94" class="detail">校验 + 发布</text><text x="18" y="121" class="label">已验证</text></g>
-  <g transform="translate(1300 135)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">05</text><text x="18" y="64" class="title">SNS</text><text x="18" y="94" class="detail">事件扇出</text><text x="18" y="121" class="label">已验证</text></g>
-
-  <g transform="translate(1300 375)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">06</text><text x="18" y="64" class="title">SQS / DLQ</text><text x="18" y="94" class="detail">重试隔离</text><text x="18" y="121" class="label">已验证</text></g>
-  <g transform="translate(985 375)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">07</text><text x="18" y="64" class="title">ECS Fargate</text><text x="18" y="94" class="detail">短时聚合</text><text x="18" y="121" class="label">已验证</text></g>
-  <g transform="translate(670 375)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">08</text><text x="18" y="64" class="title">PostgreSQL</text><text x="18" y="94" class="detail">指标持久化</text><text x="18" y="121" class="label">已验证回读</text></g>
-  <g transform="translate(355 375)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">09</text><text x="18" y="64" class="title">证据回读</text><text x="18" y="94" class="detail">指标 + 截图</text><text x="18" y="121" class="label">已验证</text></g>
-  <g transform="translate(40 375)"><rect class="box verified" width="250" height="140"/><text x="18" y="27" class="num">10</text><text x="18" y="64" class="title">AWS 暂停门禁</text><text x="18" y="94" class="detail">消费端关闭</text><text x="18" y="121" class="label">已验证暂停</text></g>
-
-  <rect x="40" y="600" width="1510" height="90" fill="#11150f"/>
-  <text x="70" y="638" fill="#e0ff57" class="label">验收规则</text>
-  <text x="70" y="671" fill="#f1efe5" class="detail">没有生产回读，外部步骤不得标记为已验证。暂停时，共享 VPC、NAT、RDS 与其他项目保持不变。</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" data-actors="repository|web-gate|ml-matcher-gate|evidence-gate|github-actions|cloudflare|aws|postgresql|sepolia|rpc-blockscout|the-graph|replay-ops-pause|public-evidence" data-lanes="verified-local|pending-external|deferred|v1-production|v2-acceptance" role="img" aria-labelledby="title desc"><title id="title">Agent Market V1 与 V2 全交付链路</title><desc id="desc">展示仓库、本地门禁、外部系统和证据状态，不夸大 V2 部署。</desc><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#22271f"/></marker><style>.b{fill:#fffdf4;stroke:#22271f;stroke-width:2}.v{fill:#e0ff57}.p{fill:#ffe0a8}.d{fill:#dde1dd;stroke-dasharray:6 5}.a{stroke:#22271f;stroke-width:2;marker-end:url(#a)}.t{fill:#11150f;font:700 20px PingFang SC,Noto Sans CJK SC,sans-serif}.x{fill:#4b5147;font:13px PingFang SC,Noto Sans CJK SC,sans-serif}.s{fill:#11150f;font:700 12px monospace}</style></defs><rect width="1600" height="900" fill="#f1efe5"/><text x="45" y="55" class="t" font-size="32">全交付链路 / 不跨阶段继承证据状态</text>
+<g transform="translate(45 100)"><rect class="b v" width="280" height="120"/><text x="18" y="34" class="t">01 仓库</text><text x="18" y="64" class="x">合约 + TS + Go + Python</text><text x="18" y="94" class="s">本地已验证</text></g><path class="a" d="M325 160H365"/>
+<g transform="translate(365 100)"><rect class="b v" width="280" height="120"/><text x="18" y="34" class="t">02 Web 门禁</text><text x="18" y="64" class="x">测试 + 类型检查 + Edge 构建</text><text x="18" y="94" class="s">本地已验证</text></g><path class="a" d="M645 160H685"/>
+<g transform="translate(685 100)"><rect class="b v" width="280" height="120"/><text x="18" y="34" class="t">03 模型与匹配门禁</text><text x="18" y="64" class="x">OOF/CV + 精确召回</text><text x="18" y="94" class="s">本地已验证</text></g><path class="a" d="M965 160H1005"/>
+<g transform="translate(1005 100)"><rect class="b v" width="280" height="120"/><text x="18" y="34" class="t">04 证据门禁</text><text x="18" y="64" class="x">资产 + 隐私 + 状态</text><text x="18" y="94" class="s">本地已验证</text></g><path class="a" d="M1285 160H1325"/>
+<g transform="translate(1325 100)"><rect class="b v" width="230" height="120"/><text x="18" y="34" class="t">05 Actions</text><text x="18" y="64" class="x">不自动生产部署</text><text x="18" y="94" class="s">本地已验证</text></g>
+<path class="a" d="M1440 220V300"/><g transform="translate(1260 300)"><rect class="b v" width="295" height="120"/><text x="18" y="34" class="t">06 Cloudflare V2</text><text x="18" y="64" class="x">SSR 路由回读</text><text x="18" y="94" class="s">生产已验证</text></g><path class="a" d="M1260 360H1200"/>
+<g transform="translate(905 300)"><rect class="b p" width="295" height="120"/><text x="18" y="34" class="t">07 AWS V2</text><text x="18" y="64" class="x">Lambda / SNS / SQS / ECS</text><text x="18" y="94" class="s">等待外部验证</text></g><path class="a" d="M905 360H845"/>
+<g transform="translate(550 300)"><rect class="b p" width="295" height="120"/><text x="18" y="34" class="t">08 PostgreSQL V2</text><text x="18" y="64" class="x">持久化 + 回读</text><text x="18" y="94" class="s">等待外部验证</text></g><path class="a" d="M550 360H490"/>
+<g transform="translate(195 300)"><rect class="b p" width="295" height="120"/><text x="18" y="34" class="t">09 Sepolia V2</text><text x="18" y="64" class="x">回执 + 精确事件</text><text x="18" y="94" class="s">等待外部验证</text></g><path class="a" d="M195 360H45"/>
+<g transform="translate(45 470)"><rect class="b p" width="330" height="120"/><text x="18" y="34" class="t">10 RPC + Blockscout</text><text x="18" y="64" class="x">权威校验 / 对账</text><text x="18" y="94" class="s">等待外部验证</text></g><path class="a" d="M375 530H445"/>
+<g transform="translate(445 470)"><rect class="b d" width="300" height="120"/><text x="18" y="34" class="t">11 The Graph</text><text x="18" y="64" class="x">达到查询规模后迁移</text><text x="18" y="94" class="s">延期</text></g><path class="a" d="M745 530H815"/>
+<g transform="translate(815 470)"><rect class="b p" width="330" height="120"/><text x="18" y="34" class="t">12 重放 / 运维 / 暂停</text><text x="18" y="64" class="x">需新 V2 运维证据</text><text x="18" y="94" class="s">等待外部验证</text></g><path class="a" d="M1145 530H1215"/>
+<g transform="translate(1215 470)"><rect class="b v" width="340" height="120"/><text x="18" y="34" class="t">13 V2 公开证据</text><text x="18" y="64" class="x">Cloudflare 标识符 + 回读</text><text x="18" y="94" class="s">生产已验证 / CF</text></g>
+<rect x="45" y="650" width="1510" height="190" fill="#11150f"/><text x="75" y="695" fill="#e0ff57" class="s">V2 CLOUDFLARE 生产已验证</text><text x="75" y="725" fill="#f1efe5" class="x">Git 集成部署 301df641 在合并提交 ae743d8 提供 Edge SSR。</text><text x="75" y="775" fill="#ffb454" class="s">剩余 V2 验收</text><text x="75" y="805" fill="#f1efe5" class="x">当前不声称已有 V2 Sepolia 交易或 AWS 部署；两者仍等待外部验证。</text></svg>

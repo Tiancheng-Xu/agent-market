@@ -1,0 +1,32 @@
+{
+  "capturedAt": "2026-08-22T01:12:43.885Z",
+  "project": "agent-market",
+  "region": "us-east-1",
+  "source": "authenticated AWS Console read-only UI",
+  "stack": {
+    "name": "agent-market-performance",
+    "status": "UPDATE_COMPLETE"
+  },
+  "pause": {
+    "eventSourceMapping": "Disabled",
+    "ecsCluster": "agent-market-performance",
+    "runningTasks": 0,
+    "workQueue": {
+      "name": "agent-market-performance-work",
+      "visible": 2,
+      "inFlight": 0,
+      "encryption": "SSE-SQS"
+    },
+    "deadLetterQueue": {
+      "name": "agent-market-performance-dlq",
+      "visible": 0,
+      "inFlight": 0,
+      "encryption": "SSE-SQS"
+    }
+  },
+  "status": "paused-with-retained-backlog",
+  "truthBoundary": "Compute is idle and the consumer is disabled. Two queued messages remain retained; this record does not claim a drained queue or V2 AWS runtime deployment.",
+  "destructiveAction": false,
+  "sharedInfrastructureChanged": false,
+  "screenshot": "apps/web/public/evidence/aws-pause-live-readback.png"
+}
