@@ -7,8 +7,8 @@ import { parseRunnerConfig } from "./config";
 import { discoverOllamaManifests, ollamaMetadataToManifest } from "./model-registry";
 import { MockControlPlane } from "./mock-control-plane";
 import { OllamaClient, type FetchLike } from "./ollama-client";
-import { providerManifest } from "./provider-adapters";
-import { PROVIDERS, ProviderApiClient } from "./provider-api-client";
+import { providerManifest, providerManifests } from "./provider-adapters";
+import { PROVIDERS, ProviderApiClient, readProviderModels } from "./provider-api-client";
 import { LocalAgentRunner } from "./runner";
 import { signedHeaders, signRequest } from "./signing";
 
@@ -194,8 +194,8 @@ describe("provider manifests", () => {
     const config = parseRunnerConfig({});
 
     expect(providerManifest("kimi", config, { MOONSHOT_API_KEY: "secret-value" }, () => fixedNow)).toMatchObject({
-      id: "kimi-kimi-k3",
-      model: { tag: "kimi-k3" },
+      id: "kimi-kimi-k2-7-code",
+      model: { tag: "kimi-k2.7-code" },
     });
     expect(
       providerManifest("deepseek", config, { DEEPSEEK_API_KEY: "secret-value", DEEPSEEK_MODEL: "deepseek-v4-pro" }, () =>
@@ -221,6 +221,30 @@ describe("provider manifests", () => {
         source: "Z.AI / Zhipu AI OpenAI-compatible API",
       },
     });
+  });
+
+  it("registers multiple provider API models without exposing credentials", () => {
+    const config = parseRunnerConfig({});
+    const manifests = providerManifests(
+      config,
+      {
+        MOONSHOT_API_KEY: "secret-value",
+        MOONSHOT_MODELS: "kimi-k2.7-code,kimi-k3 kimi-k2.6",
+        DEEPSEEK_API_KEY: "secret-value",
+        DEEPSEEK_MODELS: "deepseek-chat,deepseek-reasoner",
+      },
+      () => fixedNow,
+    );
+
+    expect(manifests.map((manifest) => manifest.id)).toEqual(expect.arrayContaining([
+      "kimi-kimi-k2-7-code",
+      "kimi-kimi-k3",
+      "kimi-kimi-k2-6",
+      "deepseek-deepseek-chat",
+      "deepseek-deepseek-reasoner",
+    ]));
+    expect(JSON.stringify(manifests)).not.toContain("secret-value");
+    expect(readProviderModels(PROVIDERS.kimi, { MOONSHOT_MODEL: "kimi-k3" })).toEqual(["kimi-k3"]);
   });
 
   it("rejects provider model overrides that look like local Ollama tags", () => {

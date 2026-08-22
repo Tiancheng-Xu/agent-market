@@ -89,6 +89,22 @@ describe("Cloudflare Pages edge renderer", () => {
     expect(JSON.stringify(body)).not.toContain("11434");
   });
 
+  it("serves a public-safe agent catalog contract", async () => {
+    const handler = createPagesHandler({ logger: { info() {}, error() {} } });
+
+    const response = await handler.fetch(new Request("https://agent-market.test/agent/catalog"), environment());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-agent-market-catalog-version")).toBe("agent-market.catalog.v1");
+    expect(body.endpoints).toMatchObject({ catalog: "/agent/catalog", health: "/agent/healthz" });
+    expect(body.types.sharedContract).toBe("packages/shared-contracts/src/local-agent.ts");
+    expect(body.agents.some((agent: { id: string }) => agent.id === "kimi-kimi-k2-7-code")).toBe(true);
+    expect(JSON.stringify(body)).not.toContain("API_KEY");
+    expect(JSON.stringify(body)).not.toContain("secret-value");
+    expect(JSON.stringify(body)).not.toContain("11434");
+  });
+
   it("proxies signed live chat requests as SSE", async () => {
     const calls: Request[] = [];
     const handler = createPagesHandler({

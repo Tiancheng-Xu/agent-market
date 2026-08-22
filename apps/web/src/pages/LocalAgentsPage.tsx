@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { Badge, PageHeader, Panel } from "../components/Ui";
+import { agentProviderLabel, publicAgentCatalog } from "../agentCatalog";
 import { Localized } from "../i18n/LanguageProvider";
 
 type AgentId = string;
@@ -29,6 +30,7 @@ type DisplayAgent = {
   ownership: string;
   model: string;
   note: string;
+  verification: string;
 };
 type QueenTaskNode = {
   nodeId: string;
@@ -179,48 +181,15 @@ mutation WriteLearningLoop($input: WriteLearningLoopInput!) {
 }
 `;
 
-const playgroundAgents: DisplayAgent[] = [
-  {
-    id: "personal-ai-agent-runtime-v4-1",
-    name: "Personal Runtime",
-    provider: "Ollama",
-    ownership: "owner-trained",
-    model: "personal-ai-agent-runtime:v4.1",
-    note: "Local trained runtime, served only through the Mac runtime boundary.",
-  },
-  {
-    id: "deepseek-deepseek-v4-flash",
-    name: "DeepSeek V4 Flash",
-    provider: "DeepSeek API",
-    ownership: "third-party/provider-api",
-    model: "deepseek-v4-flash",
-    note: "Hosted provider agent. API key stays server-side.",
-  },
-  {
-    id: "kimi-kimi-k3",
-    name: "Kimi K3",
-    provider: "Moonshot Kimi API",
-    ownership: "third-party/provider-api",
-    model: "kimi-k3",
-    note: "Hosted provider agent. Can be swapped by runtime env without UI secrets.",
-  },
-  {
-    id: "qwen-qwen-plus",
-    name: "Qwen Plus",
-    provider: "Qwen API",
-    ownership: "third-party/provider-api",
-    model: "qwen-plus",
-    note: "Hosted provider agent through Alibaba Cloud Model Studio / DashScope. API key stays server-side.",
-  },
-  {
-    id: "zhipu-glm-5-3",
-    name: "Zhipu GLM 5.3",
-    provider: "Zhipu API",
-    ownership: "third-party/provider-api",
-    model: "glm-5.3",
-    note: "Hosted Z.AI / Zhipu provider agent. API key stays server-side.",
-  },
-];
+const fallbackAgents: DisplayAgent[] = publicAgentCatalog.map((agent) => ({
+  id: agent.id,
+  name: agent.displayName,
+  provider: agent.providerLabel,
+  ownership: agent.ownership,
+  model: agent.modelTag,
+  note: `${agent.note} Verification: ${agent.verification}.`,
+  verification: agent.verification,
+}));
 
 export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow?: QueenWorkflowState } = {}) {
   const [selectedId, setSelectedId] = useState<AgentId>("personal-ai-agent-runtime-v4-1");
@@ -938,7 +907,7 @@ function readRuntimeError(payload: Record<string, unknown>) {
 }
 
 function buildDisplayAgents(healthAgents: HealthAgent[]) {
-  const fallbackById = new Map(playgroundAgents.map((agent) => [agent.id, agent]));
+  const fallbackById = new Map(fallbackAgents.map((agent) => [agent.id, agent]));
   const liveAgents = healthAgents.map((agent) => {
     const fallback = fallbackById.get(agent.agentId);
     return {
@@ -948,18 +917,15 @@ function buildDisplayAgents(healthAgents: HealthAgent[]) {
       ownership: agent.ownership,
       model: agent.modelTag,
       note: fallback?.note ?? liveAgentNote(agent),
+      verification: fallback?.verification ?? agent.status,
     };
   });
   const liveIds = new Set(liveAgents.map((agent) => agent.id));
-  return [...liveAgents, ...playgroundAgents.filter((agent) => !liveIds.has(agent.id))];
+  return [...liveAgents, ...fallbackAgents.filter((agent) => !liveIds.has(agent.id))];
 }
 
 function providerLabel(provider: HealthAgent["provider"]) {
-  if (provider === "ollama") return "Ollama";
-  if (provider === "deepseek") return "DeepSeek API";
-  if (provider === "kimi") return "Moonshot Kimi API";
-  if (provider === "qwen") return "Qwen API";
-  return "Zhipu API";
+  return agentProviderLabel(provider);
 }
 
 function liveAgentNote(agent: HealthAgent) {

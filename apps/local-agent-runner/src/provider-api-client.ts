@@ -8,7 +8,9 @@ export type ProviderDefinition = {
   baseUrlEnvKeys: readonly string[];
   envKeys: readonly string[];
   modelEnvKeys: readonly string[];
+  modelListEnvKeys: readonly string[];
   defaultModel: string;
+  defaultModels: readonly string[];
   family: string;
   source: string;
 };
@@ -20,17 +22,21 @@ export const PROVIDERS: Record<ProviderName, ProviderDefinition> = {
     baseUrlEnvKeys: ["DEEPSEEK_BASE_URL"],
     envKeys: ["DEEPSEEK_API_KEY"],
     modelEnvKeys: ["DEEPSEEK_MODEL"],
+    modelListEnvKeys: ["DEEPSEEK_MODELS"],
     defaultModel: "deepseek-v4-flash",
+    defaultModels: ["deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"],
     family: "deepseek",
     source: "DeepSeek API",
   },
   kimi: {
     provider: "kimi",
-    baseUrl: "https://api.moonshot.ai/v1",
+    baseUrl: "https://api.moonshot.cn/v1",
     baseUrlEnvKeys: ["MOONSHOT_BASE_URL", "KIMI_BASE_URL"],
     envKeys: ["MOONSHOT_API_KEY", "KIMI_API_KEY"],
     modelEnvKeys: ["MOONSHOT_MODEL", "KIMI_MODEL"],
-    defaultModel: "kimi-k3",
+    modelListEnvKeys: ["MOONSHOT_MODELS", "KIMI_MODELS"],
+    defaultModel: "kimi-k2.7-code",
+    defaultModels: ["kimi-k2.7-code", "kimi-k3", "kimi-k2.6", "kimi-k2.7-code-highspeed"],
     family: "kimi",
     source: "Moonshot Kimi API",
   },
@@ -40,7 +46,9 @@ export const PROVIDERS: Record<ProviderName, ProviderDefinition> = {
     baseUrlEnvKeys: ["QWEN_BASE_URL", "DASHSCOPE_BASE_URL"],
     envKeys: ["QWEN_API_KEY", "DASHSCOPE_API_KEY"],
     modelEnvKeys: ["QWEN_MODEL", "DASHSCOPE_MODEL"],
+    modelListEnvKeys: ["QWEN_MODELS", "DASHSCOPE_MODELS"],
     defaultModel: "qwen-plus",
+    defaultModels: ["qwen-plus", "qwen-turbo", "qwen-max", "qwen-long"],
     family: "qwen",
     source: "Alibaba Cloud Model Studio Qwen API",
   },
@@ -50,7 +58,9 @@ export const PROVIDERS: Record<ProviderName, ProviderDefinition> = {
     baseUrlEnvKeys: ["ZHIPU_BASE_URL", "ZAI_BASE_URL", "BIGMODEL_BASE_URL"],
     envKeys: ["ZHIPU_API_KEY", "ZAI_API_KEY", "BIGMODEL_API_KEY"],
     modelEnvKeys: ["ZHIPU_MODEL", "ZAI_MODEL", "BIGMODEL_MODEL"],
+    modelListEnvKeys: ["ZHIPU_MODELS", "ZAI_MODELS", "BIGMODEL_MODELS"],
     defaultModel: "glm-5.3",
+    defaultModels: ["glm-5.3", "glm-4.5", "glm-4.5-air", "glm-4-flash"],
     family: "glm",
     source: "Z.AI / Zhipu AI OpenAI-compatible API",
   },
@@ -127,14 +137,29 @@ export function readProviderApiKey(definition: ProviderDefinition, env: Provider
 }
 
 export function readProviderModel(definition: ProviderDefinition, env: ProviderEnv): string {
-  const model = readFirstNonEmpty(definition.modelEnvKeys, env) ?? definition.defaultModel;
+  return readProviderModels(definition, env)[0] ?? definition.defaultModel;
+}
+
+export function readProviderModels(definition: ProviderDefinition, env: ProviderEnv): string[] {
+  const configuredList = readFirstNonEmpty(definition.modelListEnvKeys, env);
+  const configuredSingle = readFirstNonEmpty(definition.modelEnvKeys, env);
+  const values = configuredList !== undefined
+    ? configuredList.split(/[\s,]+/).filter(Boolean)
+    : configuredSingle !== undefined
+      ? [configuredSingle]
+      : [...definition.defaultModels];
+  const models = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  for (const model of models) validateProviderModel(definition, model);
+  return models;
+}
+
+function validateProviderModel(definition: ProviderDefinition, model: string): void {
   if (!/^[a-z0-9][a-z0-9._-]{0,127}$/i.test(model)) {
     throw new Error(`${definition.provider} model id is invalid`);
   }
   if (model.includes(":")) {
     throw new Error(`${definition.provider} model id must not look like an Ollama tag`);
   }
-  return model;
 }
 
 export function readProviderBaseUrl(definition: ProviderDefinition, env: ProviderEnv): string {

@@ -24,13 +24,14 @@ export {
   ProviderApiClient,
   readProviderApiKey,
   readProviderModel,
+  readProviderModels,
   type ProviderChatRequest,
   type ProviderDefinition,
   type ProviderEnv,
   type ProviderFetch,
   type ProviderName,
 } from "./provider-api-client";
-export { providerManifest, providerManifests } from "./provider-adapters";
+export { providerManifest, providerManifestForModel, providerManifests } from "./provider-adapters";
 export {
   bodySha256,
   NonceReplayStore,

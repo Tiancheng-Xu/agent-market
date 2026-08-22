@@ -1,0 +1,33 @@
+flowchart LR
+  Browser["Browser\nuser action + Web Vitals"]
+  Edge["Cloudflare Edge SSR\nroute shell + health boundary"]
+  App["React App\nhydration + DegradedModeProvider"]
+  Assets["Evidence assets\nlazy images + diagrams"]
+  AgentHealth["Agent health\nonline / degraded / offline"]
+  Api["Control/API calls\ntimeout + retry budget"]
+  LocalRuntime["Local runtime / Tunnel\noptional and signed"]
+  Providers["Hosted provider APIs\nDeepSeek / Qwen / Zhipu / Kimi"]
+  Evidence["Evidence\nsanitized degradation record"]
+
+  Browser --> Edge
+  Edge --> App
+  App --> Assets
+  App --> AgentHealth
+  App --> Api
+  Api --> LocalRuntime
+  Api --> Providers
+  App --> Evidence
+  AgentHealth --> Evidence
+  Api --> Evidence
+
+  Browser -. slow device or weak network .-> App
+  App -. disable non-critical motion and heavy evidence media .-> Assets
+  AgentHealth -. runtime offline .-> App
+  Api -. timeout or retry exhausted .-> App
+
+  classDef edge fill:#10223e,stroke:#4cdbf7,color:#eaf2ff
+  classDef warn fill:#332716,stroke:#ffb454,color:#fff4d6
+  classDef safe fill:#142618,stroke:#77e0a1,color:#eaf2ff
+  class Edge,App edge
+  class Assets,AgentHealth,Api warn
+  class Evidence safe

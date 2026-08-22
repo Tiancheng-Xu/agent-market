@@ -53,18 +53,19 @@
       "notes": "Zhipu/Z.AI API key remained server-side in the local runtime. The default OpenAI-compatible endpoint answered with glm-5.3."
     },
     {
-      "agentId": "kimi-kimi-k3",
+      "agentId": "kimi-kimi-k2-7-code",
       "provider": "kimi",
       "ownership": "third-party/provider-api",
-      "status": "pending-credential",
+      "status": "verified",
       "httpStatus": 200,
-      "events": ["meta", "error"],
-      "errorCode": "MODEL_UNAVAILABLE",
+      "events": ["meta", "delta", "done"],
+      "excerpt": "AGENT_MARKET_KIMI_SMOKE_OK",
       "safeProviderProbe": [
-        { "model": "kimi-k3", "status": 401, "error": "Invalid Authentication" },
-        { "model": "kimi-k2.6", "status": 401, "error": "Invalid Authentication" }
+        { "endpoint": "https://api.moonshot.ai/v1", "status": 401, "result": "Invalid Authentication" },
+        { "endpoint": "https://api.moonshot.cn/v1", "status": 200, "models": ["kimi-k2.7-code", "kimi-k2.6", "kimi-k3", "kimi-k2.7-code-highspeed"] },
+        { "model": "kimi-k2.7-code", "status": 200, "finishReason": "stop", "result": "clean smoke phrase returned" }
       ],
-      "notes": "The Kimi adapter and manifest are implemented, but the currently configured key failed provider authentication. A valid Moonshot key is required before this agent can be marked verified."
+      "notes": "The provided Kimi key is valid for the Moonshot China endpoint. The API key remained process-local and was not written to the repository."
     }
   ],
   "verified": [
@@ -73,11 +74,11 @@
     "DeepSeek provider API answer path",
     "Qwen provider API answer path",
     "Zhipu provider API answer path",
-    "Kimi provider adapter registration and safe credential failure handling",
+    "Kimi provider API answer path through the Moonshot China endpoint",
     "browser has no direct Ollama or provider credential access"
   ],
   "pending": [
-    "Kimi real answer smoke with a valid Moonshot API key",
+    "Kimi non-default model smoke for kimi-k3, kimi-k2.6, and kimi-k2.7-code-highspeed",
     "Cloudflare Tunnel public preview smoke after runtime hostname is configured",
     "full Evidence page binding after final gate"
   ]

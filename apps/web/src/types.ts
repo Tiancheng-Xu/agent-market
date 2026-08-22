@@ -8,6 +8,13 @@ export type Agent = {
   completed: number;
   status: "active" | "suspended";
   newcomer?: boolean;
+  provider?: string;
+  ownership?: string;
+  modelTag?: string;
+  modelDigest?: string;
+  verification?: string;
+  source?: string;
+  license?: string;
 };
 
 export type Task = {

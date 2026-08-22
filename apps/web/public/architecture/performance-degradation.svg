@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Market performance degradation architecture</title>
+  <desc id="desc">Browser, Cloudflare Edge SSR, React degraded mode, lazy Evidence assets, health boundary, APIs, local runtime, provider APIs, and sanitized Evidence records.</desc>
+  <rect width="1200" height="760" rx="28" fill="#071020"/>
+  <defs>
+    <linearGradient id="g" x1="0" x2="1"><stop stop-color="#4cdbf7"/><stop offset="1" stop-color="#aaa8ff"/></linearGradient>
+    <style>
+      .box{fill:#101b33;stroke:#2d3d60;stroke-width:2}
+      .warn{fill:#2a2115;stroke:#ffb454;stroke-width:2}
+      .safe{fill:#102619;stroke:#77e0a1;stroke-width:2}
+      .title{font:700 22px Space Grotesk,Arial,sans-serif;fill:#f3f6ff}
+      .label{font:600 15px Space Grotesk,Arial,sans-serif;fill:#dbe6ff}
+      .small{font:500 12px IBM Plex Mono,monospace;fill:#9fb0d0}
+      .edge{stroke:url(#g);stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .dash{stroke:#ffb454;stroke-width:2;stroke-dasharray:8 8;fill:none;marker-end:url(#arrowWarn)}
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#4cdbf7"/></marker>
+    <marker id="arrowWarn" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#ffb454"/></marker>
+  </defs>
+  <text x="60" y="70" class="title">Agent Market performance degradation</text>
+  <text x="60" y="98" class="small">Goal: keep the route usable, never fake online state, and record only sanitized degradation evidence.</text>
+  <rect x="60" y="150" width="190" height="90" rx="14" class="box"/><text x="88" y="188" class="label">Browser</text><text x="88" y="214" class="small">user action + Web Vitals</text>
+  <rect x="320" y="150" width="210" height="90" rx="14" class="box"/><text x="348" y="188" class="label">Cloudflare Edge SSR</text><text x="348" y="214" class="small">route shell + render header</text>
+  <rect x="600" y="150" width="230" height="90" rx="14" class="box"/><text x="628" y="188" class="label">React App</text><text x="628" y="214" class="small">hydration + DegradedMode</text>
+  <rect x="900" y="140" width="230" height="110" rx="14" class="safe"/><text x="928" y="182" class="label">Evidence</text><text x="928" y="208" class="small">reason code + boundary</text><text x="928" y="230" class="small">no secret, no private prompt</text>
+  <rect x="600" y="330" width="230" height="94" rx="14" class="warn"/><text x="628" y="370" class="label">Lazy Evidence media</text><text x="628" y="396" class="small">diagrams + screenshots deferred</text>
+  <rect x="320" y="330" width="210" height="94" rx="14" class="warn"/><text x="348" y="370" class="label">Health/API boundary</text><text x="348" y="396" class="small">timeout + retry budget</text>
+  <rect x="60" y="330" width="190" height="94" rx="14" class="warn"/><text x="88" y="370" class="label">Slow client signal</text><text x="88" y="396" class="small">weak network or low device</text>
+  <rect x="320" y="520" width="210" height="94" rx="14" class="box"/><text x="348" y="560" class="label">Local Runtime</text><text x="348" y="586" class="small">signed Tunnel, optional</text>
+  <rect x="600" y="520" width="230" height="94" rx="14" class="box"/><text x="628" y="560" class="label">Provider APIs</text><text x="628" y="586" class="small">server-side keys only</text>
+  <path d="M250 195 H320" class="edge"/><path d="M530 195 H600" class="edge"/><path d="M830 195 H900" class="edge"/>
+  <path d="M715 240 V330" class="edge"/><path d="M600 377 H530" class="edge"/><path d="M425 424 V520" class="edge"/><path d="M530 567 H600" class="edge"/>
+  <path d="M250 377 H320" class="dash"/><path d="M830 377 C910 377 900 250 982 250" class="dash"/>
+  <text x="62" y="690" class="small">Implemented now: SSR, hydration fallback, explicit offline health, lazy images on Evidence, archived AWS sample. TODO: automatic degraded mode and Preview Web Vitals writeback.</text>
+</svg>

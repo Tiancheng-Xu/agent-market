@@ -1,4 +1,5 @@
 import { renderRouteStream } from "./entry-server";
+import { publicAgentCatalogResponse } from "./agentCatalog";
 import {
   LiveAgentGraphqlRequestSchema,
   LiveChatErrorSchema,
@@ -126,6 +127,9 @@ export function createPagesHandler(options: HandlerOptions = {}) {
       const requestUrl = new URL(request.url);
       if (requestUrl.pathname === "/agent/healthz") {
         return handleAgentHealth(request, environment, upstreamFetch);
+      }
+      if (requestUrl.pathname === "/agent/catalog") {
+        return handleAgentCatalog(request, environment);
       }
       if (requestUrl.pathname === "/agent/chat" || (requestUrl.pathname === "/agent/chat" && request.method === "OPTIONS")) {
         return handleAgentChat(request, environment, upstreamFetch);
@@ -303,6 +307,23 @@ async function handleAgentGraphql(
 }
 
 export default createPagesHandler();
+
+function handleAgentCatalog(request: Request, environment: PagesEnvironment): Response {
+  const cors = corsHeaders(request, environment);
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: cors });
+  }
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return jsonAgentError("VALIDATION_FAILED", "GET is required", undefined, false, 405, cors);
+  }
+  return Response.json(publicAgentCatalogResponse, {
+    headers: {
+      ...agentJsonHeaders(),
+      ...cors,
+      "x-agent-market-catalog-version": publicAgentCatalogResponse.schemaVersion,
+    },
+  });
+}
 
 async function handleAgentHealth(
   request: Request,

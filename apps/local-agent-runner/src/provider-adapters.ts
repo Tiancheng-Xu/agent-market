@@ -6,6 +6,7 @@ import {
   PROVIDERS,
   readProviderApiKey,
   readProviderModel,
+  readProviderModels,
   type ProviderEnv,
   type ProviderName,
 } from "./provider-api-client";
@@ -19,8 +20,19 @@ export function providerManifest(
   clock: ManifestClock = () => new Date(),
 ): AgentManifest {
   const definition = PROVIDERS[provider];
-  const configured = readProviderApiKey(definition, env) !== undefined;
   const model = readProviderModel(definition, env);
+  return providerManifestForModel(provider, model, config, env, clock);
+}
+
+export function providerManifestForModel(
+  provider: ProviderName,
+  model: string,
+  config: RunnerConfig,
+  env: ProviderEnv = process.env,
+  clock: ManifestClock = () => new Date(),
+): AgentManifest {
+  const definition = PROVIDERS[provider];
+  const configured = readProviderApiKey(definition, env) !== undefined;
   const now = clock().toISOString();
 
   return AgentManifestSchema.parse({
@@ -57,12 +69,10 @@ export function providerManifests(
   env: ProviderEnv = process.env,
   clock: ManifestClock = () => new Date(),
 ): AgentManifest[] {
-  return [
-    providerManifest("deepseek", config, env, clock),
-    providerManifest("kimi", config, env, clock),
-    providerManifest("qwen", config, env, clock),
-    providerManifest("zhipu", config, env, clock),
-  ];
+  return (Object.keys(PROVIDERS) as ProviderName[]).flatMap((provider) => {
+    const definition = PROVIDERS[provider];
+    return readProviderModels(definition, env).map((model) => providerManifestForModel(provider, model, config, env, clock));
+  });
 }
 
 function toDisplayName(value: string): string {

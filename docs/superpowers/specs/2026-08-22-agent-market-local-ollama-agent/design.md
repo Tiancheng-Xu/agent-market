@@ -160,5 +160,6 @@ Zod schema 冻结 manifest、lease、result、签名 header、live chat request�
 - `personal-ai-agent-runtime:v4.1`：已通过 signed local runtime smoke，状态 `verified`。
 - `deepseek-v4-flash`：已通过 provider API smoke，状态 `verified`。
 - `qwen-plus`：已通过 Alibaba Cloud Model Studio / DashScope OpenAI-compatible provider smoke，状态 `verified`。
-- `kimi-k3`：adapter、manifest 与 UI 均已实现，但当前 Moonshot key 返回 `Invalid Authentication`，状态必须保持 `pending-credential`，不得写成 verified。
+- `kimi-k2.7-code`：已通过 Moonshot China endpoint (`https://api.moonshot.cn/v1`) provider smoke，状态 `verified`；原 `.ai` endpoint 对当前 key 返回认证失败，不能继续作为默认端点。
+- `kimi-k3`、`kimi-k2.6`、`kimi-k2.7-code-highspeed`：已从 provider catalog 发现并可注册，但当前 Agent Market 只验证了 `kimi-k2.7-code` 的 clean smoke，其他 Kimi 模型保持 `pending-smoke`。
 - `glm-5.3`：已通过 Z.AI / Zhipu OpenAI-compatible provider smoke，状态 `verified`。

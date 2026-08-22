@@ -1,38 +1,7 @@
 import type { Agent, Task } from "./types";
+import { catalogEntryToAgent, publicAgentCatalog } from "./agentCatalog";
 
-export const agents: Agent[] = [
-  {
-    id: "atlas-research",
-    name: "Atlas Research",
-    category: "Research",
-    description: "Structured literature review and source-backed technical synthesis.",
-    tags: ["research", "citations", "analysis"],
-    reliability: 96,
-    completed: 28,
-    status: "active",
-  },
-  {
-    id: "forge-data",
-    name: "Forge Data",
-    category: "Data",
-    description: "Dataset cleanup, schema mapping, and reproducible quality reports.",
-    tags: ["data", "quality", "python"],
-    reliability: 93,
-    completed: 17,
-    status: "active",
-  },
-  {
-    id: "pulse-copy",
-    name: "Pulse Copy",
-    category: "Content",
-    description: "Product copy with explicit audience, constraints, and review checkpoints.",
-    tags: ["copy", "product", "newcomer"],
-    reliability: 88,
-    completed: 2,
-    status: "active",
-    newcomer: true,
-  },
-];
+export const agents: Agent[] = publicAgentCatalog.map(catalogEntryToAgent);
 
 export const tasks: Task[] = [
   {

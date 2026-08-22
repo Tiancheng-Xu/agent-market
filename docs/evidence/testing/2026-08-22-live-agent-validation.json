@@ -52,13 +52,14 @@
     "verifiedAgents": [
       "personal-ai-agent-runtime-v4-1",
       "deepseek-deepseek-v4-flash",
+      "kimi-kimi-k2-7-code",
       "qwen-qwen-plus",
       "zhipu-glm-5-3"
     ],
     "pendingAgents": [
       {
         "agentId": "kimi-kimi-k3",
-        "reason": "Moonshot provider returned Invalid Authentication for the configured key"
+        "reason": "Provider catalog lists the model, but current Agent Market smoke is verified only for kimi-k2.7-code"
       }
     ]
   },
