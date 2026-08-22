@@ -1,0 +1,182 @@
+name: AWS one-shot performance proof
+
+on:
+  push:
+    branches:
+      - tc/phase2-closure
+    paths:
+      - .github/workflows/aws-one-shot-performance-proof.yml
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: agent-market-aws-one-shot-proof
+  cancel-in-progress: false
+
+jobs:
+  performance-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      AWS_REGION: us-east-1
+      STACK_NAME: agent-market-performance
+      PUBLIC_EVIDENCE_URL: https://agent-market-web.271251549.workers.dev/evidence
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Acquire short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AGENT_MARKET_AWS_OPERATOR_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: agent-market-performance-proof
+
+      - name: Run bounded performance proof
+        id: proof
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p aws-proof
+
+          stack_json="$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --output json)"
+          resources_json="$(aws cloudformation describe-stack-resources --stack-name "$STACK_NAME" --output json)"
+          work_queue_url="$(jq -r '.Stacks[0].Outputs[] | select(.OutputKey=="WorkQueueUrl") | .OutputValue' <<<"$stack_json")"
+          dlq_url="$(jq -r '.Stacks[0].Outputs[] | select(.OutputKey=="DeadLetterQueueUrl") | .OutputValue' <<<"$stack_json")"
+          api_origin="$(jq -r '.Stacks[0].Outputs[] | select(.OutputKey=="ApiOrigin") | .OutputValue' <<<"$stack_json")"
+          mapping_uuid="$(jq -r '.StackResources[] | select(.ResourceType=="AWS::Lambda::EventSourceMapping") | .PhysicalResourceId' <<<"$resources_json")"
+          aggregator_log_group="$(jq -r '.StackResources[] | select(.LogicalResourceId=="AggregatorLogGroup") | .PhysicalResourceId' <<<"$resources_json")"
+          dispatcher_function="$(jq -r '.StackResources[] | select(.LogicalResourceId=="DispatcherFunction") | .PhysicalResourceId' <<<"$resources_json")"
+          cluster_name="$(jq -r '.StackResources[] | select(.LogicalResourceId=="PerformanceCluster") | .PhysicalResourceId' <<<"$resources_json")"
+          task_family="agent-market-performance-aggregator"
+          request_id="$(cat /proc/sys/kernel/random/uuid)"
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          started_epoch_ms="$(( $(date +%s) * 1000 ))"
+          original_concurrency="$(aws lambda get-function-concurrency --function-name "$dispatcher_function" --query ReservedConcurrentExecutions --output text 2>/dev/null || true)"
+          [[ "$original_concurrency" == "None" ]] && original_concurrency=""
+
+          queue_snapshot() {
+            aws sqs get-queue-attributes \
+              --queue-url "$1" \
+              --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible SqsManagedSseEnabled \
+              --query Attributes \
+              --output json
+          }
+
+          restore_original_concurrency() {
+            if [[ -n "$original_concurrency" ]]; then
+              aws lambda put-function-concurrency \
+                --function-name "$dispatcher_function" \
+                --reserved-concurrent-executions "$original_concurrency" >/dev/null
+            else
+              aws lambda delete-function-concurrency --function-name "$dispatcher_function" >/dev/null 2>&1 || true
+            fi
+          }
+
+          cleanup() {
+            exit_code=$?
+            trap - EXIT
+            set +e
+            aws lambda update-event-source-mapping --uuid "$mapping_uuid" --no-enabled >/dev/null
+            restore_original_concurrency
+            for _ in {1..36}; do
+              cluster_state="$(aws ecs describe-clusters --clusters "$cluster_name" --query 'clusters[0].[runningTasksCount,pendingTasksCount]' --output text 2>/dev/null)"
+              [[ "$cluster_state" == $'0\t0' ]] && break
+              sleep 5
+            done
+            mapping_state="$(aws lambda get-event-source-mapping --uuid "$mapping_uuid" --query State --output text 2>/dev/null)"
+            work_after="$(queue_snapshot "$work_queue_url" 2>/dev/null || echo '{}')"
+            dlq_after="$(queue_snapshot "$dlq_url" 2>/dev/null || echo '{}')"
+            cluster_after="$(aws ecs describe-clusters --clusters "$cluster_name" --query 'clusters[0].{status:status,running:runningTasksCount,pending:pendingTasksCount}' --output json 2>/dev/null || echo '{}')"
+            jq -n \
+              --arg project agent-market \
+              --arg snapshot aws-one-shot-performance-proof \
+              --arg runId "$GITHUB_RUN_ID" \
+              --arg requestId "$request_id" \
+              --arg observedAt "$observed_at" \
+              --arg measuredRoute /evidence \
+              --arg measuredMetric TTFB \
+              --argjson measuredValueMs "${ttfb_ms:-0}" \
+              --arg ingestStatus "${ingest_status:-not-submitted}" \
+              --arg mappingState "$mapping_state" \
+              --argjson workQueue "${work_after:-{}}" \
+              --argjson deadLetterQueue "${dlq_after:-{}}" \
+              --argjson ecs "${cluster_after:-{}}" \
+              --arg result "$([[ $exit_code -eq 0 ]] && echo verified || echo failed)" \
+              '{evidenceVersion:2,project:$project,snapshot:$snapshot,github:{runId:$runId},sample:{requestId:$requestId,observedAt:$observedAt,route:$measuredRoute,metric:$measuredMetric,valueMs:$measuredValueMs,ingestStatus:$ingestStatus},shutdown:{mappingState:$mappingState,workQueue:$workQueue,deadLetterQueue:$deadLetterQueue,ecs:$ecs},status:$result}' \
+              > aws-proof/aws-performance-proof.json
+            exit "$exit_code"
+          }
+          trap cleanup EXIT
+
+          queue_snapshot "$work_queue_url" > aws-proof/work-queue-before.json
+          queue_snapshot "$dlq_url" > aws-proof/dlq-before.json
+
+          ttfb_seconds="$(curl --fail --silent --show-error --output /dev/null --write-out '%{time_starttransfer}' "$PUBLIC_EVIDENCE_URL")"
+          ttfb_ms="$(awk -v seconds="$ttfb_seconds" 'BEGIN { printf "%.3f", seconds * 1000 }')"
+          payload="$(jq -cn \
+            --arg requestId "$request_id" \
+            --arg observedAt "$observed_at" \
+            --argjson ttfb "$ttfb_ms" \
+            '{schemaVersion:1,requestId:$requestId,route:"/evidence",version:"phase2-5a5777d",observedAt:$observedAt,metrics:{TTFB:$ttfb}}')"
+
+          ingest_status="$(curl --silent --show-error \
+            --output aws-proof/ingest-response.json \
+            --write-out '%{http_code}' \
+            --header 'content-type: application/json' \
+            --header "x-request-id: $request_id" \
+            --data "$payload" \
+            "${api_origin%/}/performance")"
+          [[ "$ingest_status" == "202" ]]
+
+          aws lambda put-function-concurrency \
+            --function-name "$dispatcher_function" \
+            --reserved-concurrent-executions 2 >/dev/null
+          aws lambda update-event-source-mapping --uuid "$mapping_uuid" --enabled >/dev/null
+
+          drained=false
+          for attempt in {1..180}; do
+            work_state="$(queue_snapshot "$work_queue_url")"
+            visible="$(jq -r '.ApproximateNumberOfMessages // "0"' <<<"$work_state")"
+            inflight="$(jq -r '.ApproximateNumberOfMessagesNotVisible // "0"' <<<"$work_state")"
+            cluster_state="$(aws ecs describe-clusters --clusters "$cluster_name" --query 'clusters[0].[runningTasksCount,pendingTasksCount]' --output text)"
+            if [[ $attempt -gt 6 && "$visible" == "0" && "$inflight" == "0" && "$cluster_state" == $'0\t0' ]]; then
+              drained=true
+              break
+            fi
+            sleep 5
+          done
+          [[ "$drained" == "true" ]]
+
+          aws logs filter-log-events \
+            --log-group-name "$aggregator_log_group" \
+            --start-time "$started_epoch_ms" \
+            --filter-pattern "\"$request_id\"" \
+            --query 'events[].{timestamp:timestamp,message:message}' \
+            --output json \
+            | sed -E 's/[0-9]{12}/<account>/g' \
+            > aws-proof/request-log-readback.json
+          jq -e 'length > 0' aws-proof/request-log-readback.json >/dev/null
+
+          stopped_tasks="$(aws ecs list-tasks --cluster "$cluster_name" --family "$task_family" --desired-status STOPPED --max-results 20 --query taskArns --output json)"
+          if [[ "$(jq length <<<"$stopped_tasks")" -gt 0 ]]; then
+            aws ecs describe-tasks \
+              --cluster "$cluster_name" \
+              --tasks $(jq -r '.[]' <<<"$stopped_tasks") \
+              --query 'tasks[].{lastStatus:lastStatus,stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[].{name:name,exitCode:exitCode}}' \
+              --output json \
+              > aws-proof/ecs-stopped-task-readback.json
+          else
+            echo '[]' > aws-proof/ecs-stopped-task-readback.json
+          fi
+          jq -e 'any(.[]; .lastStatus == "STOPPED" and any(.containers[]; .exitCode == 0))' aws-proof/ecs-stopped-task-readback.json >/dev/null
+
+      - name: Upload AWS proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-market-aws-performance-proof-${{ github.run_id }}
+          path: aws-proof/
+          if-no-files-found: error
+          retention-days: 30
