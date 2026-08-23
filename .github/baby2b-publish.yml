@@ -6,5 +6,5 @@ build-command: pnpm --filter @agent-market/web build
 output-directory: apps/web/dist
 pages-project: agent-market
 production-url: https://agent-market.baby2b.online/
-evidence-url: https://evidence.baby2b.online/agent-market/
+evidence-url: https://agent-market.baby2b.online/evidence/
 backup-url: ""
