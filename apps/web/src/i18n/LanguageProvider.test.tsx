@@ -11,4 +11,11 @@ describe("bilingual interface", () => {
   it("synchronizes the document language for assistive technology", () => { const root = { lang: "en" }; writeDocumentLocale(root, "zh-CN"); expect(root.lang).toBe("zh-CN"); });
   it("switches only architecture SVGs to localized assets", () => { expect(localizeAssetPath("/architecture/system-context.svg", "zh-CN")).toBe("/architecture/system-context.zh-CN.svg"); expect(localizeAssetPath("/architecture/system-context.zh-CN.svg", "zh-CN")).toBe("/architecture/system-context.zh-CN.svg"); expect(localizeAssetPath("/evidence/aws.png", "zh-CN")).toBe("/evidence/aws.png"); expect(localizeAssetPath("/architecture/system-context.svg", "en")).toBe("/architecture/system-context.svg"); });
   it("translates exact and count-bearing copy", () => { expect(translateVisibleText("zh-CN", "Market")).toBe("市场"); expect(translateVisibleText("zh-CN", "3 RESULTS")).toBe("3 条结果"); });
+  it("translates dynamic Agent catalog copy without translating model identifiers", () => {
+    expect(translateVisibleText("zh-CN", "Provider")).toBe("提供方");
+    expect(translateVisibleText("zh-CN", "Verified ops")).toBe("已验证操作");
+    expect(translateVisibleText("zh-CN", "PENDING-SMOKE")).toBe("待 SMOKE 验证");
+    expect(translateVisibleText("zh-CN", "Canonical owner-trained runtime. Served only through the signed local runtime boundary.")).toContain("签名保护的本地 Runtime");
+    expect(translateVisibleText("zh-CN", "personal-ai-agent-runtime:v4.1")).toBe("personal-ai-agent-runtime:v4.1");
+  });
 });
