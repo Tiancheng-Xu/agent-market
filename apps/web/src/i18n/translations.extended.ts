@@ -94,7 +94,7 @@ export const zhCNExtended = {
   "principal x 6% x time": "本金 x 6% x 时间",
   "PERFORMANCE DEGRADATION": "性能降级",
   "Keep the app usable without faking success": "保持页面可用，但不伪造成功",
-  "Agent Market follows the Web3 coursework evidence standard as a checklist, but the implementation stays project-specific: SSR first, hydrate safely, lazy-load heavy Evidence media, surface offline/degraded health, and record only sanitized reason codes.": "Agent Market 参考 Web3 作业 Evidence 标准作为检查表，但实现保持项目专用：优先 SSR、安全 Hydration、延迟加载大型 Evidence 媒体、明确展示离线或降级健康状态，并只记录脱敏原因码。",
+  "Agent Market follows the Web3 coursework evidence standard as a checklist, but the implementation stays project-specific: SSR first, hydrate safely, lazy-load heavy Evidence media, surface offline/degraded health, and record only sanitized reason codes.": "Agent Market 参考 Web3 课程交付 Evidence 标准作为检查表，但实现保持项目专用：优先 SSR、安全 Hydration、延迟加载大型 Evidence 媒体、明确展示离线或降级健康状态，并只记录脱敏原因码。",
   "Degradation architecture": "降级架构",
   "Browser signals, Edge SSR, React degraded mode, health/API timeouts, local runtime, provider APIs, and Evidence records are separated so one slow dependency cannot collapse the page.": "浏览器信号、Edge SSR、React 降级模式、Health/API 超时、本地 Runtime、Provider API 与 Evidence 记录相互分离，单个慢依赖不会拖垮页面。",
   "Degradation sequence": "降级时序",
