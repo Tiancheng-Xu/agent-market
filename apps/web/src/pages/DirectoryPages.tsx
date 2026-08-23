@@ -9,7 +9,7 @@ import { listOwnerAgents, saveOwnerAgent, type OwnerAgentRecord } from "../owner
 const expertTypes = ["Research agent", "Data analyst", "Content operator", "Code agent", "Security reviewer", "Final arbiter"];
 
 function FilterBar({ query, setQuery, action }: { query: string; setQuery(value: string): void; action: React.ReactNode }) {
-  return <div className="filter-bar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, category, or tag" />{action}</div>;
+  return <Localized><div className="filter-bar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, category, or tag" />{action}</div></Localized>;
 }
 
 export function AgentsPage({ ownerWallet = null }: { ownerWallet?: string | null }) {

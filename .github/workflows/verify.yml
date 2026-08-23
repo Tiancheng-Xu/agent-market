@@ -34,5 +34,10 @@ jobs:
         run: |
           python -m venv services/trainer/.venv
           services/trainer/.venv/bin/pip install -e 'services/trainer[test]'
+      - name: Run reverse-induction regression gates
+        run: |
+          node scripts/validate-regression-gates.mjs
+          node scripts/validate-i18n.mjs
+          pnpm --dir apps/web exec vitest run src/i18n/LocalizedRoutes.test.tsx
       - name: Run contracts, TypeScript, Go, Python, Evidence and repository gates
         run: pnpm verify

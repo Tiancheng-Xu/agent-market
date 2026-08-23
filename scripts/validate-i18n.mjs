@@ -25,11 +25,22 @@ export function validateI18n(base = root) {
     const candidates = [
       ...[...source.matchAll(/\b(?:alt|aria-label|description|eyebrow|label|note|placeholder|subtitle|text|title)="([^"]+)"/g)].map((match) => match[1]),
       ...[...source.matchAll(/>\s*([^<>{}\n][^<>{}\n]*?)\s*</g)].map((match) => match[1]),
+      ...[...source.matchAll(/{\s*"([^"]+)"\s*}/g)].map((match) => match[1]),
     ];
     for (const candidate of candidates) {
       const value = candidate.trim();
       if (requiresTranslation(value) && !translated.has(value)) missing.add(`${file}:${value}`);
     }
+  }
+  const fixtureSource = readFileSync(path.join(base, "apps/web/src/data.ts"), "utf8");
+  const fixtureCopy = [...fixtureSource.matchAll(/\b(?:due|summary|title):\s*"([^"]+)"/g)].map((match) => match[1]);
+  for (const value of fixtureCopy) {
+    if (requiresTranslation(value) && !translated.has(value) && !/^\d+ hours$/.test(value)) missing.add(`apps/web/src/data.ts:${value}`);
+  }
+  const homeSource = readFileSync(path.join(base, "apps/web/src/pages/HomePage.tsx"), "utf8");
+  const homeCardCopy = [...homeSource.matchAll(/\["\d{2}",\s*"([^"]+)",\s*"([^"]+)"\]/g)].flatMap((match) => [match[1], match[2]]);
+  for (const value of homeCardCopy) {
+    if (requiresTranslation(value) && !translated.has(value)) missing.add(`apps/web/src/pages/HomePage.tsx:${value}`);
   }
   const catalogSource = readFileSync(path.join(base, "apps/web/src/agentCatalog.ts"), "utf8");
   const catalogCopy = [
@@ -68,11 +79,13 @@ function requiresTranslation(value) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const missing = validateI18n();
-  if (missing.length > 0) {
-    console.error(`[i18n] ${missing.length} visible English strings lack an exact zh-CN translation`);
+  const missingAssets = findMissingLocalizedArchitectureAssets();
+  if (missing.length > 0 || missingAssets.length > 0) {
+    console.error(`[i18n] ${missing.length} visible English strings and ${missingAssets.length} architecture assets lack zh-CN coverage`);
     for (const item of missing) console.error(`- ${item}`);
+    for (const item of missingAssets) console.error(`- apps/web/public/architecture/${item.replace(/\.svg$/, ".zh-CN.svg")}`);
     process.exitCode = 1;
   } else {
-    console.log("[i18n] PASS: visible static copy has an exact zh-CN translation");
+    console.log("[i18n] PASS: static copy, dynamic fixtures, and architecture assets have zh-CN coverage");
   }
 }

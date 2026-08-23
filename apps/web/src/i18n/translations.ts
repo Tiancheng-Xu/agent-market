@@ -67,5 +67,17 @@ export type TranslationKey = keyof typeof zhCN;
 export function translate(locale: Locale, key: TranslationKey): string { return locale === "zh-CN" ? zhCN[key] : key; }
 export function translateVisibleText(locale: Locale, value: string): string {
   if (locale === "en") return value;
-  return zhCN[value as TranslationKey] ?? value.replace(/(\d+\s*\/\s*15) VERIFIED\b/, "$1 已验证").replace(/(\d+) RESULTS\b/, "$1 条结果").replace(/(\d+) TASKS\b/, "$1 个任务").replace(/(\d+) \/ 2 votes\b/, "$1 / 2 票");
+  const match = value.match(/^(\s*)(.*?)(\s*)$/s);
+  const leading = match?.[1] ?? "";
+  const core = match?.[2] ?? value;
+  const trailing = match?.[3] ?? "";
+  const translated = zhCN[core as TranslationKey]
+    ?? core
+      .replace(/(\d+\s*\/\s*15) VERIFIED\b/, "$1 已验证")
+      .replace(/(\d+) RESULTS\b/, "$1 条结果")
+      .replace(/(\d+) TASKS\b/, "$1 个任务")
+      .replace(/(\d+) \/ 2 votes\b/, "$1 / 2 票")
+      .replace(/^(\d+) hours$/, "$1 小时")
+      .replace(/^Step (\d+)$/, "步骤 $1");
+  return `${leading}${translated}${trailing}`;
 }
