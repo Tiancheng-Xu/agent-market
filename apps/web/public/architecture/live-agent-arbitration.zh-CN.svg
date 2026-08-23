@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Market 真实 Agent 架构仲裁</title>
+  <desc id="desc">方案 C 胜出：通过 Worker 与本地 Runtime 提供签名同步对话，同时保留异步 Runner 的身份、心跳、租约、结果和证据能力。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#071020"/><stop offset="1" stop-color="#10233f"/></linearGradient>
+    <style>text{font-family:"PingFang SC","Microsoft YaHei",Arial,sans-serif;fill:#e8f2ff}.muted{fill:#9eb4cc}.box{fill:#0f1d33;stroke:#2f7de1;stroke-width:2}.winner{fill:#102d34;stroke:#22d3ee}.warn{fill:#2d2416;stroke:#f59e0b}.line{stroke:#6aa4ff;stroke-width:2;fill:none;marker-end:url(#arrow)}.dash{stroke-dasharray:7 7}.small{font-size:18px}.tiny{font-size:14px}.title{font-size:28px;font-weight:700}.label{font-size:20px;font-weight:700}</style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#6aa4ff"/></marker>
+  </defs>
+  <rect width="1100" height="620" fill="url(#bg)"/>
+  <text x="44" y="56" class="title">真实 Agent 方案仲裁</text>
+  <text x="44" y="88" class="muted small">V1 选择 C：立即提供真实对话，同时保留长任务的安全异步控制面。</text>
+  <rect x="55" y="130" width="290" height="120" rx="18" class="warn"/><text x="85" y="170" class="label">A：仅出站 Runner</text><text x="85" y="205" class="muted tiny">安全，不暴露 Mac 入站接口</text><text x="85" y="228" class="muted tiny">但 V1 只能异步返回最终文本</text>
+  <rect x="405" y="130" width="290" height="120" rx="18" class="warn"/><text x="435" y="170" class="label">B：Worker + Tunnel</text><text x="435" y="205" class="muted tiny">真实 SSE 对话</text><text x="435" y="228" class="muted tiny">Tunnel 只传输，不负责认证</text>
+  <rect x="755" y="130" width="290" height="120" rx="18" class="winner"/><text x="785" y="170" class="label">C：混合方案胜出</text><text x="785" y="205" class="muted tiny">签名同步对话数据面</text><text x="785" y="228" class="muted tiny">异步身份与证据控制面</text>
+  <path d="M200 250 V310 H900 V250" class="line"/><path d="M550 250 V310" class="line"/><path d="M900 250 V310" class="line"/>
+  <rect x="355" y="310" width="390" height="74" rx="16" class="box"/><text x="410" y="356" class="label">仲裁结果：V1 采用方案 C</text>
+  <path d="M550 384 V445" class="line"/>
+  <rect x="70" y="445" width="270" height="92" rx="16" class="box"/><text x="100" y="480" class="label">同步数据面</text><text x="100" y="512" class="muted tiny">浏览器 → Worker → Tunnel → Runtime</text>
+  <rect x="415" y="445" width="270" height="92" rx="16" class="box"/><text x="445" y="480" class="label">模型 Adapter</text><text x="445" y="512" class="muted tiny">Ollama + DeepSeek + Kimi + Qwen + 智谱</text>
+  <rect x="760" y="445" width="270" height="92" rx="16" class="box"/><text x="790" y="480" class="label">异步控制面</text><text x="790" y="512" class="muted tiny">注册、心跳、租约、结果、证据</text>
+  <path d="M340 491 H415" class="line"/><path d="M685 491 H760" class="line dash"/>
+</svg>

@@ -10,19 +10,19 @@
 - Judge 不能审查自己的输出，Final Arbiter 不能由 Queen 兼任。
 - Judge 结果使用幂等事件写入本机私有评分账本；Learning Loop 只写脱敏摘要。
 - Mastra 管顶层 Workflow，LangGraph 管状态与分支，LangChain 管单节点模型调用。
+- 已冻结 `agent-market-routing-v1` 离线路由集，并用同一数据集执行简单成本 baseline 与当前路由 candidate 对照；发布 Gate 要求排序全匹配、硬过滤零违规、模型零重复且不得低于 baseline。
 
 以上状态在本批总 Gate 通过前均为 `implemented / gate-pending`，不是生产验证。
 
 ## 仍存在的差距
 
-1. 尚无冻结离线评测集，不能证明路由版本相对 baseline 的质量提升。
-2. 尚未把 Component Eval 与 End-to-End Eval 分开统计。
-3. 当前 Judge 只提供 Pointwise 分数；Pairwise A/B 换序与位置偏差检测未实现。
-4. 尚未保存 Judge model/revision/prompt/rubric/seed，也没有人工金标校准集。
-5. 尚未按事实、安全、实现质量、用户意图拆分多裁判；低置信度人工升级仍为 planned。
-6. 当前私有评分主要是质量聚合，尚未形成 capability、quality、reliability、safety、latency、cost、freshness 的完整可解释向量。
-7. RAG 的 Hybrid Retrieval、Rerank、Citation 与检索失败显式暴露尚未接入当前任务流。
-8. 用户修正、撤销、人工接管和重试信号尚未经过清洗进入离线评测集。
+1. 尚未把 Component Eval 与 End-to-End Eval 分开统计；当前冻结集只证明路由政策，没有证明模型回答质量。
+2. 当前 Judge 只提供 Pointwise 分数；Pairwise A/B 换序与位置偏差检测未实现。
+3. 尚未保存 Judge model/revision/prompt/rubric/seed，也没有人工金标校准集。
+4. 尚未按事实、安全、实现质量、用户意图拆分多裁判；低置信度人工升级仍为 planned。
+5. 当前私有评分主要是质量聚合，尚未形成 capability、quality、reliability、safety、latency、cost、freshness 的完整可解释向量。
+6. RAG 的 Hybrid Retrieval、Rerank、Citation 与检索失败显式暴露尚未接入当前任务流。
+7. 用户修正、撤销、人工接管和重试信号尚未经过清洗进入离线评测集。
 
 ## 最小演进路径
 

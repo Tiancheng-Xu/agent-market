@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -23,7 +23,7 @@ export function validateI18n(base = root) {
   for (const file of surfaces) {
     const source = readFileSync(path.join(base, file), "utf8");
     const candidates = [
-      ...[...source.matchAll(/\b(?:description|eyebrow|label|note|placeholder|title)="([^"]+)"/g)].map((match) => match[1]),
+      ...[...source.matchAll(/\b(?:alt|aria-label|description|eyebrow|label|note|placeholder|subtitle|text|title)="([^"]+)"/g)].map((match) => match[1]),
       ...[...source.matchAll(/>\s*([^<>{}\n][^<>{}\n]*?)\s*</g)].map((match) => match[1]),
     ];
     for (const candidate of candidates) {
@@ -40,6 +40,22 @@ export function validateI18n(base = root) {
     if (requiresTranslation(value) && !translated.has(value)) missing.add(`apps/web/src/agentCatalog.ts:${value}`);
   }
   return [...missing].sort();
+}
+
+export function findMissingLocalizedArchitectureAssets(base = root) {
+  const evidencePage = readFileSync(path.join(base, "apps/web/src/pages/EvidencePage.tsx"), "utf8");
+  const referencedAssets = new Set(
+    [...evidencePage.matchAll(/src=["']\/architecture\/([^"']+\.svg)["']/g)]
+      .map((match) => match[1])
+      .filter((asset) => !asset.endsWith(".zh-CN.svg")),
+  );
+
+  return [...referencedAssets]
+    .filter((asset) => {
+      const localizedAsset = asset.replace(/\.svg$/, ".zh-CN.svg");
+      return !existsSync(path.join(base, "apps/web/public/architecture", localizedAsset));
+    })
+    .sort();
 }
 
 function requiresTranslation(value) {

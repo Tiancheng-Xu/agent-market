@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "aiEngineering": true,
+  "successCriteria": [
+    {
+      "id": "frozen-routing-release-gate",
+      "metric": "frozen routing cases passing",
+      "threshold": 1,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/testing/2026-08-23-agent-routing-frozen-eval.json"
+    },
+    {
+      "id": "repository-verification",
+      "metric": "pnpm verify exit code",
+      "threshold": 0,
+      "gateType": "deterministic",
+      "evidence": "scripts/verify-all.mjs"
+    },
+    {
+      "id": "agent-runtime-contracts",
+      "metric": "local Agent runner test pass ratio",
+      "threshold": 1,
+      "gateType": "deterministic",
+      "evidence": "apps/local-agent-runner/src"
+    }
+  ],
+  "deterministicGates": [
+    {
+      "id": "frozen-routing-release-gate",
+      "check": "pnpm --filter @agent-market/local-agent-runner test",
+      "evidence": "docs/evidence/testing/2026-08-23-agent-routing-frozen-eval.json"
+    },
+    {
+      "id": "repository-verification",
+      "check": "pnpm verify",
+      "evidence": "scripts/verify-all.mjs"
+    }
+  ],
+  "llmJudge": {
+    "enabled": true,
+    "independent": true,
+    "canOverrideDeterministic": false,
+    "dimensions": ["requirement coverage", "output quality", "risk"],
+    "rubric": "Judge is isolated from Queen and executor; deterministic build, security, schema, permission, and Evidence gates remain authoritative."
+  },
+  "rag": {
+    "enabled": false
+  },
+  "dag": {
+    "enabled": true,
+    "failureRouting": ["judge to repair", "high-risk or low-score to red-team", "low confidence to manual approval"],
+    "humanApproval": true
+  },
+  "serviceLevels": {
+    "qualityThreshold": 0.65,
+    "ttftMs": 5000,
+    "p95LatencyMs": 30000,
+    "costBudget": "Provider-specific per-node budget with local Ollama preferred where eligible",
+    "reliabilityThreshold": 0.99
+  },
+  "feedback": {
+    "clean": true,
+    "deduplicate": true,
+    "redact": true,
+    "frozenEvaluationSet": true,
+    "releaseRegressionGate": true
+  },
+  "proof": [
+    {
+      "kind": "test",
+      "location": "apps/local-agent-runner/src/routing-evaluation.test.ts",
+      "proves": "frozen baseline versus candidate routing release gate",
+      "status": "verified-local"
+    },
+    {
+      "kind": "evidence",
+      "location": "docs/evidence/testing/2026-08-23-agent-routing-frozen-eval.json",
+      "proves": "routing metrics and honest limitations",
+      "status": "verified-local"
+    },
+    {
+      "kind": "test-suite",
+      "location": "apps/local-agent-runner/src",
+      "proves": "GraphQL workflow, independent Judge, red-team, repair, Final Arbiter, scoring, and redaction contracts",
+      "status": "verified-local"
+    },
+    {
+      "kind": "deployment",
+      "location": "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json",
+      "proves": "existing scoped Cloudflare Edge SSR production delivery",
+      "status": "verified-production"
+    }
+  ]
+}

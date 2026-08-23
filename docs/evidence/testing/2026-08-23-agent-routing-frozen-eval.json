@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-23T00:00:00.000Z",
+  "status": "verified-local",
+  "dataset": "apps/local-agent-runner/evaluation/frozen-routing-cases.json",
+  "datasetId": "agent-market-routing-v1",
+  "baseline": "simple-cost-baseline",
+  "candidate": "queen-ranking-v1",
+  "metrics": {
+    "caseCount": 5,
+    "baselineExactMatches": 2,
+    "candidateExactMatches": 5,
+    "hardFilterViolations": 0,
+    "duplicateModelSelections": 0,
+    "releaseGatePassed": true
+  },
+  "coverage": [
+    "qualified-lower-cost-first",
+    "owner-only-never-enters-public-pool",
+    "retire-old-low-quality-model",
+    "deduplicate-three-choice-models",
+    "bounded-new-model-exploration"
+  ],
+  "limitations": [
+    "This deterministic frozen set validates routing policy, not language-model answer quality.",
+    "Pairwise LLM judge calibration, position-bias measurement, and human gold-label agreement remain pending."
+  ]
+}
