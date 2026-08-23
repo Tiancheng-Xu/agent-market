@@ -16,6 +16,7 @@ import {
 import type { ChatMessage, OllamaClient } from "./ollama-client";
 import type { ProviderApiClient, ProviderName } from "./provider-api-client";
 import { createQueenOrchestrator } from "./queen-orchestrator";
+import { createMemoryModelScoreStore, type ModelScoreStore } from "./model-score-store";
 import { verifySignedRequest, type SigningKey } from "./signing";
 
 type OllamaStreamingClient = Pick<OllamaClient, "chatStream">;
@@ -28,6 +29,7 @@ export type LocalStreamRuntimeOptions = {
   signingKey?: SigningKey;
   now?: () => Date;
   requestTimeoutMs?: number;
+  scoreStore?: ModelScoreStore;
 };
 
 type CallerAccess = {
@@ -37,7 +39,8 @@ type CallerAccess = {
 export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
   const manifests = new Map(options.manifests.map((manifest) => [manifest.id, manifest]));
   const now = options.now ?? (() => new Date());
-  const queenAgents = agentCandidatesFromManifests([...manifests.values()], now);
+  const scoreStore = options.scoreStore ?? createMemoryModelScoreStore();
+  const queenAgents = agentCandidatesFromManifests([...manifests.values()], now, scoreStore);
   const publicQueenOrchestrator = createQueenOrchestrator({
     agents: queenAgents,
     queenAgentId: "queen-router-v1",
@@ -58,9 +61,10 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
         signal: AbortSignal.timeout(options.requestTimeoutMs ?? manifest.limits.timeoutMs),
       });
     },
+    scoreStore,
   });
   const ownerQueenOrchestrator = createQueenOrchestrator({
-    agents: agentCandidatesFromManifests([...manifests.values()], now),
+    agents: agentCandidatesFromManifests([...manifests.values()], now, scoreStore),
     queenAgentId: "queen-router-v1",
     now,
     allowOwnerOnlyAgents: true,
@@ -77,6 +81,7 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
         signal: AbortSignal.timeout(options.requestTimeoutMs ?? manifest.limits.timeoutMs),
       });
     },
+    scoreStore,
   });
 
   return {
@@ -285,7 +290,7 @@ function publicHealth(manifests: AgentManifest[], now: () => Date) {
   });
 }
 
-function agentCandidatesFromManifests(manifests: AgentManifest[], now: () => Date): AgentCandidate[] {
+function agentCandidatesFromManifests(manifests: AgentManifest[], now: () => Date, scoreStore: ModelScoreStore): AgentCandidate[] {
   return [
     {
       agentId: "queen-router-v1",
@@ -322,8 +327,8 @@ function agentCandidatesFromManifests(manifests: AgentManifest[], now: () => Dat
       status: manifest.health.status,
       costPer1kTokensUsd: manifest.provider === "ollama" ? 0 : 0.004,
       latencyMs: manifest.provider === "ollama" ? 1_200 : 900,
-      qualityScore: manifest.health.status === "offline" ? 0 : 0.8,
-      firstSeenAt: manifest.health.lastVerifiedAt ?? now().toISOString(),
+      qualityScore: manifest.health.status === "offline" ? 0 : scoreStore.scoreFor(manifest.id) ?? 0,
+      firstSeenAt: scoreStore.firstSeenAt(manifest.id) ?? manifest.health.lastVerifiedAt ?? now().toISOString(),
       modelTag: manifest.model.tag,
       modelDigest: manifest.model.digest,
       riskCodes: manifest.health.status === "offline" ? ["offline"] : [],

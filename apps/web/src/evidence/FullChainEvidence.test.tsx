@@ -18,7 +18,7 @@ describe("full delivery chain evidence", () => {
     expect(markup).toContain("Go matcher + pgvector");
     expect(markup).toContain("grouped OOF/CV");
     expect(markup).toContain("safe JSON artifact");
-    expect(markup).toContain("Blockscout + RPC");
+    expect(markup).toContain("RPC + Etherscan; Blockscout enhancement pending");
     expect(markup).toContain("replay / ops / pause");
     expect(markup).toContain("pending-external");
     expect(markup).toContain("/architecture/full-delivery-chain.svg");

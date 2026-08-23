@@ -227,3 +227,10 @@ test("rejects architecture dimension, actor, and lane drift across languages and
   assert.ok(violations.includes("diagram-actors-mismatch:request-sequence"));
   assert.ok(violations.includes("diagram-lanes-mismatch:full-delivery-chain"));
 });
+
+test("rejects clipped or low-contrast SVG content", () => {
+  const source = `<svg width="200" height="100" viewBox="0 0 200 100"><style>.copy{font-size:16px;fill:#777777}</style><rect width="200" height="100" fill="#777777"/><path d="M20 20 H240"/><text x="20" y="50" class="copy">unreadable</text></svg>`;
+  const violations = evidenceValidator.validateSvgPresentation(source, "fixture.svg");
+  assert.ok(violations.includes("diagram-content-overflow:fixture.svg"));
+  assert.ok(violations.includes("diagram-low-contrast:fixture.svg"));
+});

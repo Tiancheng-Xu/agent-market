@@ -14,7 +14,17 @@ export interface PerformanceEnvelope extends PerformanceEnvelopeInput {
   schemaVersion: 1;
 }
 
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function createUuidV7(timestamp = Date.now()): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  let value = BigInt(timestamp);
+  for (let index = 5; index >= 0; index -= 1) { bytes[index] = Number(value & 0xffn); value >>= 8n; }
+  bytes[6] = (bytes[6]! & 0x0f) | 0x70;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = [...bytes].map((item) => item.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 function safeRoute(route: string): string {
   const pathname = route.split(/[?#]/u, 1)[0] || "/";
@@ -61,7 +71,7 @@ export function startPerformanceCollection(options: {
 }): { flush(): Promise<void>; stop(): void } {
   const metrics: PerformanceMetrics = {};
   const observers: PerformanceObserver[] = [];
-  const requestId = crypto.randomUUID();
+  const requestId = createUuidV7();
   let flushed = false;
 
   const navigation = performance.getEntriesByType("navigation")[0] as (
@@ -116,24 +126,31 @@ export function startPerformanceCollection(options: {
       observedAt: new Date().toISOString(),
       metrics,
     });
-    await fetch(options.endpoint ?? "/api/performance", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-request-id": requestId,
-      },
-      body: JSON.stringify(envelope),
-      credentials: "omit",
-      keepalive: true,
-    });
+    try {
+      const response = await fetch(options.endpoint ?? "/api/performance", {
+        method: "POST", headers: { "content-type": "application/json", "x-request-id": requestId },
+        body: JSON.stringify(envelope), credentials: "omit", keepalive: true, signal: AbortSignal.timeout(4_000),
+      });
+      if (!response.ok) throw new Error(`PERFORMANCE_WRITE_${response.status}`);
+      globalThis.dispatchEvent(new CustomEvent("agent-market:performance-status", { detail: { status: "accepted" } }));
+    } catch (error) {
+      const reasonCode = error instanceof DOMException && error.name === "TimeoutError" ? "PERFORMANCE_TIMEOUT" : "PERFORMANCE_UNAVAILABLE";
+      globalThis.dispatchEvent(new CustomEvent("agent-market:performance-status", { detail: { status: "degraded", reasonCode } }));
+    }
   };
 
   const timeoutId = setTimeout(() => void flush(), options.flushAfterMs ?? 5_000);
+  const pagehide = () => void flush();
+  const visibility = () => { if (document.visibilityState === "hidden") void flush(); };
+  globalThis.addEventListener("pagehide", pagehide, { once: true });
+  document.addEventListener("visibilitychange", visibility);
   return {
     flush,
     stop() {
       clearTimeout(timeoutId);
       observers.forEach((observer) => observer.disconnect());
+      globalThis.removeEventListener("pagehide", pagehide);
+      document.removeEventListener("visibilitychange", visibility);
     },
   };
 }

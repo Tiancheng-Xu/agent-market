@@ -1,10 +1,11 @@
 import { StrictMode, useEffect, useState } from "react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, useLocation } from "react-router-dom";
 
 import App from "./App";
 import { bootstrapClient, readRenderStateFromDocument } from "./bootstrap";
 import { LanguageProvider } from "./i18n/LanguageProvider";
 import { startPerformanceCollection } from "./performance/collector";
+import { applyPerformanceProfile, watchPerformanceProfile } from "./performance/degradation";
 import { ServerApp } from "./ssr/ServerApp";
 import "./styles.css";
 
@@ -26,6 +27,7 @@ function ClientApplication({ initialInteractive }: { initialInteractive: boolean
         {interactive
           ? (
               <BrowserRouter>
+                <PerformanceRouteCollector />
                 <App />
               </BrowserRouter>
             )
@@ -33,6 +35,17 @@ function ClientApplication({ initialInteractive }: { initialInteractive: boolean
       </LanguageProvider>
     </StrictMode>
   );
+}
+
+function PerformanceRouteCollector() {
+  const location = useLocation();
+  useEffect(() => {
+    const stopWatching = watchPerformanceProfile(applyPerformanceProfile);
+    if (!import.meta.env.PROD) return stopWatching;
+    const collector = startPerformanceCollection({ route: location.pathname, version: buildVersion });
+    return () => { stopWatching(); void collector.flush(); collector.stop(); };
+  }, [location.pathname]);
+  return null;
 }
 
 const renderState = readRenderStateFromDocument();
@@ -51,10 +64,3 @@ bootstrapClient({
     }));
   },
 });
-
-if (import.meta.env.PROD) {
-  startPerformanceCollection({
-    route: globalThis.location.pathname,
-    version: buildVersion,
-  });
-}

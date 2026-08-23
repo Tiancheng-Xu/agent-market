@@ -201,6 +201,12 @@ export function agentProviderLabel(provider: CatalogProvider): string {
   return providerLabels[provider];
 }
 
+function localModelLicense(modelTag: string): string {
+  if (modelTag === "qwen3:30b-instruct" || modelTag === "qwen2.5-coder:7b-code") return "Apache-2.0 (local Ollama metadata)";
+  if (modelTag === "gemma3:4b-picture") return "Gemma Terms of Use (local Ollama metadata)";
+  return "upstream model terms pending metadata";
+}
+
 function localAgent(entry: Omit<PublicAgentCatalogEntry, "category" | "provider" | "providerLabel" | "source" | "license" | "visibility" | "selectableBy" | "verifiedOperations"> & { verifiedOperations?: number }): PublicAgentCatalogEntry {
   return {
     ...entry,
@@ -208,7 +214,7 @@ function localAgent(entry: Omit<PublicAgentCatalogEntry, "category" | "provider"
     provider: "ollama",
     providerLabel: providerLabels.ollama,
     source: "Local Ollama runtime",
-    license: entry.ownership === "owner-trained" ? "owner training artifact" : "upstream model terms pending metadata",
+    license: entry.ownership === "owner-trained" ? "owner training artifact" : localModelLicense(entry.modelTag),
     visibility: "private",
     selectableBy: "owner-only",
     verifiedOperations: entry.verifiedOperations ?? 0,
@@ -238,7 +244,7 @@ function providerAgent(
     capabilities,
     verification,
     source: providerLabels[provider],
-    license: "provider terms pending metadata",
+    license: "provider API terms",
     readinessScore,
     verifiedOperations,
     note,

@@ -16,6 +16,7 @@ import {
   type ProviderName,
 } from "./provider-api-client";
 import { createLocalStreamRuntime } from "./stream-runtime";
+import { createFileModelScoreStore } from "./model-score-store";
 
 const env = loadRuntimeEnv();
 const config = parseRunnerConfig(env);
@@ -32,6 +33,7 @@ const runtime = createLocalStreamRuntime({
   ollamaClient,
   providerClients,
   signingKey: { keyId: env.AGENT_RUNTIME_KEY_ID ?? "edge-runtime-v1", secret: signingSecret },
+  scoreStore: createFileModelScoreStore(env.AGENT_SCORE_STORE_PATH ?? `${env.HOME ?? "."}/.agent-market/model-scores.json`),
 });
 
 const host = "127.0.0.1";

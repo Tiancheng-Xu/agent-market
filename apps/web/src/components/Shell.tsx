@@ -1,31 +1,38 @@
-import { useMemo, useState, type FormEvent, type PropsWithChildren } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type PropsWithChildren } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import { agents, navItems, tasks } from "../data";
 import { Localized, useLanguage } from "../i18n/LanguageProvider";
 import { shortAddress } from "../lib/domain";
 import type { WalletState } from "../types";
+import { applyPerformanceProfile, detectPerformanceProfile, watchPerformanceProfile, type PerformanceProfile } from "../performance/degradation";
+
+export type MarketSearchResult = { path: string; title: string; scope: "Route" | "Agent" | "Task" };
+
+export function findMarketSearchResults(query: string): MarketSearchResult[] {
+  const value = query.trim().toLowerCase();
+  if (!value) return [];
+  const routeResults: MarketSearchResult[] = navItems
+    .filter(([, label]) => label.toLowerCase().includes(value))
+    .map(([path, label]) => ({ path, title: label, scope: "Route" }));
+  const agentResults: MarketSearchResult[] = agents
+    .filter((agent) => `${agent.name} ${agent.category} ${agent.tags.join(" ")}`.toLowerCase().includes(value))
+    .map((agent) => ({ path: `/agents/${agent.id}`, title: agent.name, scope: "Agent" }));
+  const taskResults: MarketSearchResult[] = tasks
+    .filter((task) => `${task.id} ${task.title} ${task.category} ${task.tags.join(" ")}`.toLowerCase().includes(value))
+    .map((task) => ({ path: `/tasks/${task.id}`, title: task.title, scope: "Task" }));
+  return [...routeResults, ...agentResults, ...taskResults].slice(0, 6);
+}
 
 export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: PropsWithChildren<{ wallet: WalletState; isSepolia: boolean; onConnect(): void; onSwitch(): void }>) {
   const { locale, setLocale, t } = useLanguage();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [performanceProfile, setPerformanceProfile] = useState<PerformanceProfile>(() => detectPerformanceProfile());
+  const [performanceIssue, setPerformanceIssue] = useState<string | null>(null);
   const walletLabel = wallet.status === "connecting" ? "Connecting..." : wallet.address ? shortAddress(wallet.address) : "Connect MetaMask";
   const walletMessage = wallet.message ?? (wallet.status === "connecting" ? "Confirm the MetaMask popup. This site never sees your private key." : null);
-  const searchResults = useMemo(() => {
-    const value = searchQuery.trim().toLowerCase();
-    if (!value) return [];
-    const routeResults = navItems
-      .filter(([, label]) => label.toLowerCase().includes(value))
-      .map(([path, label]) => ({ path, title: label, scope: "Route" }));
-    const agentResults = agents
-      .filter((agent) => `${agent.name} ${agent.category} ${agent.tags.join(" ")}`.toLowerCase().includes(value))
-      .map((agent) => ({ path: `/agents/${agent.id}`, title: agent.name, scope: "Agent" }));
-    const taskResults = tasks
-      .filter((task) => `${task.id} ${task.title} ${task.category} ${task.tags.join(" ")}`.toLowerCase().includes(value))
-      .map((task) => ({ path: `/tasks/${task.id}`, title: task.title, scope: "Task" }));
-    return [...routeResults, ...agentResults, ...taskResults].slice(0, 6);
-  }, [searchQuery]);
+  const searchResults = useMemo(() => findMarketSearchResults(searchQuery), [searchQuery]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,6 +41,15 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
     navigate(first.path);
     setSearchQuery("");
   }
+  useEffect(() => watchPerformanceProfile((profile) => { setPerformanceProfile(profile); applyPerformanceProfile(profile); }), []);
+  useEffect(() => {
+    const update = (event: Event) => {
+      const detail = (event as CustomEvent<{ status: string; reasonCode?: string }>).detail;
+      setPerformanceIssue(detail.status === "degraded" ? detail.reasonCode ?? "PERFORMANCE_UNAVAILABLE" : null);
+    };
+    globalThis.addEventListener("agent-market:performance-status", update);
+    return () => globalThis.removeEventListener("agent-market:performance-status", update);
+  }, []);
   return (
     <Localized><div className="site-shell">
       <div className="testnet-banner">SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN</div>
@@ -70,6 +86,7 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
         </header>
         {wallet.error ? <div className="wallet-error" role="alert">{wallet.error}</div> : null}
         {walletMessage ? <div className="wallet-status" role="status">{walletMessage}</div> : null}
+        {performanceProfile.mode !== "full" || performanceIssue ? <div className="degradation-banner" role="status">{locale === "zh-CN" ? `当前为${performanceProfile.mode === "offline" ? "离线" : "降级"}模式：页面保持可用，但不会伪造外部调用成功。` : `${performanceProfile.mode === "offline" ? "Offline" : "Degraded"} mode: the page stays usable without faking external success.`}<small>{[...performanceProfile.reasonCodes, ...(performanceIssue ? [performanceIssue] : [])].join(" / ")}</small></div> : null}
         <main>{children}</main>
         <footer className="site-footer">
           <div><strong>Agent Market</strong><span>Verifiable autonomous work on Ethereum Sepolia.</span></div>

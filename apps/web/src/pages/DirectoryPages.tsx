@@ -4,26 +4,58 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Badge, DemoNotice, EmptyState, PageHeader, Panel } from "../components/Ui";
 import { Localized } from "../i18n/LanguageProvider";
 import { agents, tasks } from "../data";
+import { listOwnerAgents, saveOwnerAgent, type OwnerAgentRecord } from "../ownerAgentStore";
 
 const expertTypes = ["Research agent", "Data analyst", "Content operator", "Code agent", "Security reviewer", "Final arbiter"];
+export type TaskPublishingState = { step: "draft" | "wallet" | "ready"; message: string };
+export type TaskPublishingAction = "invalid" | "validated" | "preview";
+export const initialTaskPublishingState: TaskPublishingState = { step: "draft", message: "Draft not validated yet." };
 
-function FilterBar({ query, setQuery, action }: { query: string; setQuery(value: string): void; action: React.ReactNode }) {
-  return <div className="filter-bar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, category, or tag" />{action}</div>;
+export function reduceTaskPublishingState(_state: TaskPublishingState, action: TaskPublishingAction): TaskPublishingState {
+  if (action === "invalid") return { step: "draft", message: "Complete the required fields before validating the draft." };
+  if (action === "validated") return { step: "wallet", message: "Draft validated locally. Next: connect MetaMask, approve YD, then submit escrow." };
+  return { step: "ready", message: "Preview only: approve YD -> submit escrow -> wait for RPC receipt. No wallet transaction was sent." };
 }
 
-export function AgentsPage() {
+function FilterBar({ query, setQuery, action }: { query: string; setQuery(value: string): void; action: React.ReactNode }) {
+  return <Localized><div className="filter-bar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, category, or tag" />{action}</div></Localized>;
+}
+
+export function AgentsPage({ ownerWallet = null }: { ownerWallet?: string | null }) {
   const [searchParams] = useSearchParams();
   const queryFromRoute = searchParams.get("q") ?? "";
   const [query, setQuery] = useState(queryFromRoute);
   useEffect(() => setQuery(queryFromRoute), [queryFromRoute]);
-  const filtered = useMemo(() => agents.filter((agent) => `${agent.name} ${agent.category} ${agent.provider ?? ""} ${agent.modelTag ?? ""} ${agent.ownership ?? ""} ${agent.verification ?? ""} ${agent.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [query]);
-  return <Localized><><PageHeader eyebrow="AGENT REGISTRY" title="Find a qualified operator" description="Public-safe catalog for installed local models and configured provider API models. Readiness reflects smoke evidence; pending models are listed but not claimed online." actions={<Link className="button button-primary" to="/agents/new">Register agent</Link>} /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="cyan">{filtered.length} RESULTS</Badge>} />{filtered.length ? <div className="card-grid stagger">{filtered.map((agent) => <Panel className="agent-card" key={agent.id}><div className="card-top"><div className="agent-avatar">{agent.name.slice(0, 2).toUpperCase()}</div><Badge tone={agent.verification === "verified" ? "cyan" : agent.verification === "implemented" ? "amber" : "neutral"}>{(agent.verification ?? agent.status).toUpperCase()}</Badge></div><h2>{agent.name}</h2><p>{agent.description}</p><div className="tag-row">{agent.tags.slice(0, 7).map((tag) => <span key={tag}>{tag}</span>)}</div><dl><div><dt>Provider</dt><dd>{agent.provider ?? "-"}</dd></div><div><dt>Model</dt><dd>{agent.modelTag ?? "-"}</dd></div><div><dt>Readiness</dt><dd>{agent.reliability}%</dd></div><div><dt>Verified ops</dt><dd>{agent.completed}</dd></div></dl><Link className="text-link" to={`/agents/${agent.id}`}>View public profile</Link></Panel>)}</div> : <EmptyState title="No eligible agents" description="Adjust filters or publish the task without forcing an invalid match." />}</></Localized>;
+  const [ownerAgents, setOwnerAgents] = useState<OwnerAgentRecord[]>([]);
+  useEffect(() => { void listOwnerAgents(ownerWallet).then(setOwnerAgents).catch(() => setOwnerAgents([])); }, [ownerWallet]);
+  const catalog = useMemo(() => [...ownerAgents, ...agents], [ownerAgents]);
+  const filtered = useMemo(() => catalog.filter((agent) => `${agent.name} ${agent.category} ${agent.provider ?? ""} ${agent.modelTag ?? ""} ${agent.ownership ?? ""} ${agent.verification ?? ""} ${agent.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [catalog, query]);
+  return <Localized><><PageHeader eyebrow="AGENT REGISTRY" title="Find a qualified operator" description="Public-safe catalog plus owner-only metadata stored on this device. A local registration is not online until the signed Runtime reports matching health." actions={<Link className="button button-primary" to="/agents/new">Register agent</Link>} /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="cyan">{filtered.length} RESULTS</Badge>} />{filtered.length ? <div className="card-grid stagger">{filtered.map((agent) => <Panel className="agent-card" key={agent.id}><div className="card-top"><div className="agent-avatar">{agent.name.slice(0, 2).toUpperCase()}</div><Badge tone={agent.verification === "verified" ? "cyan" : agent.verification === "implemented" ? "amber" : "neutral"}>{(agent.verification ?? agent.status).toUpperCase()}</Badge></div><h2>{agent.name}</h2><p>{agent.description}</p><div className="tag-row">{agent.tags.slice(0, 7).map((tag) => <span key={tag}>{tag}</span>)}</div><dl><div><dt>Provider</dt><dd>{agent.provider ?? "-"}</dd></div><div><dt>Model</dt><dd>{agent.modelTag ?? "-"}</dd></div><div><dt>Readiness</dt><dd>{agent.reliability}%</dd></div><div><dt>Verified ops</dt><dd>{agent.completed}</dd></div></dl><Link className="text-link" to={agent.verification === "registered-local" ? "/agents/local" : `/agents/${agent.id}`}>{agent.verification === "registered-local" ? "Open owner runtime" : "View public profile"}</Link></Panel>)}</div> : <EmptyState title="No eligible agents" description="Adjust filters or publish the task without forcing an invalid match." />}</></Localized>;
 }
 
-export function AgentNewPage() {
+export function AgentNewPage({ ownerWallet = null }: { ownerWallet?: string | null }) {
   const [message, setMessage] = useState("");
-  function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setMessage("Frontend validation passed. Backend registration and encrypted credential storage are not connected yet."); }
-  return <Localized><><PageHeader eyebrow="AGENT ONBOARDING" title="Register an agent" description="API keys are submitted once and must never return to this browser. This UI does not persist credentials locally." /><Panel className="form-panel"><form onSubmit={submit} className="form-grid"><label>Agent name<input required minLength={3} /></label><label>Category<select required defaultValue=""><option value="" disabled>Select category</option><option>Research</option><option>Data</option><option>Content</option></select></label><label className="span-two">Agent description<textarea required rows={4} /></label><label>Capability tags<input required placeholder="research, citations" /></label><label>Wallet address<input required pattern="0x[a-fA-F0-9]{40}" placeholder="Connect MetaMask or enter an address" /></label><label className="span-two">HTTPS endpoint<input required type="url" pattern="https://.*" placeholder="https://agent.example/api" /></label><label className="span-two">API key<input required type="password" autoComplete="new-password" /><small>Encrypted by the backend. Never logged or included in Evidence.</small></label><div className="form-actions span-two"><button className="button button-primary">Validate and continue</button></div></form>{message ? <div className="inline-state" role="status">{message}</div> : null}</Panel></></Localized>;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!ownerWallet) { setMessage("Connect MetaMask first. The connected wallet scopes which browser profile can see this registration."); return; }
+    const form = new FormData(event.currentTarget);
+    const modelTag = String(form.get("modelTag") ?? "").trim();
+    const tags = String(form.get("tags") ?? "").split(",").map((item) => item.trim()).filter(Boolean).slice(0, 12);
+    const record: OwnerAgentRecord = {
+      id: `owner-${modelTag.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${crypto.randomUUID().slice(0, 8)}`,
+      name: String(form.get("name") ?? "").trim(), category: String(form.get("category") ?? "Local served"),
+      description: String(form.get("description") ?? "").trim(), tags, reliability: 0, completed: 0,
+      status: "suspended", newcomer: true, provider: "Ollama on owner runtime",
+      ownership: String(form.get("ownership") ?? "third-party/local-served"), modelTag,
+      modelDigest: String(form.get("modelDigest") ?? "").trim() || "pending-runtime-verification",
+      visibility: "private", selectableBy: "owner-only", verification: "registered-local",
+      source: "Owner browser registration; runtime verification pending", license: String(form.get("license") ?? "pending metadata").trim(),
+      ownerWallet: ownerWallet.toLowerCase(), createdAt: new Date().toISOString(),
+    };
+    try { await saveOwnerAgent(record); event.currentTarget.reset(); setMessage("Saved private metadata in this browser. It remains offline until your signed local Runtime reports the same model tag/digest."); }
+    catch { setMessage("This browser could not open private Agent storage. Nothing was saved."); }
+  }
+  return <Localized><><PageHeader eyebrow="OWNER AGENT ONBOARDING" title="Register a local agent" description="Only non-sensitive metadata is stored in this browser and scoped to the connected wallet. API keys, Ollama URLs, model weights, prompts, and local paths are never stored here." /><Panel className="form-panel"><form onSubmit={(event) => void submit(event)} className="form-grid"><label>Agent name<input name="name" required minLength={3} /></label><label>Category<select name="category" required defaultValue="Local served"><option>Local owner-trained</option><option>Local served</option></select></label><label className="span-two">Agent description<textarea name="description" required rows={4} /></label><label>Capability tags<input name="tags" required placeholder="research, citations" /></label><label>Ownership<select name="ownership" defaultValue="third-party/local-served"><option value="owner-trained">Owner-trained</option><option value="third-party/local-served">Third-party / local-served</option></select></label><label>Ollama model tag<input name="modelTag" required placeholder="qwen3:30b-instruct" /></label><label>Model digest<input name="modelDigest" placeholder="Verified later by local Runtime" /></label><label className="span-two">License / source terms<input name="license" required placeholder="Apache-2.0, provider terms, or pending metadata" /></label><div className="form-actions span-two"><button className="button button-primary" disabled={!ownerWallet}>{ownerWallet ? "Save owner-only metadata" : "Connect MetaMask first"}</button></div></form>{message ? <div className="inline-state" role="status">{message}</div> : null}</Panel></></Localized>;
 }
 
 export function AgentDetailPage() {
@@ -37,18 +69,16 @@ export function TasksPage() {
 }
 
 export function TaskNewPage() {
-  const [step, setStep] = useState<"draft" | "wallet" | "ready">("draft");
-  const [message, setMessage] = useState("Draft not validated yet.");
+  const [publishing, setPublishing] = useState<TaskPublishingState>(initialTaskPublishingState);
+  const { step, message } = publishing;
   function validateDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStep("wallet");
-    setMessage("Draft validated locally. Next: connect MetaMask, approve YD, then submit escrow.");
+    setPublishing((state) => reduceTaskPublishingState(state, "validated"));
   }
   function previewTransactionStates() {
-    setStep("ready");
-    setMessage("Preview only: approve YD -> submit escrow -> wait for RPC receipt. No wallet transaction was sent.");
+    setPublishing((state) => reduceTaskPublishingState(state, "preview"));
   }
-  return <Localized><><PageHeader eyebrow="TASK PUBLISHING" title="Fund a verifiable task" description="Publishing separates draft validation, YD approval, escrow submission, and independent RPC verification." /><Panel className="form-panel"><div className="stepper"><span className="active">1 Draft</span><span className={step !== "draft" ? "active" : ""}>2 Wallet</span><span className={step === "ready" ? "active" : ""}>3 Verify</span></div><form className="form-grid" onSubmit={validateDraft} onInvalid={() => setMessage("Complete the required fields before validating the draft.")}><label className="span-two">Task title<input required /></label><label>Category<select required defaultValue="Research"><option>Research</option><option>Data</option><option>Content</option></select></label><label>Budget<input required type="number" min="1" step="1" /><span className="input-suffix">YD</span></label><label className="span-two">Acceptance criteria<textarea required rows={5} /></label><label>Completion window<input required placeholder="48 hours" /></label><label>Expert type<select required defaultValue="Research agent">{expertTypes.map((type) => <option key={type}>{type}</option>)}</select></label><div className="form-actions span-two"><button className="button button-primary">Validate draft</button><button type="button" className="button button-ghost" onClick={previewTransactionStates}>Preview transaction states</button></div></form><div className="inline-state" role="status" aria-live="polite">{message}</div><div className="transaction-rail"><div className={step !== "draft" ? "complete" : "active"}>Draft validated</div><div className={step === "wallet" ? "active" : step === "ready" ? "complete" : ""}>Await YD approval</div><div className={step === "ready" ? "active" : ""}>Escrow submitted</div><div className={step === "ready" ? "active" : ""}>RPC receipt verified</div></div></Panel></></Localized>;
+  return <Localized><><PageHeader eyebrow="TASK PUBLISHING" title="Fund a verifiable task" description="Publishing separates draft validation, YD approval, escrow submission, and independent RPC verification." /><Panel className="form-panel"><div className="stepper"><span className="active">1 Draft</span><span className={step !== "draft" ? "active" : ""}>2 Wallet</span><span className={step === "ready" ? "active" : ""}>3 Verify</span></div><form className="form-grid" onSubmit={validateDraft} onInvalid={() => setPublishing((state) => reduceTaskPublishingState(state, "invalid"))}><label className="span-two">Task title<input required /></label><label>Category<select required defaultValue="Research"><option>Research</option><option>Data</option><option>Content</option></select></label><label>Budget<input required type="number" min="1" step="1" /><span className="input-suffix">YD</span></label><label className="span-two">Acceptance criteria<textarea required rows={5} /></label><label>Completion window<input required placeholder="48 hours" /></label><label>Expert type<select required defaultValue="Research agent">{expertTypes.map((type) => <option key={type}>{type}</option>)}</select></label><div className="form-actions span-two"><button className="button button-primary">Validate draft</button><button type="button" className="button button-ghost" onClick={previewTransactionStates}>Preview transaction states</button></div></form><div className="inline-state" role="status" aria-live="polite">{message}</div><div className="transaction-rail"><div className={step !== "draft" ? "complete" : "active"}>Draft validated</div><div className={step === "wallet" ? "active" : step === "ready" ? "complete" : ""}>Await YD approval</div><div className={step === "ready" ? "active" : ""}>Escrow submitted</div><div className={step === "ready" ? "active" : ""}>RPC receipt verified</div></div></Panel></></Localized>;
 }
 
 export function TaskDetailPage() {

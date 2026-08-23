@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "project": "agent-market",
+  "status": "verified-production",
+  "scope": "agent-orchestration-v1",
+  "verifiedAt": "2026-08-22T23:59:59Z",
+  "repository": {
+    "pullRequest": "https://github.com/Tiancheng-Xu/agent-market/pull/7",
+    "mergeCommit": "791930e7bc3f57f35fda403e66f0b2ea3a13b64a"
+  },
+  "cloudflare": {
+    "project": "agent-market-site",
+    "deploymentId": "cba46523-e12f-472b-bf1f-b59415d45dad",
+    "immutableUrl": "https://cba46523.agent-market-site.pages.dev",
+    "customDomain": "https://agent-market.baby2b.online"
+  },
+  "readback": {
+    "evidenceRoute": 200,
+    "agentDetailRoute": 200,
+    "unknownRoute": 404,
+    "viewportWidth": 1920,
+    "horizontalOverflow": false,
+    "brokenImages": 0,
+    "catalogCards": 22
+  },
+  "deliveryChecks": [
+    "repository-policy",
+    "full-verify",
+    "cloudflare-preview",
+    "cloudflare-production"
+  ],
+  "awsStarted": false,
+  "secretsIncluded": false
+}

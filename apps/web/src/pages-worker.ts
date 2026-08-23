@@ -15,6 +15,7 @@ import { routeForPath } from "./ssr/routeDefinitions";
 export interface PagesEnvironment {
   ASSETS: { fetch(request: Request): Promise<Response> };
   API_ORIGIN?: string;
+  PERFORMANCE_SHARED_SECRET?: string;
   AGENT_ALLOWED_ORIGINS?: string;
   AGENT_CHAT_MAX_BYTES?: string;
   AGENT_RUNTIME_KEY_ID?: string;
@@ -142,22 +143,29 @@ export function createPagesHandler(options: HandlerOptions = {}) {
         if (request.method !== "POST") {
           return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405 });
         }
-        if (!environment.API_ORIGIN) {
+        if (!environment.API_ORIGIN || !environment.PERFORMANCE_SHARED_SECRET) {
           return Response.json({ error: "PERFORMANCE_ORIGIN_UNAVAILABLE" }, {
             status: 503,
           });
         }
 
+        const body = await request.text();
+        if (new TextEncoder().encode(body).byteLength > 32_768) return Response.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+        const timestamp = String(Math.floor(now() / 1_000));
+        const signature = await hmacHex(environment.PERFORMANCE_SHARED_SECRET, `${timestamp}.${body}`);
         const origin = environment.API_ORIGIN.endsWith("/")
           ? environment.API_ORIGIN
           : `${environment.API_ORIGIN}/`;
         const upstreamRequest = new Request(
           new URL("performance", origin),
-          request,
+          { method: "POST", headers: request.headers, body, signal: AbortSignal.timeout(4_000) },
         );
         upstreamRequest.headers.delete("authorization");
         upstreamRequest.headers.delete("cookie");
-        return upstreamFetch(upstreamRequest);
+        upstreamRequest.headers.set("x-agent-market-timestamp", timestamp);
+        upstreamRequest.headers.set("x-agent-market-signature", signature);
+        try { return await upstreamFetch(upstreamRequest); }
+        catch { return Response.json({ error: "PERFORMANCE_UPSTREAM_TIMEOUT" }, { status: 504 }); }
       }
 
       if (!isDocumentRequest(request)) return environment.ASSETS.fetch(request);
@@ -214,6 +222,13 @@ export function createPagesHandler(options: HandlerOptions = {}) {
       }
     },
   };
+}
+
+async function hmacHex(secret: string, value: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(value));
+  return [...new Uint8Array(signature)].map((item) => item.toString(16).padStart(2, "0")).join("");
 }
 
 async function handleAgentGraphql(
