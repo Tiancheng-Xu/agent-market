@@ -1,13 +1,15 @@
 import { useMemo, useState, type FormEvent, type PropsWithChildren } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { agents, navItems, tasks } from "../data";
 import { Localized, useLanguage } from "../i18n/LanguageProvider";
 import { shortAddress } from "../lib/domain";
 import type { WalletState } from "../types";
+import { PortfolioNavigation } from "./PortfolioNavigation";
 
 export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: PropsWithChildren<{ wallet: WalletState; isSepolia: boolean; onConnect(): void; onSwitch(): void }>) {
   const { locale, setLocale, t } = useLanguage();
+  const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const walletLabel = wallet.status === "connecting" ? "Connecting..." : wallet.address ? shortAddress(wallet.address) : "Connect MetaMask";
@@ -73,7 +75,7 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
         <main>{children}</main>
         <footer className="site-footer">
           <div><strong>Agent Market</strong><span>Verifiable autonomous work on Ethereum Sepolia.</span></div>
-          <nav aria-label="Delivery links"><a href="https://baby2b.online/">Portfolio</a><NavLink to="/">Project</NavLink><NavLink to="/evidence">Evidence</NavLink></nav>
+          <PortfolioNavigation pathname={location.pathname} />
         </footer>
       </div>
       <nav className="mobile-nav" aria-label="Mobile navigation">

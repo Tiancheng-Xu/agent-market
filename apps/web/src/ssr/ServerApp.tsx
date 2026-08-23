@@ -1,4 +1,5 @@
 import { FullChainEvidence } from "../evidence/FullChainEvidence";
+import { PortfolioNavigation } from "../components/PortfolioNavigation";
 import { routeForPath } from "./routeDefinitions";
 
 export function ServerApp({ pathname }: { pathname: string }) {
@@ -11,12 +12,7 @@ export function ServerApp({ pathname }: { pathname: string }) {
     <main className="edge-route-shell">
       <header>
         <a href="/" aria-label="Agent Market home">AGENT MARKET</a>
-        <nav aria-label="Primary navigation">
-          <a href="/agents">Agents</a>
-          <a href="/tasks">Tasks</a>
-          <a href="/staking">Staking</a>
-          <a href="/evidence">Evidence</a>
-        </nav>
+        <PortfolioNavigation pathname={pathname} />
       </header>
       <section aria-labelledby="edge-route-title">
         <p>{route?.area ?? "404"} / EDGE ROUTE</p>

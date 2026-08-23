@@ -27,7 +27,7 @@ function stream(markup: string): ReadableStream<Uint8Array> {
 }
 
 describe("Cloudflare Pages edge renderer", () => {
-  it("renders known routes and preserves a real 404 status", async () => {
+  it("refreshes the Evidence deep link with SSR and preserves a real 404 status", async () => {
     const handler = createPagesHandler({
       version: "test",
       async render(pathname) {
