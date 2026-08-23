@@ -14,6 +14,7 @@ describe("performance edge proxy", () => {
     });
     const environment: PagesEnvironment = {
       API_ORIGIN: "https://api.example.test/base/",
+      PERFORMANCE_SHARED_SECRET: "test-performance-secret-at-least-32-characters",
       ASSETS: { async fetch() { return new Response("asset"); } },
     };
     const requestId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
@@ -34,6 +35,8 @@ describe("performance edge proxy", () => {
     expect(forwarded).toHaveLength(1);
     expect(forwarded[0]?.url).toBe("https://api.example.test/base/performance");
     expect(forwarded[0]?.headers.get("x-request-id")).toBe(requestId);
+    expect(forwarded[0]?.headers.get("x-agent-market-timestamp")).toMatch(/^\d+$/);
+    expect(forwarded[0]?.headers.get("x-agent-market-signature")).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("fails closed when the AWS origin is not configured", async () => {

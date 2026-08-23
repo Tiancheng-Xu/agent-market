@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Badge, PageHeader, Panel } from "../components/Ui";
 import { agentProviderLabel, publicAgentCatalog } from "../agentCatalog";
 import { Localized } from "../i18n/LanguageProvider";
+import { listOwnerAgents, type OwnerAgentRecord } from "../ownerAgentStore";
 
 type AgentId = string;
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -197,7 +198,7 @@ const fallbackAgents: DisplayAgent[] = publicAgentCatalog.map((agent) => ({
   verification: agent.verification,
 }));
 
-export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow?: QueenWorkflowState } = {}) {
+export function LocalAgentsPage({ initialQueenWorkflow, ownerWallet = null }: { initialQueenWorkflow?: QueenWorkflowState; ownerWallet?: string | null } = {}) {
   const [selectedId, setSelectedId] = useState<AgentId>("personal-ai-agent-runtime-v4-1");
   const [health, setHealth] = useState<Health>({ status: "offline", agents: [], reasonCode: "RUNTIME_OFFLINE" });
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -212,9 +213,10 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
   const [queenAssignments, setQueenAssignments] = useState<Record<string, QueenAssignmentResult>>({});
   const [queenNodeOutputs, setQueenNodeOutputs] = useState<Record<string, string>>({});
   const [queenBusy, setQueenBusy] = useState<string | null>(null);
+  const [ownerAgents, setOwnerAgents] = useState<OwnerAgentRecord[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const displayAgents = useMemo(() => buildDisplayAgents(health.agents), [health.agents]);
+  const displayAgents = useMemo(() => mergeOwnerAgents(buildDisplayAgents(health.agents), ownerAgents), [health.agents, ownerAgents]);
   const selectedAgent = useMemo(
     () => displayAgents.find((agent) => agent.id === selectedId) ?? displayAgents[0]!,
     [displayAgents, selectedId],
@@ -241,6 +243,10 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
       .catch(() => { if (active) setHealth({ status: "offline", agents: [], reasonCode: "RUNTIME_OFFLINE" }); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    void listOwnerAgents(ownerWallet).then(setOwnerAgents).catch(() => setOwnerAgents([]));
+  }, [ownerWallet]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -934,6 +940,24 @@ function buildDisplayAgents(healthAgents: HealthAgent[]) {
   });
   const liveIds = new Set(liveAgents.map((agent) => agent.id));
   return [...liveAgents, ...fallbackAgents.filter((agent) => !liveIds.has(agent.id))];
+}
+
+function mergeOwnerAgents(existing: DisplayAgent[], ownerAgents: OwnerAgentRecord[]): DisplayAgent[] {
+  const modelTags = new Set(existing.map((agent) => agent.model.toLowerCase()));
+  return [
+    ...ownerAgents.filter((agent) => !modelTags.has((agent.modelTag ?? "").toLowerCase())).map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      provider: agent.provider ?? "Ollama on owner runtime",
+      ownership: agent.ownership ?? "third-party/local-served",
+      model: agent.modelTag ?? "pending-runtime-verification",
+      visibility: "private",
+      selectableBy: "owner-only",
+      note: "Private browser metadata. Offline until the signed owner Runtime reports matching model health.",
+      verification: "registered-local",
+    })),
+    ...existing,
+  ];
 }
 
 function hasDuplicateModels(agents: DisplayAgent[]): boolean {

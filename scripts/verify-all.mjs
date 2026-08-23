@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 export const VERIFY_COMMANDS = [
   { id: "repository", command: "node scripts/validate-repository.mjs" },
+  { id: "i18n", command: "node scripts/validate-i18n.mjs" },
   { id: "evidence", command: "node scripts/validate-evidence.mjs" },
   { id: "typescript", command: "pnpm -r --if-present test && pnpm -r --if-present typecheck && pnpm -r --if-present build" },
   { id: "contracts", command: "pnpm --filter @agent-market/contracts test" },

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "project": "agent-market",
+  "status": "verified-local",
+  "observedAt": "2026-08-23T01:46:00Z",
+  "scope": [
+    "owner-agent-browser-metadata",
+    "performance-degradation",
+    "uuidv7-performance-envelope",
+    "edge-performance-hmac",
+    "private-model-score-ledger",
+    "redacted-learning-loop",
+    "langchain-node-adapter",
+    "i18n-gate",
+    "evidence-media-readability"
+  ],
+  "boundaries": {
+    "ownerAgent": "IndexedDB stores non-sensitive metadata scoped to the connected wallet; runtime health remains authoritative.",
+    "scoreLedger": "Private local runtime file; public Evidence includes status and policy only.",
+    "performance": "Code is implemented; fresh AWS full-chain writeback remains pending external validation.",
+    "evaluation": "Pointwise and pairwise calibration, frozen datasets and multi-judge confidence remain planned."
+  },
+  "validation": {
+    "command": "pnpm verify",
+    "result": "pass",
+    "contracts": 15,
+    "sharedContracts": 24,
+    "web": 36,
+    "localAgentRunner": 45,
+    "transactionEngine": 86,
+    "transactionEngineSkipped": 5,
+    "trainer": 33,
+    "go": "go vet and go test pass",
+    "typescript": "tests, typecheck and builds pass",
+    "i18n": "independent gate pass"
+  },
+  "importantNodeEvidence": [
+    "apps/web/src/ownerAgentStore.ts",
+    "apps/web/src/performance/degradation.ts",
+    "apps/web/src/performance/collector.ts",
+    "apps/web/src/pages-worker.ts",
+    "apps/local-agent-runner/src/model-score-store.ts",
+    "apps/local-agent-runner/src/langchain-node-adapter.ts",
+    "scripts/validate-i18n.mjs",
+    "docs/architecture/agent-evaluation-routing-gap.zh-CN.md"
+  ],
+  "secretsIncluded": false
+}

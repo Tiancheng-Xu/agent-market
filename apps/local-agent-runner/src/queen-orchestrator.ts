@@ -12,6 +12,8 @@ import {
 
 import { rankAgentCandidates } from "./queen-ranking";
 import { createQueenFrameworkRuntime, type QueenFrameworkRuntime } from "./queen-workflow-runtime";
+import { createLangChainNodeAdapter, type AgentNodeAdapter } from "./langchain-node-adapter";
+import type { ModelScoreStore } from "./model-score-store";
 
 type QueenTaskRecord = {
   taskId: string;
@@ -40,6 +42,8 @@ export type QueenOrchestratorOptions = {
   executeAgentText?: (request: QueenAgentExecutionRequest) => Promise<string>;
   frameworkRuntime?: QueenFrameworkRuntime;
   allowOwnerOnlyAgents?: boolean;
+  nodeAdapter?: AgentNodeAdapter;
+  scoreStore?: ModelScoreStore;
 };
 
 export type QueenGraphqlResponse = {
@@ -54,6 +58,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
   const now = options.now ?? (() => new Date());
   const tasks = new Map<string, QueenTaskRecord>();
   const frameworkRuntime = options.frameworkRuntime ?? createQueenFrameworkRuntime();
+  const nodeAdapter = options.nodeAdapter ?? (options.executeAgentText ? createLangChainNodeAdapter(options.executeAgentText) : undefined);
 
   return {
     async handleGraphql(request: QueenGraphqlRequest): Promise<QueenGraphqlResponse> {
@@ -95,7 +100,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
           case "FinalArbitrate":
             return await finalArbitrate(input);
           case "WriteLearningLoop":
-            return data("writeLearningLoop", writeLearningLoop(input));
+            return data("writeLearningLoop", await writeLearningLoop(input));
         }
       } catch (error) {
         return graphqlError("STATE_ERROR", safeMessage(error));
@@ -293,6 +298,10 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const score = typeof input["score"] === "number" ? numberInput(input, "score") : parsedJudge?.score ?? 1;
     const verdict = optionalStringInput(input, "verdict") ?? parsedJudge?.verdict ?? "approved";
     const redTeamRequired = score < 0.65 || verdict !== "approved";
+    options.scoreStore?.recordScore({
+      eventId: `${task.taskId}:${task.graph.graphRevision}:${nodeId}:${output.executorAgentId}:judge`,
+      taskId: task.taskId, nodeId, agentId: output.executorAgentId, score, verdict, observedAt: now().toISOString(),
+    });
     return data("judgeNodeOutput", {
       nodeId,
       judgeAgentId,
@@ -361,11 +370,12 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     });
   }
 
-  function writeLearningLoop(input: Record<string, unknown>) {
+  async function writeLearningLoop(input: Record<string, unknown>) {
     const task = taskFor(input);
     const memoryRecordId = crypto.randomUUID();
     const summary = redactSensitiveText(stringInput(input, "summary"));
     task.learningRecords.push({ memoryRecordId, summary });
+    options.scoreStore?.writeLearning({ memoryRecordId, taskId: task.taskId, summary, observedAt: now().toISOString() });
     return { memoryRecordId, status: "written", summary };
   }
 
@@ -377,8 +387,8 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
   }
 
   async function executeAgentText(request: QueenAgentExecutionRequest): Promise<string> {
-    if (options.executeAgentText === undefined) throw new Error("Agent execution hook is not configured");
-    return options.executeAgentText(request);
+    if (nodeAdapter === undefined) throw new Error("Agent execution hook is not configured");
+    return nodeAdapter.invoke(request);
   }
 
   function assertSelectableAgent(agentId: string): void {

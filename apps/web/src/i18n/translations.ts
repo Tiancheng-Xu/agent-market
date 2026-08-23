@@ -1,6 +1,8 @@
 export type Locale = "en" | "zh-CN";
+import { zhCNExtended } from "./translations.extended";
 
 const zhCN = {
+  ...zhCNExtended,
   "Language": "语言",
   "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN": "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
   "Primary navigation": "主导航", "Mobile navigation": "移动端导航", "Delivery links": "交付链接",
