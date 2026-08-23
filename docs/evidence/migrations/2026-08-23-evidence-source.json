@@ -1,11 +1,93 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "sourceRepository": "Tiancheng-Xu/baby2b-online-deployment-evidence",
   "sourceCommit": "0d4e161eaf18c85a114eafd50133c612b277f2f4",
   "generatedAt": "2026-08-23T00:00:00.000Z",
   "targetRepository": "Tiancheng-Xu/agent-market",
   "cases": [],
   "notes": [
-    "Source origin/main has no agent-market case; retain and verify the richer project-owned /evidence page."
-  ]
+    "Structured exclusion and retention records supersede the prior free-text note."
+  ],
+  "sourceCaseInventory": {
+    "sourceCaseCount": 6,
+    "assignedSourceCases": [],
+    "exactOnceRule": "Each source case must be either assigned to one target inventory or listed once in excludedSourceCases.",
+    "verificationReason": "Compared against origin/main frozen at sourceCommit; agent-market is not a source case in that inventory."
+  },
+  "excludedSourceCases": [
+    {
+      "slug": "github-profile-studio",
+      "reasonCode": "not-assigned-to-agent-market",
+      "reason": "Source case is assigned to another target repository; no copy is permitted into agent-market.",
+      "verification": {
+        "sourceCommit": "0d4e161eaf18c85a114eafd50133c612b277f2f4",
+        "sourceCasePresentAtFrozenCommit": true,
+        "targetAssignmentCount": 0,
+        "verifiedBy": "six-case exact-once partition audit"
+      }
+    },
+    {
+      "slug": "portfolio-sync",
+      "reasonCode": "not-assigned-to-agent-market",
+      "reason": "Source case is assigned to another target repository; no copy is permitted into agent-market.",
+      "verification": {
+        "sourceCommit": "0d4e161eaf18c85a114eafd50133c612b277f2f4",
+        "sourceCasePresentAtFrozenCommit": true,
+        "targetAssignmentCount": 0,
+        "verifiedBy": "six-case exact-once partition audit"
+      }
+    },
+    {
+      "slug": "tc-workflow",
+      "reasonCode": "not-assigned-to-agent-market",
+      "reason": "Source case is assigned to another target repository; no copy is permitted into agent-market.",
+      "verification": {
+        "sourceCommit": "0d4e161eaf18c85a114eafd50133c612b277f2f4",
+        "sourceCasePresentAtFrozenCommit": true,
+        "targetAssignmentCount": 0,
+        "verifiedBy": "six-case exact-once partition audit"
+      }
+    },
+    {
+      "slug": "babysteps",
+      "reasonCode": "not-assigned-to-agent-market",
+      "reason": "Source case is assigned to another target repository; no copy is permitted into agent-market.",
+      "verification": {
+        "sourceCommit": "0d4e161eaf18c85a114eafd50133c612b277f2f4",
+        "sourceCasePresentAtFrozenCommit": true,
+        "targetAssignmentCount": 0,
+        "verifiedBy": "six-case exact-once partition audit"
+      }
+    },
+    {
+      "slug": "static-first-delivery",
+      "reasonCode": "not-assigned-to-agent-market",
+      "reason": "Source case is assigned to another target repository; no copy is permitted into agent-market.",
+      "verification": {
+        "sourceCommit": "0d4e161eaf18c85a114eafd50133c612b277f2f4",
+        "sourceCasePresentAtFrozenCommit": true,
+        "targetAssignmentCount": 0,
+        "verifiedBy": "six-case exact-once partition audit"
+      }
+    },
+    {
+      "slug": "personal-ai-agent",
+      "reasonCode": "not-assigned-to-agent-market",
+      "reason": "Source case is assigned to another target repository; no copy is permitted into agent-market.",
+      "verification": {
+        "sourceCommit": "0d4e161eaf18c85a114eafd50133c612b277f2f4",
+        "sourceCasePresentAtFrozenCommit": true,
+        "targetAssignmentCount": 0,
+        "verifiedBy": "six-case exact-once partition audit"
+      }
+    }
+  ],
+  "retainedProjectEvidence": {
+    "path": "apps/web/public/evidence/",
+    "publicUrl": "https://agent-market.baby2b.online/evidence",
+    "status": "retained-project-owned",
+    "sourceOfTruth": "agent-market repository evidence ledger and rendered evidence route",
+    "verificationReason": "The source inventory contains no agent-market case; retaining project-owned evidence avoids replacing richer project-specific proof with unrelated source cases.",
+    "boundary": "Do not merge source case manifests or assets into this retained evidence set."
+  }
 }
