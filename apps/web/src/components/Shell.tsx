@@ -7,6 +7,23 @@ import { shortAddress } from "../lib/domain";
 import type { WalletState } from "../types";
 import { applyPerformanceProfile, detectPerformanceProfile, watchPerformanceProfile, type PerformanceProfile } from "../performance/degradation";
 
+export type MarketSearchResult = { path: string; title: string; scope: "Route" | "Agent" | "Task" };
+
+export function findMarketSearchResults(query: string): MarketSearchResult[] {
+  const value = query.trim().toLowerCase();
+  if (!value) return [];
+  const routeResults: MarketSearchResult[] = navItems
+    .filter(([, label]) => label.toLowerCase().includes(value))
+    .map(([path, label]) => ({ path, title: label, scope: "Route" }));
+  const agentResults: MarketSearchResult[] = agents
+    .filter((agent) => `${agent.name} ${agent.category} ${agent.tags.join(" ")}`.toLowerCase().includes(value))
+    .map((agent) => ({ path: `/agents/${agent.id}`, title: agent.name, scope: "Agent" }));
+  const taskResults: MarketSearchResult[] = tasks
+    .filter((task) => `${task.id} ${task.title} ${task.category} ${task.tags.join(" ")}`.toLowerCase().includes(value))
+    .map((task) => ({ path: `/tasks/${task.id}`, title: task.title, scope: "Task" }));
+  return [...routeResults, ...agentResults, ...taskResults].slice(0, 6);
+}
+
 export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: PropsWithChildren<{ wallet: WalletState; isSepolia: boolean; onConnect(): void; onSwitch(): void }>) {
   const { locale, setLocale, t } = useLanguage();
   const navigate = useNavigate();
@@ -15,20 +32,7 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
   const [performanceIssue, setPerformanceIssue] = useState<string | null>(null);
   const walletLabel = wallet.status === "connecting" ? "Connecting..." : wallet.address ? shortAddress(wallet.address) : "Connect MetaMask";
   const walletMessage = wallet.message ?? (wallet.status === "connecting" ? "Confirm the MetaMask popup. This site never sees your private key." : null);
-  const searchResults = useMemo(() => {
-    const value = searchQuery.trim().toLowerCase();
-    if (!value) return [];
-    const routeResults = navItems
-      .filter(([, label]) => label.toLowerCase().includes(value))
-      .map(([path, label]) => ({ path, title: label, scope: "Route" }));
-    const agentResults = agents
-      .filter((agent) => `${agent.name} ${agent.category} ${agent.tags.join(" ")}`.toLowerCase().includes(value))
-      .map((agent) => ({ path: `/agents/${agent.id}`, title: agent.name, scope: "Agent" }));
-    const taskResults = tasks
-      .filter((task) => `${task.id} ${task.title} ${task.category} ${task.tags.join(" ")}`.toLowerCase().includes(value))
-      .map((task) => ({ path: `/tasks/${task.id}`, title: task.title, scope: "Task" }));
-    return [...routeResults, ...agentResults, ...taskResults].slice(0, 6);
-  }, [searchQuery]);
+  const searchResults = useMemo(() => findMarketSearchResults(searchQuery), [searchQuery]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

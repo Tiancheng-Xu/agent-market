@@ -19,19 +19,18 @@
     {
       "id": "SURFACE-SEARCH-BEHAVIOR",
       "severity": "high",
-      "status": "partial",
+      "status": "enforced",
       "symptom": "顶部搜索框看得到但不生效。",
       "rootCause": "过去只验证输入框存在，没有把输入、候选结果和回车跳转作为一条行为链验收。",
-      "treatment": "保留搜索索引与路由跳转实现，并补浏览器级输入到跳转测试。",
+      "treatment": "把搜索索引与目标路由解析抽成组件实际调用的纯函数，并对 Route、Agent、Task、空结果和结果上限执行回归测试。",
       "invariant": "输入 Agent、任务或 request ID 后必须显示候选；提交后进入首个匹配路由。",
-      "gateIds": ["typescript"],
-      "evidenceFiles": ["apps/web/src/components/Shell.tsx"],
-      "followUp": "补可交互浏览器测试，覆盖输入、无结果、键盘提交和目标路由。"
+      "gateIds": ["surface-behavior", "typescript"],
+      "evidenceFiles": ["apps/web/src/components/Shell.tsx", "apps/web/src/pages/SurfaceBehavior.test.tsx"]
     },
     {
       "id": "SURFACE-LAYOUT-RESPONSIVE",
       "severity": "medium",
-      "status": "partial",
+      "status": "enforced",
       "symptom": "同排模块被最高卡片拉成等高并留下大块空白；1920 与移动端可能截断或溢出。",
       "rootCause": "网格默认 stretch 被误当作视觉对齐，静态 CSS 检查不能替代多视口成像验收。",
       "treatment": "内容卡片按自身高度布局，保留 375、390、430、1440、1920 五个视口回归。",
@@ -43,14 +42,13 @@
     {
       "id": "SURFACE-ACTION-FEEDBACK",
       "severity": "high",
-      "status": "partial",
+      "status": "enforced",
       "symptom": "验证草稿、预览交易等按钮点击后没有可见反馈。",
       "rootCause": "只渲染按钮，未把状态变化和 aria-live 回执作为验收条件。",
-      "treatment": "操作结果统一进入 role=status 与 aria-live 区域，失败和预览不得伪装成链上成功。",
+      "treatment": "操作结果统一由可测试状态转换生成并进入 role=status 与 aria-live 区域；失败和预览不得伪装成链上成功。",
       "invariant": "每个可点击业务操作必须产生成功、失败、等待或预览中的一种明确反馈。",
-      "gateIds": ["typescript"],
-      "evidenceFiles": ["apps/web/src/pages/DirectoryPages.tsx"],
-      "followUp": "补表单交互测试，覆盖 invalid、draft validated 和 preview-only 三种反馈。"
+      "gateIds": ["surface-behavior", "typescript"],
+      "evidenceFiles": ["apps/web/src/pages/DirectoryPages.tsx", "apps/web/src/pages/SurfaceBehavior.test.tsx"]
     },
     {
       "id": "EVIDENCE-DIAGRAM-READABILITY",

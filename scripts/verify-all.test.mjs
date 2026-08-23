@@ -9,6 +9,7 @@ test("verification contains every runtime and no deploy command", () => {
     "regression-contract",
     "i18n",
     "i18n-routes",
+    "surface-behavior",
     "evidence",
     "typescript",
     "contracts",

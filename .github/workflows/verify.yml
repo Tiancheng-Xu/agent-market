@@ -39,5 +39,6 @@ jobs:
           node scripts/validate-regression-gates.mjs
           node scripts/validate-i18n.mjs
           pnpm --dir apps/web exec vitest run src/i18n/LocalizedRoutes.test.tsx
+          pnpm --dir apps/web exec vitest run src/pages/SurfaceBehavior.test.tsx
       - name: Run contracts, TypeScript, Go, Python, Evidence and repository gates
         run: pnpm verify
