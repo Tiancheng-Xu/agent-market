@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
@@ -182,6 +182,141 @@ function readSvgContract(path) {
   return { width, height, actors: attribute("data-actors"), lanes: attribute("data-lanes") };
 }
 
+function svgAttributes(source) {
+  return Object.fromEntries([...source.matchAll(/([:\w-]+)="([^"]*)"/g)].map((match) => [match[1], match[2]]));
+}
+
+function svgDeclarations(source) {
+  return Object.fromEntries(source.split(";").map((item) => item.trim()).filter(Boolean).map((item) => {
+    const separator = item.indexOf(":");
+    return separator < 0 ? [item, ""] : [item.slice(0, separator).trim(), item.slice(separator + 1).trim()];
+  }));
+}
+
+function svgNumber(value, fallback = 0) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function svgTranslate(value = "") {
+  const match = value.match(/translate\(\s*(-?[\d.]+)(?:[ ,]+(-?[\d.]+))?/);
+  return match ? [Number(match[1]), Number(match[2] ?? 0)] : [0, 0];
+}
+
+function svgPathBounds(data, tx, ty) {
+  const tokens = [...data.matchAll(/[a-zA-Z]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi)].map((match) => match[0]);
+  const counts = { M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, T: 2, A: 7 };
+  let index = 0; let command; let x = 0; let y = 0; let startX = 0; let startY = 0;
+  const points = []; const point = (px, py) => points.push([px + tx, py + ty]);
+  while (index < tokens.length) {
+    if (/^[a-z]$/i.test(tokens[index])) command = tokens[index++];
+    if (!command) break;
+    const upper = command.toUpperCase(); const relative = command !== upper;
+    if (upper === "Z") { x = startX; y = startY; point(x, y); command = undefined; continue; }
+    const count = counts[upper];
+    if (!count || index + count > tokens.length || /^[a-z]$/i.test(tokens[index])) { command = undefined; continue; }
+    const values = tokens.slice(index, index + count).map(Number); index += count;
+    const baseX = x; const baseY = y;
+    if (upper === "H") { x = (relative ? baseX : 0) + values[0]; point(baseX, baseY); point(x, y); }
+    else if (upper === "V") { y = (relative ? baseY : 0) + values[0]; point(baseX, baseY); point(x, y); }
+    else if (upper === "A") {
+      x = (relative ? baseX : 0) + values[5]; y = (relative ? baseY : 0) + values[6];
+      point(baseX - values[0], baseY - values[1]); point(baseX + values[0], baseY + values[1]); point(x - values[0], y - values[1]); point(x + values[0], y + values[1]);
+    } else {
+      const pairs = [];
+      for (let offset = 0; offset < values.length; offset += 2) pairs.push([(relative ? baseX : 0) + values[offset], (relative ? baseY : 0) + values[offset + 1]]);
+      for (const pair of pairs) point(pair[0], pair[1]);
+      [x, y] = pairs.at(-1);
+      if (upper === "M") { startX = x; startY = y; command = relative ? "l" : "L"; }
+    }
+  }
+  if (points.length === 0) return null;
+  const xs = points.map(([px]) => px); const ys = points.map(([, py]) => py);
+  return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
+}
+
+function svgRgb(value) {
+  if (!/^#[0-9a-f]{3,6}$/i.test(value ?? "")) return null;
+  const hex = value.length === 4 ? [...value.slice(1)].map((item) => `${item}${item}`).join("") : value.slice(1);
+  return [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+}
+
+function svgContrast(first, second) {
+  const linear = (value) => { const channel = value / 255; return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4; };
+  const luminance = (rgb) => 0.2126 * linear(rgb[0]) + 0.7152 * linear(rgb[1]) + 0.0722 * linear(rgb[2]);
+  const left = luminance(first); const right = luminance(second);
+  return (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05);
+}
+
+export function validateSvgPresentation(source, label = "svg") {
+  const violations = [];
+  const report = (code, detail) => {
+    violations.push(`${code}:${label}`);
+    if (process.env.SVG_VALIDATOR_DEBUG === "1") console.error(`[svg-debug] ${code}:${label} ${JSON.stringify(detail)}`);
+  };
+  const root = source.match(/<svg\b([^>]*)>/); if (!root) return [`diagram-svg-invalid:${label}`];
+  const rootAttributes = svgAttributes(root[1]); const viewBox = rootAttributes.viewBox?.trim().split(/\s+/).map(Number);
+  if (viewBox?.length !== 4 || viewBox.some((value) => !Number.isFinite(value))) return [`diagram-svg-invalid:${label}`];
+  const [viewX, viewY, viewWidth, viewHeight] = viewBox; const viewRight = viewX + viewWidth; const viewBottom = viewY + viewHeight;
+  const rules = [];
+  for (const style of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
+    for (const rule of style[1].matchAll(/\.([\w-]+)\s*\{([^}]+)\}/g)) rules.push([rule[1], svgDeclarations(rule[2])]);
+  }
+  const stack = [{ tag: "root", tx: 0, ty: 0, style: {}, x: 0, y: 0 }]; const rectangles = [];
+  const outside = ({ left, top, right, bottom }) => left < viewX - 1 || top < viewY - 1 || right > viewRight + 1 || bottom > viewBottom + 1;
+  const resolveStyle = (parent, attributes) => {
+    const style = { ...parent.style };
+    for (const key of ["fill", "font", "font-size", "font-weight", "text-anchor"]) if (attributes[key]) style[key] = attributes[key];
+    const classes = new Set((attributes.class ?? "").split(/\s+/).filter(Boolean));
+    for (const [name, declarations] of rules) if (classes.has(name)) Object.assign(style, declarations);
+    if (attributes.style) Object.assign(style, svgDeclarations(attributes.style));
+    return style;
+  };
+  for (const token of source.matchAll(/<!--[\s\S]*?-->|<[^>]+>|[^<]+/g)) {
+    const value = token[0];
+    if (value.startsWith("<!--") || value.startsWith("<?") || value.startsWith("<!")) continue;
+    if (value.startsWith("</")) { if (stack.length > 1) stack.pop(); continue; }
+    if (!value.startsWith("<")) {
+      const context = [...stack].reverse().find((item) => item.tag === "text" || item.tag === "tspan"); const text = value.replace(/\s+/g, " ").trim();
+      if (!context || !text) continue;
+      const font = context.style.font ?? ""; const fontSize = svgNumber(context.style["font-size"] ?? font.match(/([\d.]+)px/)?.[1], 16);
+      const asciiFactor = /mono/i.test(font) ? 0.62 : 0.5;
+      const width = [...text].reduce((sum, character) => sum + fontSize * (character.codePointAt(0) > 127 ? 1 : asciiFactor), 0);
+      const anchor = context.style["text-anchor"] ?? "start"; const x = context.tx + context.x; const y = context.ty + context.y;
+      const left = anchor === "middle" ? x - width / 2 : anchor === "end" ? x - width : x; const right = left + width;
+      const textBounds = { left, top: y - fontSize, right, bottom: y + fontSize * 0.25 };
+      if (outside(textBounds)) report("diagram-content-overflow", { kind: "text", text, bounds: textBounds });
+      const foreground = svgRgb(context.style.fill); const sampleX = (left + right) / 2; const sampleY = y - fontSize / 2;
+      const background = [...rectangles].reverse().find((rectangle) => rectangle.left <= sampleX && rectangle.right >= sampleX && rectangle.top <= sampleY && rectangle.bottom >= sampleY && rectangle.fill)?.fill;
+      if (foreground && background) {
+        const bold = svgNumber(context.style["font-weight"] ?? font.match(/^\s*(\d+)/)?.[1], 400) >= 700;
+        const minimum = fontSize >= 24 || (bold && fontSize >= 18.66) ? 3 : 4.5;
+        const ratio = svgContrast(foreground, background);
+        if (ratio < minimum) report("diagram-low-contrast", { text, foreground, background, ratio, minimum });
+      }
+      continue;
+    }
+    const opening = value.match(/^<([:\w-]+)\b([^>]*)>/); if (!opening) continue;
+    const tag = opening[1].toLowerCase(); const attributes = svgAttributes(opening[2]); const parent = stack.at(-1);
+    const [localX, localY] = svgTranslate(attributes.transform); const style = resolveStyle(parent, attributes);
+    const context = { tag, tx: parent.tx + localX, ty: parent.ty + localY, style, x: svgNumber(attributes.x, parent.x), y: svgNumber(attributes.y, parent.y) + svgNumber(attributes.dy) };
+    let bounds;
+    if (tag === "rect") {
+      const left = context.tx + svgNumber(attributes.x); const top = context.ty + svgNumber(attributes.y);
+      bounds = { left, top, right: left + svgNumber(attributes.width), bottom: top + svgNumber(attributes.height) };
+      rectangles.push({ ...bounds, fill: svgRgb(style.fill) });
+    } else if (tag === "line") {
+      bounds = { left: context.tx + Math.min(svgNumber(attributes.x1), svgNumber(attributes.x2)), top: context.ty + Math.min(svgNumber(attributes.y1), svgNumber(attributes.y2)), right: context.tx + Math.max(svgNumber(attributes.x1), svgNumber(attributes.x2)), bottom: context.ty + Math.max(svgNumber(attributes.y1), svgNumber(attributes.y2)) };
+    } else if (tag === "circle" || tag === "ellipse") {
+      const cx = context.tx + svgNumber(attributes.cx); const cy = context.ty + svgNumber(attributes.cy); const rx = svgNumber(attributes.r ?? attributes.rx); const ry = svgNumber(attributes.r ?? attributes.ry);
+      bounds = { left: cx - rx, top: cy - ry, right: cx + rx, bottom: cy + ry };
+    } else if (tag === "path" && attributes.d) bounds = svgPathBounds(attributes.d, context.tx, context.ty);
+    if (bounds && outside(bounds)) report("diagram-content-overflow", { kind: tag, bounds, source: attributes.d ?? attributes });
+    if (!value.endsWith("/>") && !["path", "rect", "line", "circle", "ellipse", "image", "stop"].includes(tag)) stack.push(context);
+  }
+  return [...new Set(violations)];
+}
+
 function validateV2ProductionRecord(root, item, violations) {
   const recordPath = V2_PRODUCTION_RECORDS.get(item.id);
   if (recordPath === undefined) { violations.push(`phase2-external-overclaim:${item.id}`); return; }
@@ -250,6 +385,10 @@ export function validateEvidenceRepository(root = process.cwd()) {
       const declaration = new RegExp(`file:\\s*["']${name}["'][^}]*width:\\s*${en.width}[^}]*height:\\s*${en.height}`);
       if (!declaration.test(evidencePage)) violations.push(`diagram-page-dimensions-mismatch:${name}`);
     }
+  }
+  const architectureRoot = resolve(root, "apps/web/public/architecture");
+  if (existsSync(architectureRoot)) for (const file of readdirSync(architectureRoot).filter((name) => name.endsWith(".svg"))) {
+    violations.push(...validateSvgPresentation(readFileSync(resolve(architectureRoot, file), "utf8"), file));
   }
   const screenshots = document.assets?.screenshots;
   if (!Array.isArray(screenshots) || screenshots.length === 0) violations.push("real-screenshots-missing");
