@@ -10,7 +10,10 @@
       "rootCause": "仅扫描字典和直接文本，没有验证最终路由渲染结果；动态 fixture 与 ReactNode 属性绕过翻译边界。",
       "treatment": "同时验证静态文案、动态 fixture、图片配对和关键路由 SSR 中文输出。",
       "invariant": "关键路由在 zh-CN 下不得残留已登记的英文用户文案，架构图片必须存在 zh-CN 对应资产。",
-      "gateIds": ["i18n", "i18n-routes"],
+      "gateIds": [
+        "i18n",
+        "i18n-routes"
+      ],
       "evidenceFiles": [
         "scripts/validate-i18n.mjs",
         "apps/web/src/i18n/LocalizedRoutes.test.tsx"
@@ -24,8 +27,14 @@
       "rootCause": "过去只验证输入框存在，没有把输入、候选结果和回车跳转作为一条行为链验收。",
       "treatment": "把搜索索引与目标路由解析抽成组件实际调用的纯函数，并对 Route、Agent、Task、空结果和结果上限执行回归测试。",
       "invariant": "输入 Agent、任务或 request ID 后必须显示候选；提交后进入首个匹配路由。",
-      "gateIds": ["surface-behavior", "typescript"],
-      "evidenceFiles": ["apps/web/src/components/Shell.tsx", "apps/web/src/pages/SurfaceBehavior.test.tsx"]
+      "gateIds": [
+        "surface-behavior",
+        "typescript"
+      ],
+      "evidenceFiles": [
+        "apps/web/src/components/Shell.tsx",
+        "apps/web/src/pages/SurfaceBehavior.test.tsx"
+      ]
     },
     {
       "id": "SURFACE-LAYOUT-RESPONSIVE",
@@ -35,8 +44,13 @@
       "rootCause": "网格默认 stretch 被误当作视觉对齐，静态 CSS 检查不能替代多视口成像验收。",
       "treatment": "内容卡片按自身高度布局，保留 375、390、430、1440、1920 五个视口回归。",
       "invariant": "根节点无横向溢出，卡片无无意义等高空白，关键操作在五个视口可见可点。",
-      "gateIds": ["typescript"],
-      "evidenceFiles": ["apps/web/src/components/Shell.test.tsx", "docs/delivery/todolist.md"],
+      "gateIds": [
+        "typescript"
+      ],
+      "evidenceFiles": [
+        "apps/web/src/components/Shell.test.tsx",
+        "docs/delivery/todolist.md"
+      ],
       "followUp": "录屏前完成五视口真实浏览器截图与点击验收。"
     },
     {
@@ -47,8 +61,14 @@
       "rootCause": "只渲染按钮，未把状态变化和 aria-live 回执作为验收条件。",
       "treatment": "操作结果统一由可测试状态转换生成并进入 role=status 与 aria-live 区域；失败和预览不得伪装成链上成功。",
       "invariant": "每个可点击业务操作必须产生成功、失败、等待或预览中的一种明确反馈。",
-      "gateIds": ["surface-behavior", "typescript"],
-      "evidenceFiles": ["apps/web/src/pages/DirectoryPages.tsx", "apps/web/src/pages/SurfaceBehavior.test.tsx"]
+      "gateIds": [
+        "surface-behavior",
+        "typescript"
+      ],
+      "evidenceFiles": [
+        "apps/web/src/pages/DirectoryPages.tsx",
+        "apps/web/src/pages/SurfaceBehavior.test.tsx"
+      ]
     },
     {
       "id": "EVIDENCE-DIAGRAM-READABILITY",
@@ -58,8 +78,14 @@
       "rootCause": "文件存在和尺寸一致不能证明视觉连线连续、缩放后对比度足够。",
       "treatment": "确定性检查双语资产、尺寸和 actor/lane 漂移；视觉连续性由截图验收补充。",
       "invariant": "中英文图结构一致、关键节点和连线可辨、页面内可缩放或打开原图。",
-      "gateIds": ["i18n", "evidence"],
-      "evidenceFiles": ["scripts/validate-evidence.test.mjs", "scripts/validate-i18n.mjs"],
+      "gateIds": [
+        "i18n",
+        "evidence"
+      ],
+      "evidenceFiles": [
+        "scripts/validate-evidence.test.mjs",
+        "scripts/validate-i18n.mjs"
+      ],
       "followUp": "在 1440 与 1920 视口确认线条连续性、中心区域对比度和原图链接。"
     },
     {
@@ -70,7 +96,9 @@
       "rootCause": "渲染、Hydration、Runtime 和性能依赖没有独立故障边界。",
       "treatment": "已知路由 SSR、致命 Hydration 最多一次 CSR fallback、外部离线显示 degraded/offline。",
       "invariant": "任一慢依赖不得拖垮页面；fallback 次数有界；无回执不得显示成功。",
-      "gateIds": ["typescript"],
+      "gateIds": [
+        "typescript"
+      ],
       "evidenceFiles": [
         "apps/web/src/pages-worker.test.ts",
         "apps/web/src/bootstrap.test.tsx",
@@ -85,8 +113,14 @@
       "rootCause": "SPA fallback 与文档请求状态码边界混淆。",
       "treatment": "Worker 对已知路由 SSR，对未知路由保留 404，并在交付 Evidence 回读。",
       "invariant": "已知深链返回 SSR 200，未知文档路由返回 SSR 404。",
-      "gateIds": ["typescript", "evidence"],
-      "evidenceFiles": ["apps/web/src/pages-worker.test.ts", "scripts/validate-evidence.test.mjs"]
+      "gateIds": [
+        "typescript",
+        "evidence"
+      ],
+      "evidenceFiles": [
+        "apps/web/src/pages-worker.test.ts",
+        "scripts/validate-evidence.test.mjs"
+      ]
     },
     {
       "id": "AGENT-WORKFLOW-BOUNDARY",
@@ -96,8 +130,13 @@
       "rootCause": "内部编排状态和用户级任务流程没有分层。",
       "treatment": "页面只显示任务级流程；GraphQL Runtime 保留独立 Judge、Final Arbiter、补救和对抗边界。",
       "invariant": "内部 mutation 名称不出现在用户页面；真实任务入口、独立上下文和失败补救不可被省略。",
-      "gateIds": ["typescript"],
-      "evidenceFiles": ["apps/web/src/pages/LocalAgentsPage.test.tsx", "apps/web/src/pages-worker.test.ts"]
+      "gateIds": [
+        "typescript"
+      ],
+      "evidenceFiles": [
+        "apps/web/src/pages/LocalAgentsPage.test.tsx",
+        "apps/web/src/pages-worker.test.ts"
+      ]
     },
     {
       "id": "PUBLIC-SAFETY-TRUTH",
@@ -107,8 +146,14 @@
       "rootCause": "公共内容安全扫描与 Evidence 状态机未被作为发布前置条件。",
       "treatment": "公共内容 secret/PII 扫描、Evidence 状态约束、外部标识符与回读联合验收。",
       "invariant": "公共产物不含敏感值；没有外部证据的项目不能进入 verified-production。",
-      "gateIds": ["repository", "evidence"],
-      "evidenceFiles": ["scripts/validate-repository.test.mjs", "scripts/validate-evidence.test.mjs"]
+      "gateIds": [
+        "repository",
+        "evidence"
+      ],
+      "evidenceFiles": [
+        "scripts/validate-repository.test.mjs",
+        "scripts/validate-evidence.test.mjs"
+      ]
     },
     {
       "id": "LOCAL-PROVIDER-OFFLINE",
@@ -118,8 +163,14 @@
       "rootCause": "Catalog 声明、真实 Health 和调用边界未分离。",
       "treatment": "公开 Catalog 只含安全元数据；Worker 签名调用 Runtime；无 Runtime 时明确 offline。",
       "invariant": "浏览器不含 Ollama/Provider 凭据；离线不伪造结果；Owner-only 模型不能被公开调用者选中。",
-      "gateIds": ["typescript", "evidence"],
-      "evidenceFiles": ["apps/web/src/pages-worker.test.ts", "scripts/validate-evidence.test.mjs"]
+      "gateIds": [
+        "typescript",
+        "evidence"
+      ],
+      "evidenceFiles": [
+        "apps/web/src/pages-worker.test.ts",
+        "scripts/validate-evidence.test.mjs"
+      ]
     }
   ]
 }
