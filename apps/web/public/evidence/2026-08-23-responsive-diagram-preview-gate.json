@@ -1,0 +1,259 @@
+{
+  "evidenceVersion": 1,
+  "project": "agent-market",
+  "status": "verified-preview",
+  "verifiedAt": "2026-08-23T04:40:54.899Z",
+  "commit": "0c00e9d13832af805a5b2ee5f1e80d208399586d",
+  "deployment": {
+    "provider": "cloudflare-pages",
+    "environment": "preview",
+    "id": "27843a4e-32db-475d-b544-7d747afec68f",
+    "url": "https://27843a4e.agent-market-site.pages.dev"
+  },
+  "scope": {
+    "routes": [
+      "/",
+      "/agents",
+      "/tasks",
+      "/agents/local",
+      "/evidence"
+    ],
+    "viewports": [
+      375,
+      390,
+      430,
+      1440,
+      1920
+    ],
+    "cases": 25
+  },
+  "assertions": {
+    "allHydrated": true,
+    "noHorizontalOverflow": true,
+    "consoleErrors": 0,
+    "svgPresentationGate": "pass",
+    "visualReview": [
+      "content-height-cards",
+      "key-actions-visible",
+      "diagram-connectors-continuous",
+      "diagram-text-contrast"
+    ]
+  },
+  "results": [
+    {
+      "route": "home",
+      "viewport": 375,
+      "innerWidth": 375,
+      "scrollWidth": 375,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "agents",
+      "viewport": 375,
+      "innerWidth": 375,
+      "scrollWidth": 375,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "tasks",
+      "viewport": 375,
+      "innerWidth": 375,
+      "scrollWidth": 375,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "live",
+      "viewport": 375,
+      "innerWidth": 375,
+      "scrollWidth": 375,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "evidence",
+      "viewport": 375,
+      "innerWidth": 375,
+      "scrollWidth": 375,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "home",
+      "viewport": 390,
+      "innerWidth": 390,
+      "scrollWidth": 390,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "agents",
+      "viewport": 390,
+      "innerWidth": 390,
+      "scrollWidth": 390,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "tasks",
+      "viewport": 390,
+      "innerWidth": 390,
+      "scrollWidth": 390,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "live",
+      "viewport": 390,
+      "innerWidth": 390,
+      "scrollWidth": 390,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "evidence",
+      "viewport": 390,
+      "innerWidth": 390,
+      "scrollWidth": 390,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "home",
+      "viewport": 430,
+      "innerWidth": 430,
+      "scrollWidth": 430,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "agents",
+      "viewport": 430,
+      "innerWidth": 430,
+      "scrollWidth": 430,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "tasks",
+      "viewport": 430,
+      "innerWidth": 430,
+      "scrollWidth": 430,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "live",
+      "viewport": 430,
+      "innerWidth": 430,
+      "scrollWidth": 430,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "evidence",
+      "viewport": 430,
+      "innerWidth": 430,
+      "scrollWidth": 430,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "home",
+      "viewport": 1440,
+      "innerWidth": 1440,
+      "scrollWidth": 1440,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "agents",
+      "viewport": 1440,
+      "innerWidth": 1440,
+      "scrollWidth": 1440,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "tasks",
+      "viewport": 1440,
+      "innerWidth": 1440,
+      "scrollWidth": 1440,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "live",
+      "viewport": 1440,
+      "innerWidth": 1440,
+      "scrollWidth": 1440,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "evidence",
+      "viewport": 1440,
+      "innerWidth": 1440,
+      "scrollWidth": 1440,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "home",
+      "viewport": 1920,
+      "innerWidth": 1920,
+      "scrollWidth": 1920,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "agents",
+      "viewport": 1920,
+      "innerWidth": 1920,
+      "scrollWidth": 1920,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "tasks",
+      "viewport": 1920,
+      "innerWidth": 1920,
+      "scrollWidth": 1920,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "live",
+      "viewport": 1920,
+      "innerWidth": 1920,
+      "scrollWidth": 1920,
+      "hydrated": true,
+      "consoleErrors": 0
+    },
+    {
+      "route": "evidence",
+      "viewport": 1920,
+      "innerWidth": 1920,
+      "scrollWidth": 1920,
+      "hydrated": true,
+      "consoleErrors": 0
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "apps/web/public/evidence/2026-08-23-agents-1920-preview.png",
+      "sha256": "5a6afde5352ff44210d8ea3a2264e8c83aa312e04c1d677cd168f682f8afdd37"
+    },
+    {
+      "path": "apps/web/public/evidence/2026-08-23-live-390-preview.png",
+      "sha256": "3a5cac811f6ddde8fd48426a407c7e131e9fd9b4cfa8d0f07d5ae547ceb84243"
+    },
+    {
+      "path": "apps/web/public/evidence/2026-08-23-evidence-1920-preview.png",
+      "sha256": "ac9b06f0dae4ccd6252b246dd9f90b49363d64bab5f469369933d77c7bcd935d"
+    }
+  ],
+  "boundary": "Preview verification only. This record does not promote AWS runtime, local Agent availability, or production deployment status."
+}
