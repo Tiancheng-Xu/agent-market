@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "aiEngineering": true,
+  "successCriteria": [
+    {
+      "id": "protocol-and-safety",
+      "metric": "deterministic protocol, signature, loopback, timeout and redaction gate pass rate",
+      "threshold": 1,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/testing/2026-08-22-live-agent-validation.json"
+    },
+    {
+      "id": "release-regression",
+      "metric": "repository verify, typecheck, build and Evidence gate exit code",
+      "threshold": 0,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+    },
+    {
+      "id": "production-latency-target",
+      "metric": "live Agent request P95 latency in milliseconds",
+      "threshold": 30000,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/performance-observability.json"
+    }
+  ],
+  "deterministicGates": [
+    {
+      "id": "live-agent-contract",
+      "check": "validate public-safe manifest, signed Worker request, loopback-only Ollama origin, timeout and cancellation behavior",
+      "evidence": "docs/evidence/testing/2026-08-22-live-agent-validation.json"
+    },
+    {
+      "id": "release-suite",
+      "check": "run repository verify, typecheck, build, Evidence and public-content scans",
+      "evidence": "docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+    },
+    {
+      "id": "cost-boundary",
+      "check": "reject new paid AWS or provider resources without explicit action-time approval",
+      "evidence": "docs/architecture/aws-reuse-and-lifecycle.md"
+    }
+  ],
+  "llmJudge": {
+    "enabled": false,
+    "canOverrideDeterministic": false
+  },
+  "rag": {
+    "enabled": false
+  },
+  "dag": {
+    "enabled": true,
+    "failureRouting": [
+      "schema or signature failure rejects the request before execution",
+      "runtime timeout or provider failure returns a safe error and marks the Agent unavailable instead of reporting success",
+      "settlement and final arbitration remain behind committee or human approval"
+    ],
+    "humanApproval": true
+  },
+  "serviceLevels": {
+    "qualityThreshold": 1,
+    "ttftMs": 5000,
+    "p95LatencyMs": 30000,
+    "costBudget": "USD 0 incremental for local Ollama; paid provider or AWS changes require explicit approval",
+    "reliabilityThreshold": 0.99
+  },
+  "feedback": {
+    "clean": true,
+    "deduplicate": true,
+    "redact": true,
+    "frozenEvaluationSet": true,
+    "releaseRegressionGate": true
+  },
+  "proof": [
+    {
+      "kind": "test",
+      "location": "docs/evidence/testing/2026-08-22-live-agent-validation.json",
+      "proves": "local Agent protocol, safety boundaries and failure behavior passed deterministic validation",
+      "status": "verified-local"
+    },
+    {
+      "kind": "test",
+      "location": "docs/evidence/testing/2026-08-21-phase2-local-gates.json",
+      "proves": "phase two local build and release gates completed with recorded limitations",
+      "status": "verified-local"
+    },
+    {
+      "kind": "metric",
+      "location": "docs/evidence/performance-observability.json",
+      "proves": "production TTFT, P95 latency and reliability targets still require live samples before verification",
+      "status": "pending-external"
+    }
+  ]
+}
