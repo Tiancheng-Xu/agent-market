@@ -67,7 +67,15 @@
   ],
   "llmJudge": {
     "enabled": true,
-    "canOverrideDeterministic": false
+    "canOverrideDeterministic": false,
+    "independent": true,
+    "dimensions": [
+      "requirement-completeness",
+      "implementation-quality",
+      "safety-and-boundary-compliance",
+      "evidence-truthfulness"
+    ],
+    "rubric": "Judge evaluates only non-deterministic quality after deterministic gates pass, uses isolated context, records reasons and confidence, and cannot override a failed deterministic gate."
   },
   "rag": {
     "enabled": false
