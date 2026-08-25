@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "aiEngineering": true,
+  "successCriteria": [
+    {
+      "id": "protocol-and-safety",
+      "metric": "deterministic protocol, signature, loopback, timeout and redaction gate pass rate",
+      "threshold": 1,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/testing/2026-08-22-live-agent-validation.json"
+    },
+    {
+      "id": "matching-and-ranking",
+      "metric": "category and tag hard filters followed by at most four candidates and three distinct selected model tags",
+      "threshold": 1,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/testing/2026-08-23-agent-market-v3-local-gates.json"
+    },
+    {
+      "id": "dag-independence",
+      "metric": "editable revision, confirmed assignments, locked start, and distinct execute, Judge and Final Arbiter contexts",
+      "threshold": 1,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/testing/2026-08-23-agent-market-v3-local-gates.json"
+    },
+    {
+      "id": "release-regression",
+      "metric": "repository verify, typecheck, build and Evidence gate exit code",
+      "threshold": 0,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/testing/2026-08-23-agent-market-v3-local-gates.json"
+    },
+    {
+      "id": "production-latency-target",
+      "metric": "live Agent request P95 latency in milliseconds",
+      "threshold": 30000,
+      "gateType": "deterministic",
+      "evidence": "docs/evidence/performance-observability.json"
+    }
+  ],
+  "deterministicGates": [
+    {
+      "id": "live-agent-contract",
+      "check": "validate public-safe manifest, signed Worker request, loopback-only Ollama origin, timeout and cancellation behavior",
+      "evidence": "docs/evidence/testing/2026-08-22-live-agent-validation.json"
+    },
+    {
+      "id": "ranking-and-dag-contract",
+      "check": "enforce hard filters, distinct model selection, versioned edits, accepted assignments, independent Judge and Final Arbiter, repair routing and graph lock",
+      "evidence": "docs/evidence/testing/2026-08-23-agent-market-v3-local-gates.json"
+    },
+    {
+      "id": "release-suite",
+      "check": "run repository verify, typecheck, build, Evidence and public-content scans",
+      "evidence": "docs/evidence/testing/2026-08-23-agent-market-v3-local-gates.json"
+    },
+    {
+      "id": "recording-truth-boundary",
+      "check": "record observed UI states without upgrading non-terminal local activity to production, AWS or Sepolia completion",
+      "evidence": "docs/evidence/testing/2026-08-25-external-chrome-full-workflow-recording.json"
+    },
+    {
+      "id": "cost-boundary",
+      "check": "reject new paid AWS or provider resources without explicit action-time approval",
+      "evidence": "docs/architecture/aws-reuse-and-lifecycle.md"
+    }
+  ],
+  "llmJudge": {
+    "enabled": true,
+    "canOverrideDeterministic": false
+  },
+  "rag": {
+    "enabled": false
+  },
+  "dag": {
+    "enabled": true,
+    "failureRouting": [
+      "schema, signature, access or hard-filter failure rejects the request before execution",
+      "runtime timeout or provider failure returns a safe error and must not report terminal success",
+      "low Judge score routes to Red Team or Repair through a versioned appended node",
+      "settlement and final arbitration remain behind deterministic or human approval boundaries"
+    ],
+    "humanApproval": true
+  },
+  "serviceLevels": {
+    "qualityThreshold": 1,
+    "ttftMs": 5000,
+    "p95LatencyMs": 30000,
+    "costBudget": "USD 0 incremental for local Ollama; paid provider or AWS changes require explicit approval",
+    "reliabilityThreshold": 0.99
+  },
+  "feedback": {
+    "clean": true,
+    "deduplicate": true,
+    "redact": true,
+    "frozenEvaluationSet": true,
+    "releaseRegressionGate": true
+  },
+  "proof": [
+    {
+      "kind": "test",
+      "location": "docs/evidence/testing/2026-08-22-live-agent-validation.json",
+      "proves": "local Agent protocol, safety boundaries and failure behavior passed deterministic validation",
+      "status": "verified-local"
+    },
+    {
+      "kind": "test",
+      "location": "docs/evidence/testing/2026-08-23-agent-market-v3-local-gates.json",
+      "proves": "V3 matching, scoring, workflow, registry, contract and boundary tests passed locally",
+      "status": "verified-local"
+    },
+    {
+      "kind": "recording",
+      "location": "docs/evidence/testing/2026-08-25-external-chrome-full-workflow-recording.json",
+      "proves": "the external Chrome recording is integrity-addressed and preserves both successful and non-terminal local UI states",
+      "status": "verified-local"
+    },
+    {
+      "kind": "metric",
+      "location": "docs/evidence/performance-observability.json",
+      "proves": "production TTFT, P95 latency and reliability targets still require live samples before verification",
+      "status": "pending-external"
+    }
+  ]
+}
