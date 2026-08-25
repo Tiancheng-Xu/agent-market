@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "project": "agent-market",
+  "scope": "v3-local-preview",
+  "verifiedAt": "2026-08-23T18:31:00Z",
+  "status": "verified-local",
+  "recording": {
+    "file": "apps/web/public/evidence/agent-market-v3-full-workflow.mp4",
+    "poster": "apps/web/public/evidence/agent-market-v3-full-workflow-poster.png",
+    "captureSurface": "Codex in-app browser",
+    "durationSeconds": 77.8,
+    "width": 1440,
+    "height": 1190,
+    "codec": "H.264",
+    "flows": [
+      "agent-registration",
+      "agent-catalog",
+      "multi-agent-orchestration",
+      "task-publication",
+      "task-market",
+      "virtual-office",
+      "staking",
+      "arbitration",
+      "operations",
+      "evidence"
+    ]
+  },
+  "gates": {
+    "repositoryVerify": "passed",
+    "web": { "testFiles": 16, "tests": 73, "typecheck": "passed", "clientBuild": "passed", "edgeSsrBuild": "passed" },
+    "localAgentRunner": { "tests": 53, "typecheck": "passed" },
+    "sharedContracts": { "tests": 27, "typecheck": "passed" },
+    "transactionEngine": { "testsPassed": 88, "testsSkipped": 5, "typecheck": "passed" },
+    "solidityContracts": { "tests": 19, "status": "passed" },
+    "goMatcher": { "vet": "passed", "tests": "passed" },
+    "trainer": { "tests": 33, "status": "passed" },
+    "evidenceValidator": { "tests": 12, "status": "passed" }
+  },
+  "boundaries": [
+    "No production deployment was performed.",
+    "No AWS resource was created, changed, or started.",
+    "V3 contracts were not deployed to Sepolia.",
+    "Cocos virtual office remains not-started; the current office is a Web implementation.",
+    "Ollama remained stopped; Personal Code Agent and Personal Image Agent are model-ready but Agent Market pending-smoke.",
+    "The recording proves local Preview UI navigation only and does not replace external readback."
+  ]
+}

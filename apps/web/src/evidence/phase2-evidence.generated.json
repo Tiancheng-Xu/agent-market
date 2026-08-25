@@ -11,15 +11,23 @@
     "diagrams": [
       {
         "en": "apps/web/public/architecture/system-context.svg",
-        "zh": "apps/web/public/architecture/system-context.zh-CN.svg"
+        "zh": "apps/web/public/architecture/system-context.zh-CN.svg",
+        "displayed": false
       },
       {
         "en": "apps/web/public/architecture/request-sequence.svg",
-        "zh": "apps/web/public/architecture/request-sequence.zh-CN.svg"
+        "zh": "apps/web/public/architecture/request-sequence.zh-CN.svg",
+        "displayed": false
       },
       {
         "en": "apps/web/public/architecture/full-delivery-chain.svg",
-        "zh": "apps/web/public/architecture/full-delivery-chain.zh-CN.svg"
+        "zh": "apps/web/public/architecture/full-delivery-chain.zh-CN.svg",
+        "displayed": false
+      },
+      {
+        "en": "apps/web/public/architecture/agent-market-v3-workflow.svg",
+        "zh": "apps/web/public/architecture/agent-market-v3-workflow.zh-CN.svg",
+        "displayed": true
       }
     ],
     "screenshots": [

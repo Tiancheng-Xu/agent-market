@@ -10,7 +10,7 @@ import {
   type TaskNode,
 } from "@agent-market/shared-contracts";
 
-import { rankAgentCandidates } from "./queen-ranking";
+import { selectThreeFromFour } from "./queen-ranking";
 import { createQueenFrameworkRuntime, type QueenFrameworkRuntime } from "./queen-workflow-runtime";
 
 type QueenTaskRecord = {
@@ -21,6 +21,9 @@ type QueenTaskRecord = {
   assignments: Map<string, NodeAssignment>;
   outputs: Map<string, { executorAgentId: string; output: string; outputId: string }>;
   learningRecords: Array<{ memoryRecordId: string; summary: string }>;
+  systemNodeIds: Map<string, string>;
+  graphConfirmedRevision: number | undefined;
+  runId: string | undefined;
 };
 
 export type QueenAgentExecutionRole = "executor" | "judge" | "red_team" | "repair" | "final_arbiter";
@@ -74,6 +77,8 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
         switch (operationName) {
           case "ProposeTaskGraph":
             return data("proposeTaskGraph", proposeTaskGraph(input));
+          case "AmendTaskGraph":
+            return data("amendTaskGraph", amendTaskGraph(input));
           case "RankNodeAgents":
             return data("rankNodeAgents", rankNodeAgents(input));
           case "SelectNodeAgent":
@@ -149,21 +154,61 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       assignments: new Map(),
       outputs: new Map(),
       learningRecords: [],
+      systemNodeIds: new Map(),
+      graphConfirmedRevision: undefined,
+      runId: undefined,
     });
     return graph;
   }
 
+  function amendTaskGraph(input: Record<string, unknown>) {
+    const task = taskFor(input);
+    assertTaskMutable(task);
+    const previousNodeTypes = new Map(task.graph.nodes.map((node) => [node.nodeId, node.type]));
+    const graph = TaskGraphSchema.parse({
+      ...task.graph,
+      graphRevision: task.graph.graphRevision + 1,
+      nodes: input["nodes"],
+      edges: input["edges"],
+    });
+    const nextNodeTypes = new Map(graph.nodes.map((node) => [node.nodeId, node.type]));
+    const preservedAssignmentNodeIds: string[] = [];
+
+    for (const nodeId of task.assignments.keys()) {
+      if (previousNodeTypes.get(nodeId) === nextNodeTypes.get(nodeId)) {
+        preservedAssignmentNodeIds.push(nodeId);
+      } else {
+        task.assignments.delete(nodeId);
+      }
+    }
+
+    task.graph = graph;
+    task.graphConfirmedRevision = undefined;
+    return {
+      ...graph,
+      confirmationStatus: "pending",
+      preservedAssignmentNodeIds,
+    };
+  }
+
   function rankNodeAgents(input: Record<string, unknown>) {
     const task = taskFor(input);
+    assertTaskMutable(task);
     const nodeId = stringInput(input, "nodeId");
     const node = nodeFor(task, nodeId);
     const requiredCapabilities = stringArrayInput(input, "requiredCapabilities", capabilitiesForNode(node));
     const eligibleAgents = node.type === "plan"
       ? options.agents
       : options.agents.filter((agent) => agent.agentId !== task.queenAgentId);
-    const candidates = rankAgentCandidates({
+    const category = optionalStringInput(input, "category");
+    const requiredTags = stringArrayInput(input, "requiredTags", []);
+    const callerScope = optionalStringInput(input, "callerScope") === "owner" ? "owner" : "public";
+    const candidates = selectThreeFromFour({
       nodeType: node.type,
+      ...(category === undefined ? {} : { category }),
+      requiredTags,
       requiredCapabilities,
+      callerScope,
       now: now(),
       candidates: eligibleAgents,
     });
@@ -177,18 +222,21 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
         override: false,
         riskCodes: [],
       });
+      task.graphConfirmedRevision = undefined;
     }
     return {
       nodeId,
       candidates,
       autoSelectedAgentId,
-      rankingPolicy: "model-pool-draw-license-tags-capability-cost-availability-latency-quality-old-model-retirement-new-model-exploration-distinct-model",
+      rankingPolicy: "category-tags-hard-filter-four-candidate-pool-select-three-decayed-window-quality-owner-scope-distinct-model",
     };
   }
 
   function selectNodeAgent(input: Record<string, unknown>) {
     const task = taskFor(input);
+    assertTaskMutable(task);
     const nodeId = stringInput(input, "nodeId");
+    nodeFor(task, nodeId);
     const selectedAgentId = stringInput(input, "selectedAgentId");
     const selectedBy = optionalStringInput(input, "selectedBy") === "user" ? "user" : "queen";
     const override = selectedBy === "user";
@@ -208,12 +256,15 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       riskCodes,
     };
     task.assignments.set(nodeId, assignment);
+    task.graphConfirmedRevision = undefined;
     return assignment;
   }
 
   function acceptNodeAssignment(input: Record<string, unknown>) {
     const task = taskFor(input);
+    assertTaskMutable(task);
     const nodeId = stringInput(input, "nodeId");
+    nodeFor(task, nodeId);
     const selectedAgentId = optionalStringInput(input, "agentId") ?? optionalStringInput(input, "selectedAgentId");
     const existing = task.assignments.get(nodeId);
     if (existing === undefined && selectedAgentId === undefined) throw new Error("Node assignment is not selected");
@@ -230,31 +281,43 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       riskCodes: existing?.riskCodes ?? [],
     };
     task.assignments.set(nodeId, assignment);
+    task.graphConfirmedRevision = undefined;
     return assignment;
   }
 
   function confirmTaskGraph(input: Record<string, unknown>) {
     const task = taskFor(input);
+    assertTaskMutable(task);
+    const missingNodeIds = missingRequiredAssignments(task);
+    if (missingNodeIds.length > 0) {
+      throw new Error(`Required assignments must be accepted before confirmation: ${missingNodeIds.join(", ")}`);
+    }
+    task.graphConfirmedRevision = task.graph.graphRevision;
     return { taskId: task.taskId, graphRevision: task.graph.graphRevision, confirmationStatus: "confirmed" };
   }
 
   function startTaskRun(input: Record<string, unknown>) {
     const task = taskFor(input);
-    const missing = task.graph.nodes
-      .filter((node) => node.required)
-      .filter((node) => task.assignments.get(node.nodeId)?.status !== "accepted")
-      .map((node) => node.nodeId);
+    if (task.runId !== undefined) {
+      return { taskId: task.taskId, runId: task.runId, status: "running" };
+    }
+    const missing = missingRequiredAssignments(task);
     if (missing.length > 0) {
       return { taskId: task.taskId, status: "blocked", reasonCode: "ASSIGNMENT_NOT_ACCEPTED", missingNodeIds: missing };
+    }
+    if (task.graphConfirmedRevision !== task.graph.graphRevision) {
+      return { taskId: task.taskId, status: "blocked", reasonCode: "GRAPH_NOT_CONFIRMED" };
     }
     if (task.graph.startPolicy === "manualRequired" && input["manualApproval"] !== true) {
       return { taskId: task.taskId, status: "blocked", reasonCode: "HIGH_RISK_MANUAL_START_REQUIRED" };
     }
-    return { taskId: task.taskId, runId: crypto.randomUUID(), status: "running" };
+    task.runId = crypto.randomUUID();
+    return { taskId: task.taskId, runId: task.runId, status: "running" };
   }
 
   async function submitNodeOutput(input: Record<string, unknown>) {
     const task = taskFor(input);
+    assertRunStarted(task);
     const nodeId = stringInput(input, "nodeId");
     const executorAgentId = stringInput(input, "executorAgentId");
     assertSelectableAgent(executorAgentId);
@@ -272,6 +335,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
 
   async function judgeNodeOutput(input: Record<string, unknown>): Promise<QueenGraphqlResponse> {
     const task = taskFor(input);
+    assertRunStarted(task);
     const nodeId = stringInput(input, "nodeId");
     const judgeAgentId = stringInput(input, "judgeAgentId");
     assertSelectableAgent(judgeAgentId);
@@ -305,6 +369,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
 
   async function requestAdversarialReview(input: Record<string, unknown>) {
     const task = taskFor(input);
+    assertRunStarted(task);
     const nodeId = stringInput(input, "nodeId");
     const redTeamAgentId = stringInput(input, "redTeamAgentId");
     assertSelectableAgent(redTeamAgentId);
@@ -315,9 +380,12 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       role: "red_team",
       messages: [{ role: "user", content: buildRedTeamPrompt(task, nodeId) }],
     });
+    const appended = appendSystemNode(task, "red_team", nodeId, redTeamAgentId, optionalNumberInput(input, "attempt") ?? 1);
     return {
       taskId: task.taskId,
       nodeId,
+      reviewNodeId: appended.nodeId,
+      graphRevision: appended.graphRevision,
       redTeamAgentId,
       findings,
       status: "adversarial_reviewing",
@@ -326,6 +394,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
 
   async function repairNode(input: Record<string, unknown>) {
     const task = taskFor(input);
+    assertRunStarted(task);
     const parentNodeId = stringInput(input, "parentNodeId");
     const repairAgentId = optionalStringInput(input, "repairAgentId") ?? optionalStringInput(input, "agentId") ?? task.outputs.get(parentNodeId)?.executorAgentId;
     if (repairAgentId === undefined) throw new Error("Repair agent is required");
@@ -337,11 +406,13 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       role: "repair",
       messages: [{ role: "user", content: buildRepairPrompt(task, parentNodeId) }],
     });
-    return { taskId: task.taskId, parentNodeId, repairNodeId: `repair-${parentNodeId}-${task.graph.graphRevision}`, output, status: "planned" };
+    const appended = appendSystemNode(task, "repair", parentNodeId, repairAgentId, optionalNumberInput(input, "attempt") ?? 1);
+    return { taskId: task.taskId, parentNodeId, repairNodeId: appended.nodeId, graphRevision: appended.graphRevision, output, status: "planned" };
   }
 
   async function finalArbitrate(input: Record<string, unknown>): Promise<QueenGraphqlResponse> {
     const task = taskFor(input);
+    assertRunStarted(task);
     const finalArbiterAgentId = stringInput(input, "finalArbiterAgentId");
     assertSelectableAgent(finalArbiterAgentId);
     if (finalArbiterAgentId === task.queenAgentId) {
@@ -363,6 +434,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
 
   function writeLearningLoop(input: Record<string, unknown>) {
     const task = taskFor(input);
+    assertRunStarted(task);
     const memoryRecordId = crypto.randomUUID();
     const summary = redactSensitiveText(stringInput(input, "summary"));
     task.learningRecords.push({ memoryRecordId, summary });
@@ -374,6 +446,69 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const task = tasks.get(taskId);
     if (task === undefined) throw new Error(`Task ${taskId} does not exist`);
     return task;
+  }
+
+  function missingRequiredAssignments(task: QueenTaskRecord): string[] {
+    return task.graph.nodes
+      .filter((node) => node.required)
+      .filter((node) => task.assignments.get(node.nodeId)?.status !== "accepted")
+      .map((node) => node.nodeId);
+  }
+
+  function assertTaskMutable(task: QueenTaskRecord): void {
+    if (task.graphConfirmedRevision !== undefined) {
+      throw new Error(`Task ${task.taskId} graph and assignments are locked after confirmation`);
+    }
+    if (task.runId !== undefined) {
+      throw new Error(`Task ${task.taskId} graph and assignments are locked after run start`);
+    }
+  }
+
+  function assertRunStarted(task: QueenTaskRecord): void {
+    if (task.runId === undefined) throw new Error(`Task ${task.taskId} must be started before node execution`);
+  }
+
+  function appendSystemNode(
+    task: QueenTaskRecord,
+    type: "red_team" | "repair",
+    parentNodeId: string,
+    agentId: string,
+    attempt: number,
+  ): { nodeId: string; graphRevision: number } {
+    nodeFor(task, parentNodeId);
+    const normalizedAttempt = Math.max(1, Math.trunc(attempt));
+    const idempotencyKey = `${type}:${parentNodeId}:${normalizedAttempt}`;
+    const existingNodeId = task.systemNodeIds.get(idempotencyKey);
+    if (existingNodeId !== undefined) return { nodeId: existingNodeId, graphRevision: task.graph.graphRevision };
+
+    const nodeId = `${type}-${parentNodeId}-${normalizedAttempt}`;
+    const node: TaskNode = {
+      nodeId,
+      type,
+      title: type === "red_team" ? `Adversarial review for ${parentNodeId}` : `Repair ${parentNodeId}`,
+      dependencies: [parentNodeId],
+      required: true,
+      ...(type === "repair" ? { repairsNodeId: parentNodeId } : {}),
+      assignedAgentId: agentId,
+      metadata: { systemAppended: true, attempt: normalizedAttempt },
+    };
+    task.graph = TaskGraphSchema.parse({
+      ...task.graph,
+      graphRevision: task.graph.graphRevision + 1,
+      nodes: [...task.graph.nodes, node],
+      edges: [...task.graph.edges, { from: parentNodeId, to: nodeId, condition: "needs_revision" }],
+    });
+    task.assignments.set(nodeId, {
+      nodeId,
+      selectedAgentId: agentId,
+      status: "accepted",
+      selectedBy: "queen",
+      acceptedAt: now().toISOString(),
+      override: false,
+      riskCodes: [],
+    });
+    task.systemNodeIds.set(idempotencyKey, nodeId);
+    return { nodeId, graphRevision: task.graph.graphRevision };
   }
 
   async function executeAgentText(request: QueenAgentExecutionRequest): Promise<string> {
@@ -401,7 +536,7 @@ function graphqlError(code: string, message: string): QueenGraphqlResponse {
 }
 
 function inferOperationName(query: string): QueenMutationName | undefined {
-  const match = query.match(/\b(ProposeTaskGraph|RankNodeAgents|SelectNodeAgent|AcceptNodeAssignment|ConfirmTaskGraph|StartTaskRun|SubmitNodeOutput|JudgeNodeOutput|RequestAdversarialReview|RepairNode|FinalArbitrate|WriteLearningLoop)\b/);
+  const match = query.match(/\b(ProposeTaskGraph|AmendTaskGraph|RankNodeAgents|SelectNodeAgent|AcceptNodeAssignment|ConfirmTaskGraph|StartTaskRun|SubmitNodeOutput|JudgeNodeOutput|RequestAdversarialReview|RepairNode|FinalArbitrate|WriteLearningLoop)\b/);
   return match?.[1] as QueenMutationName | undefined;
 }
 
@@ -440,6 +575,11 @@ function numberInput(input: Record<string, unknown>, key: string): number {
   const value = input[key];
   if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`Missing number input: ${key}`);
   return value;
+}
+
+function optionalNumberInput(input: Record<string, unknown>, key: string): number | undefined {
+  const value = input[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function stringArrayInput(input: Record<string, unknown>, key: string, fallback: string[]): string[] {

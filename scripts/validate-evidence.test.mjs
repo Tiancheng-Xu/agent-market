@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -75,6 +75,8 @@ const requiredBundleFiles = [
   "apps/web/public/architecture/request-sequence.zh-CN.svg",
   "apps/web/public/architecture/full-delivery-chain.svg",
   "apps/web/public/architecture/full-delivery-chain.zh-CN.svg",
+  "apps/web/public/architecture/agent-market-v3-workflow.svg",
+  "apps/web/public/architecture/agent-market-v3-workflow.zh-CN.svg",
   "apps/web/public/evidence/real-proof.png",
 ];
 
@@ -105,6 +107,7 @@ function writeFixture(overrides = {}) {
     "system-context": { width: 1600, height: 1240, actors: "browser|api|chain", lanes: "web|chain|delivery" },
     "request-sequence": { width: 1600, height: 1100, actors: "browser|api|chain", lanes: "browser|api|chain" },
     "full-delivery-chain": { width: 1600, height: 900, actors: "repository|actions|cloudflare", lanes: "local|external|deferred" },
+    "agent-market-v3-workflow": { width: 1440, height: 760, actors: "browser|cloudflare|aws|langgraph|agents|sepolia", lanes: "public|private|chain" },
   };
   for (const path of requiredBundleFiles) {
     const absolute = join(root, path);
@@ -226,4 +229,14 @@ test("rejects architecture dimension, actor, and lane drift across languages and
   assert.ok(violations.includes("diagram-dimensions-mismatch:system-context"));
   assert.ok(violations.includes("diagram-actors-mismatch:request-sequence"));
   assert.ok(violations.includes("diagram-lanes-mismatch:full-delivery-chain"));
+});
+
+test("keeps archived diagrams validated without requiring them on the current Evidence page", (t) => {
+  const { root, document } = writeFixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  document.assets.diagrams[0].displayed = false;
+  const evidencePage = join(root, "apps/web/src/pages/EvidencePage.tsx");
+  writeFileSync(evidencePage, readFileSync(evidencePage, "utf8").replace(/^.*system-context.*\n/m, ""));
+  writeFileSync(join(root, "docs/evidence/phase2-local-validation.json"), `${JSON.stringify(document, null, 2)}\n`);
+  assert.ok(!evidenceValidator.validateEvidenceRepository(root).includes("diagram-page-dimensions-mismatch:system-context"));
 });

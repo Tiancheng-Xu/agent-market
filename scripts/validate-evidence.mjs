@@ -33,6 +33,7 @@ const REQUIRED_PUBLIC_ARTIFACTS = [
   "apps/web/public/architecture/system-context.svg", "apps/web/public/architecture/system-context.zh-CN.svg",
   "apps/web/public/architecture/request-sequence.svg", "apps/web/public/architecture/request-sequence.zh-CN.svg",
   "apps/web/public/architecture/full-delivery-chain.svg", "apps/web/public/architecture/full-delivery-chain.zh-CN.svg",
+  "apps/web/public/architecture/agent-market-v3-workflow.svg", "apps/web/public/architecture/agent-market-v3-workflow.zh-CN.svg",
 ];
 const PRIVATE_OR_SECRET = /(?:\/Users\/|\/home\/[^/\s]+\/|[A-Za-z]:\\Users\\|file:\/\/|\b\d{12}\b|(?:secret|password|private[_-]?key|api[_-]?key|token)\s*[:=]\s*["']?[A-Za-z0-9_\-./+]{8,})/i;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -246,7 +247,7 @@ export function validateEvidenceRepository(root = process.cwd()) {
     if (en === null || zh === null || en.width !== zh.width || en.height !== zh.height) violations.push(`diagram-dimensions-mismatch:${name}`);
     if (en?.actors === undefined || zh?.actors === undefined || en.actors !== zh.actors) violations.push(`diagram-actors-mismatch:${name}`);
     if (en?.lanes === undefined || zh?.lanes === undefined || en.lanes !== zh.lanes) violations.push(`diagram-lanes-mismatch:${name}`);
-    if (en !== null) {
+    if (en !== null && pair.displayed !== false) {
       const declaration = new RegExp(`file:\\s*["']${name}["'][^}]*width:\\s*${en.width}[^}]*height:\\s*${en.height}`);
       if (!declaration.test(evidencePage)) violations.push(`diagram-page-dimensions-mismatch:${name}`);
     }

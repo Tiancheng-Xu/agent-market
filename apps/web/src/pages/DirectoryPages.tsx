@@ -4,6 +4,15 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Badge, DemoNotice, EmptyState, PageHeader, Panel } from "../components/Ui";
 import { Localized } from "../i18n/LanguageProvider";
 import { agents, tasks } from "../data";
+import {
+  createOwnerAgentRecord,
+  isMarketVisible,
+  listOwnerAgents,
+  removeOwnerAgent,
+  saveOwnerAgent,
+  type OwnerAgentRecord,
+} from "../ownerAgentRegistry";
+import type { Agent } from "../types";
 
 const expertTypes = ["Research agent", "Data analyst", "Content operator", "Code agent", "Security reviewer", "Final arbiter"];
 
@@ -11,19 +20,90 @@ function FilterBar({ query, setQuery, action }: { query: string; setQuery(value:
   return <div className="filter-bar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, category, or tag" />{action}</div>;
 }
 
-export function AgentsPage() {
+export function AgentsPage({ walletAddress = null }: { walletAddress?: string | null }) {
   const [searchParams] = useSearchParams();
   const queryFromRoute = searchParams.get("q") ?? "";
   const [query, setQuery] = useState(queryFromRoute);
+  const [ownerAgents, setOwnerAgents] = useState<OwnerAgentRecord[]>([]);
   useEffect(() => setQuery(queryFromRoute), [queryFromRoute]);
-  const filtered = useMemo(() => agents.filter((agent) => `${agent.name} ${agent.category} ${agent.provider ?? ""} ${agent.modelTag ?? ""} ${agent.ownership ?? ""} ${agent.verification ?? ""} ${agent.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [query]);
+  useEffect(() => {
+    let active = true;
+    if (!walletAddress) { setOwnerAgents([]); return () => { active = false; }; }
+    void listOwnerAgents(walletAddress).then((records) => { if (active) setOwnerAgents(records); }).catch(() => { if (active) setOwnerAgents([]); });
+    return () => { active = false; };
+  }, [walletAddress]);
+  const visibleOwnerAgents = useMemo<Agent[]>(() => ownerAgents.filter(isMarketVisible).map((agent) => ({
+    id: agent.id,
+    name: agent.displayName,
+    category: agent.category,
+    description: agent.description,
+    tags: agent.tags,
+    reliability: 30,
+    completed: 0,
+    status: "active",
+    newcomer: true,
+    provider: "User HTTPS",
+    ownership: "user-managed",
+    modelTag: agent.modelTag,
+    visibility: agent.listingStatus,
+    selectableBy: agent.selectableBy,
+    verification: "implemented",
+  })), [ownerAgents]);
+  const catalogAgents = useMemo(() => [...agents, ...visibleOwnerAgents], [visibleOwnerAgents]);
+  const filtered = useMemo(() => catalogAgents.filter((agent) => `${agent.name} ${agent.category} ${agent.provider ?? ""} ${agent.modelTag ?? ""} ${agent.ownership ?? ""} ${agent.verification ?? ""} ${agent.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [catalogAgents, query]);
   return <Localized><><PageHeader eyebrow="AGENT REGISTRY" title="Find a qualified operator" description="Public-safe catalog for installed local models and configured provider API models. Readiness reflects smoke evidence; pending models are listed but not claimed online." actions={<Link className="button button-primary" to="/agents/new">Register agent</Link>} /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="cyan">{filtered.length} RESULTS</Badge>} />{filtered.length ? <div className="card-grid stagger">{filtered.map((agent) => <Panel className="agent-card" key={agent.id}><div className="card-top"><div className="agent-avatar">{agent.name.slice(0, 2).toUpperCase()}</div><Badge tone={agent.verification === "verified" ? "cyan" : agent.verification === "implemented" ? "amber" : "neutral"}>{(agent.verification ?? agent.status).toUpperCase()}</Badge></div><h2>{agent.name}</h2><p>{agent.description}</p><div className="tag-row">{agent.tags.slice(0, 7).map((tag) => <span key={tag}>{tag}</span>)}</div><dl><div><dt>Provider</dt><dd>{agent.provider ?? "-"}</dd></div><div><dt>Model</dt><dd>{agent.modelTag ?? "-"}</dd></div><div><dt>Readiness</dt><dd>{agent.reliability}%</dd></div><div><dt>Verified ops</dt><dd>{agent.completed}</dd></div></dl><Link className="text-link" to={`/agents/${agent.id}`}>View public profile</Link></Panel>)}</div> : <EmptyState title="No eligible agents" description="Adjust filters or publish the task without forcing an invalid match." />}</></Localized>;
 }
 
-export function AgentNewPage() {
+export function AgentNewPage({ walletAddress = null }: { walletAddress?: string | null }) {
   const [message, setMessage] = useState("");
-  function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setMessage("Frontend validation passed. Backend registration and encrypted credential storage are not connected yet."); }
-  return <Localized><><PageHeader eyebrow="AGENT ONBOARDING" title="Register an agent" description="API keys are submitted once and must never return to this browser. This UI does not persist credentials locally." /><Panel className="form-panel"><form onSubmit={submit} className="form-grid"><label>Agent name<input required minLength={3} /></label><label>Category<select required defaultValue=""><option value="" disabled>Select category</option><option>Research</option><option>Data</option><option>Content</option></select></label><label className="span-two">Agent description<textarea required rows={4} /></label><label>Capability tags<input required placeholder="research, citations" /></label><label>Wallet address<input required pattern="0x[a-fA-F0-9]{40}" placeholder="Connect MetaMask or enter an address" /></label><label className="span-two">HTTPS endpoint<input required type="url" pattern="https://.*" placeholder="https://agent.example/api" /></label><label className="span-two">API key<input required type="password" autoComplete="new-password" /><small>Encrypted by the backend. Never logged or included in Evidence.</small></label><div className="form-actions span-two"><button className="button button-primary">Validate and continue</button></div></form>{message ? <div className="inline-state" role="status">{message}</div> : null}</Panel></></Localized>;
+  const [records, setRecords] = useState<OwnerAgentRecord[]>([]);
+  async function refresh(ownerWallet: string | null) {
+    if (!ownerWallet) { setRecords([]); return; }
+    setRecords(await listOwnerAgents(ownerWallet));
+  }
+  useEffect(() => { void refresh(walletAddress).catch(() => setRecords([])); }, [walletAddress]);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    try {
+      const provider = form.get("provider") === "ollama" ? "ollama" : "https";
+      const endpoint = String(form.get("endpoint") ?? "").trim();
+      if (provider === "https" && !endpoint.startsWith("https://")) throw new Error("HTTPS Agent requires a secure endpoint");
+      const record = createOwnerAgentRecord({
+        ownerWallet: String(form.get("ownerWallet") ?? ""),
+        displayName: String(form.get("displayName") ?? ""),
+        category: String(form.get("category") ?? ""),
+        description: String(form.get("description") ?? ""),
+        tags: String(form.get("tags") ?? "").split(","),
+        provider,
+        modelTag: String(form.get("modelTag") ?? ""),
+        ...(endpoint ? { endpoint } : {}),
+        pricing: form.get("pricing") === "paid" ? "paid" : "free",
+        pricePerTaskYd: Number(form.get("pricePerTaskYd") ?? 0),
+      });
+      await saveOwnerAgent(record);
+      await refresh(record.ownerWallet);
+      formElement.reset();
+      setMessage(record.listingStatus === "marketplace"
+        ? "Agent metadata saved and admitted to this browser's market catalog."
+        : record.listingStatus === "pending-platform-test"
+          ? "Agent metadata saved. Paid Agent remains hidden until the platform test passes."
+          : "Local Agent metadata saved as owner-only and offline until signed Runtime heartbeat.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Agent registration failed");
+    }
+  }
+  async function remove(record: OwnerAgentRecord) {
+    try {
+      await removeOwnerAgent(record.ownerWallet, record.id);
+      await refresh(record.ownerWallet);
+      setMessage("Agent metadata removed from this browser.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Agent removal failed");
+    }
+  }
+  return <Localized><><PageHeader eyebrow="AGENT ONBOARDING" title="Register and maintain agents" description="This browser stores only wallet-scoped public metadata in IndexedDB. API keys, local ports, model files, and raw prompts are never stored here." /><Panel className="form-panel"><form onSubmit={submit} className="form-grid"><label>Agent name<input name="displayName" required minLength={3} /></label><label>Category<select name="category" required defaultValue=""><option value="" disabled>Select category</option><option>Research</option><option>Data</option><option>Content</option><option>Code</option><option>Image</option><option>Judge</option></select></label><label className="span-two">Agent description<textarea name="description" required rows={4} /></label><label>Capability tags<input name="tags" required placeholder="research, citations" /></label><label>Wallet address<input name="ownerWallet" required pattern="0x[a-fA-F0-9]{40}" defaultValue={walletAddress ?? ""} readOnly={walletAddress !== null} placeholder="Connect MetaMask or enter an address" /></label><label>Runtime type<select name="provider" defaultValue="https"><option value="https">HTTPS Agent</option><option value="ollama">Local Ollama</option></select></label><label>Model tag<input name="modelTag" required placeholder="provider/model-v1" /></label><label>Pricing<select name="pricing" defaultValue="free"><option value="free">Free</option><option value="paid">Paid</option></select></label><label>Price per task (YD)<input name="pricePerTaskYd" type="number" min="0" step="1" defaultValue="0" /></label><label className="span-two">HTTPS endpoint<input name="endpoint" type="url" pattern="https://.*" placeholder="https://agent.example/api" /><small>Local Ollama leaves this blank. No API key is accepted or stored in the browser.</small></label><div className="form-actions span-two"><button className="button button-primary">Save Agent metadata</button></div></form>{message ? <div className="inline-state" role="status">{message}</div> : null}</Panel><Panel><h2>My Agent registry</h2>{records.length === 0 ? <p className="muted">Connect a wallet and add an Agent. Records are isolated by wallet.</p> : <div className="task-list">{records.map((record) => <div className="task-row" key={record.id}><div><Badge tone={record.listingStatus === "marketplace" ? "cyan" : "amber"}>{record.listingStatus}</Badge><h3>{record.displayName}</h3><p>{record.provider} / {record.modelTag} / {record.pricing}</p><div className="tag-row">{record.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><button className="button button-ghost" type="button" onClick={() => void remove(record)}>Remove</button></div>)}</div>}</Panel></></Localized>;
 }
 
 export function AgentDetailPage() {

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Market 真实 Agent 请求时序</title>
+  <desc id="desc">浏览器调用 Cloudflare Worker；Worker 为本地 Runtime 请求签名；Runtime 调用本地 Ollama 或 Provider API，并以 SSE 流式返回。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#071020"/><stop offset="1" stop-color="#11263f"/></linearGradient>
+    <style>text{font-family:PingFang SC,Noto Sans CJK SC,sans-serif;fill:#e8f2ff}.muted{fill:#9eb4cc}.lane{stroke:#314761;stroke-width:2}.msg{stroke:#60a5fa;stroke-width:2;fill:none;marker-end:url(#arrow)}.return{stroke:#22d3ee;stroke-width:2;fill:none;stroke-dasharray:7 7;marker-end:url(#arrow2)}.box{fill:#0f1d33;stroke:#2f7de1;stroke-width:2}.runtime{fill:#102d34;stroke:#22d3ee}.small{font-size:16px}.tiny{font-size:13px}.title{font-size:28px;font-weight:700}.head{font-size:18px;font-weight:700}</style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#60a5fa"/></marker>
+    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#22d3ee"/></marker>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="42" y="52" class="title">真实 Agent 请求时序</text>
+  <text x="42" y="84" class="muted small">浏览器不能访问 Ollama 11434 或 Provider Key；每次 Runtime 调用都由 Edge 网关签名。</text>
+  <g transform="translate(40 120)">
+    <rect x="0" y="0" width="150" height="48" rx="12" class="box"/><text x="35" y="30" class="head">浏览器</text>
+    <rect x="210" y="0" width="170" height="48" rx="12" class="box"/><text x="245" y="30" class="head">Worker</text>
+    <rect x="450" y="0" width="200" height="48" rx="12" class="runtime"/><text x="480" y="30" class="head">本地 Runtime</text>
+    <rect x="730" y="0" width="150" height="48" rx="12" class="box"/><text x="770" y="30" class="head">Ollama</text>
+    <rect x="950" y="0" width="170" height="48" rx="12" class="box"/><text x="975" y="30" class="head">Provider</text>
+    <line x1="75" y1="55" x2="75" y2="545" class="lane"/><line x1="295" y1="55" x2="295" y2="545" class="lane"/><line x1="550" y1="55" x2="550" y2="545" class="lane"/><line x1="805" y1="55" x2="805" y2="545" class="lane"/><line x1="1035" y1="55" x2="1035" y2="545" class="lane"/>
+    <path d="M75 95 H295" class="msg"/><text x="95" y="86" class="tiny">GET /agent/healthz</text>
+    <path d="M295 135 H550" class="msg"/><text x="322" y="126" class="tiny">签名 GET /healthz</text>
+    <path d="M550 175 H295" class="return"/><text x="345" y="166" class="tiny">公开健康快照</text>
+    <path d="M295 215 H75" class="return"/><text x="120" y="206" class="tiny">在线 / 降级 / 离线</text>
+    <path d="M75 265 H295" class="msg"/><text x="95" y="256" class="tiny">POST /agent/chat</text>
+    <path d="M295 305 H550" class="msg"/><text x="322" y="296" class="tiny">来源、大小、Turnstile、HMAC</text>
+    <path d="M550 352 H805" class="msg"/><text x="600" y="343" class="tiny">本地 Agent：/api/chat</text>
+    <path d="M550 405 H1035" class="msg"/><text x="640" y="396" class="tiny">Provider Agent：Chat Completions</text>
+    <path d="M805 455 H550" class="return"/><text x="622" y="446" class="tiny">Token 分片</text>
+    <path d="M1035 495 H550" class="return"/><text x="690" y="486" class="tiny">DeepSeek / Kimi / Qwen / 智谱回答</text>
+    <path d="M550 535 H295" class="return"/><text x="342" y="526" class="tiny">SSE meta / delta / done / error</text>
+    <path d="M295 575 H75" class="return"/><text x="110" y="566" class="tiny">同一 SSE 流</text>
+  </g>
+</svg>

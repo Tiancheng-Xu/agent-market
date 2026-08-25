@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { AgentManifest, AgentTaskLease } from "@agent-market/shared-contracts";
+import { OwnerTrainedModels, type AgentManifest, type AgentTaskLease } from "@agent-market/shared-contracts";
 
 import { ControlPlaneClient } from "./control-plane-client";
 import { parseRunnerConfig } from "./config";
@@ -99,6 +99,35 @@ describe("Ollama model registry", () => {
         lastVerifiedAt: "2026-08-22T12:00:00.000Z",
       },
     });
+  });
+
+  it("discovers the code and image training artifacts as registered owner-trained agents", () => {
+    const config = parseRunnerConfig({});
+
+    for (const ownerModel of OwnerTrainedModels.filter((model) => model.tag.endsWith(":v1"))) {
+      const manifest = ollamaMetadataToManifest(
+        { name: ownerModel.tag, digest: ownerModel.digest },
+        { capabilities: ["completion"] },
+        config,
+        fixedNow,
+      );
+
+      expect(manifest).toMatchObject({
+        id: ownerModel.id,
+        displayName: ownerModel.displayName,
+        ownership: "owner-trained",
+        capabilities: ownerModel.capabilities,
+        model: {
+          tag: ownerModel.tag,
+          digest: ownerModel.digest,
+          revision: ownerModel.revision,
+          quantization: "Q4_K_M",
+          contextLength: 8192,
+          source: "Tiancheng-Xu/personal-ai-agent",
+          license: "Apache-2.0",
+        },
+      });
+    }
   });
 
   it("marks other chat models as third-party local-served", () => {
@@ -273,6 +302,21 @@ describe("provider manifests", () => {
     );
 
     expect(manifest).toBeUndefined();
+  });
+
+  it("rejects a mismatched digest for every registered owner-trained tag", () => {
+    const config = parseRunnerConfig({});
+
+    for (const ownerModel of OwnerTrainedModels) {
+      expect(
+        ollamaMetadataToManifest(
+          { name: ownerModel.tag, digest: "f".repeat(64) },
+          { capabilities: ["completion"] },
+          config,
+          fixedNow,
+        ),
+      ).toBeUndefined();
+    }
   });
 });
 

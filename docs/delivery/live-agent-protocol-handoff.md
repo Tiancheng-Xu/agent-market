@@ -41,8 +41,7 @@ Personal AI 后续只复用协议、边缘网关、Tunnel 和 Runtime 接口，�
 ## 编排框架边界
 
 - `Queen GraphQL` 保持为业务入口。
-- `Mastra` 注册顶层 Queen workflow/runtime container。
-- `LangGraph` 执行内部状态图边界，用于 DAG/分支/人工确认/恢复语义。
+- `LangGraph` 负责状态图边界，用于 DAG 修改、版本确认、启动锁定、分支、人工确认与恢复语义。
 - `LangChain` 暂作为节点内 model/prompt/retriever/tool 组合候选；没有真实节点使用前只标 planned。
 
 ## Health 与 readiness 语义

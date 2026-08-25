@@ -4,7 +4,7 @@ flowchart TD
   U --> C[C candidate: hybrid]
   A --> AS[Safe, no inbound Mac surface, but only async final text in V1]
   B --> BS[True SSE chat, but Tunnel is not authorization]
-  C --> CS[Use B for sync chat and A for identity, heartbeat, lease, evidence]
+  C --> CS[Use B for sync chat and A for identity, heartbeat, lease, result]
   AS --> J[Arbitration]
   BS --> J
   CS --> J
@@ -16,4 +16,4 @@ flowchart TD
   DP --> KM[Kimi provider API]
   DP --> QW[Qwen provider API]
   DP --> ZP[Zhipu provider API]
-  CP --> EV[Evidence and future long task workflow]
+  CP --> AU[Result audit and future long task workflow]

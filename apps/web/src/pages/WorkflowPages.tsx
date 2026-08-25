@@ -4,10 +4,64 @@ import { Link, useParams } from "react-router-dom";
 import { Badge, DemoNotice, PageHeader, Panel } from "../components/Ui";
 import { Localized } from "../i18n/LanguageProvider";
 import { calculateLinearYield, SECONDS_PER_YEAR } from "../lib/domain";
+import { filterOfficeDesks, visibleDeskForWallet, type OfficeTaskDesk, type OfficeTaskStatus } from "../officeModel";
 
-export function WorkspacePage() {
-  const { id } = useParams(); const [state, setState] = useState<"working" | "submitted">("working");
-  return <Localized><><PageHeader eyebrow={`WORKSPACE / ${id ?? "TASK"}`} title="Task execution room" description="Messages, submissions, acceptance, and transaction verification stay attached to one request ID." actions={<Badge tone={state === "working" ? "cyan" : "amber"}>{state.toUpperCase()}</Badge>} /><DemoNotice /><div className="workspace-grid"><Panel><div className="timeline compact"><span className="done">Matched</span><span className="active">Working</span><span className={state === "submitted" ? "active" : ""}>Review</span><span>Settled</span></div><h2>Submission checklist</h2><label className="dropzone"><input type="file" /><strong>Attach a deliverable</strong><span>Local preview only. Upload backend is not connected.</span></label><textarea rows={6} placeholder="Add a concise handoff note" /><button className="button button-primary" onClick={() => setState("submitted")}>Submit work for review</button></Panel><Panel className="trace-panel"><h2>Request trace</h2><dl><div><dt>Request ID</dt><dd>Generated when backend accepts command</dd></div><div><dt>Escrow transaction</dt><dd>Awaiting external receipt</dd></div><div><dt>Settlement</dt><dd>Not submitted</dd></div></dl><Link className="text-link" to="/evidence">Open Evidence model</Link></Panel></div></></Localized>;
+export function WorkspacePage({ walletAddress = null }: { walletAddress?: string | null }) {
+  const { id } = useParams();
+  const [filter, setFilter] = useState<"all" | OfficeTaskStatus>("all");
+  const [selectedTaskId, setSelectedTaskId] = useState(id ?? "task-office-build");
+  const ownerWallet = walletAddress ?? "0x1111111111111111111111111111111111111111";
+  const desks = useMemo<OfficeTaskDesk[]>(() => [
+    {
+      taskId: "task-office-build",
+      ownerWallet,
+      ownerLabel: "My workspace",
+      title: "Build the Agent Market workflow",
+      category: "Code",
+      tags: ["langgraph", "graphql", "gates"],
+      status: "in_progress",
+      agents: [
+        { agentId: "personal-code-agent", displayName: "Code Agent", role: "executor", score: 30 },
+        { agentId: "qwen-qwen-plus", displayName: "Qwen Plus", role: "judge", score: 90 },
+        { agentId: "zhipu-glm-5-3", displayName: "GLM 5.3", role: "arbiter", score: 90 },
+      ],
+      nodeInput: "Private task node input stays inside the authorized AWS execution envelope.",
+      nodeOutput: "Latest private node output is available to the owner only.",
+      downloadableResult: "Agent Market task result\nstatus=in_progress\nworkflow=LangGraph\n",
+    },
+    {
+      taskId: "task-visual-review",
+      ownerWallet: "0x2222222222222222222222222222222222222222",
+      ownerLabel: "Studio 02",
+      title: "Review visual assets",
+      category: "Image",
+      tags: ["image", "visual-qa"],
+      status: "in_progress",
+      agents: [
+        { agentId: "personal-image-agent", displayName: "Image Agent", role: "creator", score: 30 },
+        { agentId: "deepseek-deepseek-v4-flash", displayName: "DeepSeek", role: "reviewer", score: 92 },
+      ],
+      nodeInput: "private",
+      nodeOutput: "private",
+    },
+    {
+      taskId: "task-research-closed",
+      ownerWallet: "0x3333333333333333333333333333333333333333",
+      ownerLabel: "Lab 03",
+      title: "Research market architecture",
+      category: "Research",
+      tags: ["research", "citations"],
+      status: "completed",
+      agents: [{ agentId: "kimi-kimi-k2-7-code", displayName: "Kimi", role: "researcher", score: 91 }],
+    },
+  ], [ownerWallet]);
+  const filtered = filterOfficeDesks(desks, filter);
+  const selectedDesk = visibleDeskForWallet(desks.find((desk) => desk.taskId === selectedTaskId) ?? desks[0]!, walletAddress ?? ownerWallet);
+  const downloadHref = selectedDesk.downloadableResult === undefined
+    ? undefined
+    : `data:text/plain;charset=utf-8,${encodeURIComponent(selectedDesk.downloadableResult)}`;
+
+  return <Localized><><PageHeader eyebrow="VIRTUAL OFFICE / WEB PROTOTYPE" title="One task, one desk" description="Only in-progress and completed projects appear here. The Web interaction prototype is implemented; Cocos has not started and remains planned." actions={<Badge tone="cyan">{filtered.length} DESKS</Badge>} /><DemoNotice /><div className="office-tabs" role="tablist" aria-label="Task desk status">{(["all", "in_progress", "completed"] as const).map((status) => <button type="button" role="tab" aria-selected={filter === status} className={filter === status ? "active" : ""} onClick={() => setFilter(status)} key={status}>{status.replace("_", " ")}</button>)}</div><div className="office-layout"><section className="office-scene" aria-label="Virtual task office">{filtered.map((desk) => <button type="button" className={`office-desk ${desk.status} ${selectedTaskId === desk.taskId ? "selected" : ""}`} onClick={() => setSelectedTaskId(desk.taskId)} key={desk.taskId}><span className="desk-owner">{desk.ownerLabel}</span><strong>{desk.title}</strong><small>{desk.category} / {desk.status.replace("_", " ")}</small><span className="office-agent-row">{desk.agents.map((agent) => <span className="office-agent-sprite" title={`${agent.displayName} / ${agent.role}`} key={agent.agentId}><i>{agent.displayName.slice(0, 2).toUpperCase()}</i><b>{agent.role}</b></span>)}</span><span className="desk-visit">{desk.ownerWallet.toLowerCase() === ownerWallet.toLowerCase() ? "My desk" : "Visit desk"}</span></button>)}</section><Panel className="office-inspector"><Badge tone={selectedDesk.access === "owner" ? "cyan" : "neutral"}>{selectedDesk.access}</Badge><h2>{selectedDesk.title}</h2><p>{selectedDesk.ownerLabel} / {selectedDesk.category}</p><div className="tag-row">{selectedDesk.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>{selectedDesk.access === "owner" ? <><h3>Authorized node boundary</h3><p className="muted">{selectedDesk.nodeInput}</p><p className="muted">{selectedDesk.nodeOutput}</p>{downloadHref ? <a className="button button-primary" href={downloadHref} download={`${selectedDesk.taskId}-result.txt`}>Download my result</a> : null}</> : <><h3>Visitor mode</h3><p className="muted">Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.</p></>}<Link className="text-link" to={`/tasks/${selectedDesk.taskId}`}>Open public task profile</Link></Panel></div></></Localized>;
 }
 
 export function DisputePage() {

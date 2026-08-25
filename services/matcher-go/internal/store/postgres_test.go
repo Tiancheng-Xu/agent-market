@@ -13,7 +13,7 @@ import (
 )
 
 func TestRecallSQLAppliesHardFiltersBeforeBoundedVectorRecall(t *testing.T) {
-	required := []string{"MATERIALIZED", "request_id = $2", "status = 'matching'", "a.status = 'active'", "a.available = TRUE", "a.embedding IS NOT NULL", "vector_norm(a.embedding) > 0", "a.capabilities @> t.requirements", "t.budget_atomic >= a.minimum_budget_atomic", "embedding <=> task_embedding", "LIMIT $3"}
+	required := []string{"MATERIALIZED", "request_id = $2", "status = 'matching'", "a.status = 'active'", "a.available = TRUE", "a.embedding IS NOT NULL", "vector_norm(a.embedding) > 0", "a.capabilities @> t.requirements", "t.category = ANY(a.categories)", "a.tags @> t.tags", "t.budget_atomic >= a.minimum_budget_atomic", "agent_score_events", "INTERVAL '90 days'", "LIMIT 20", "embedding <=> task_embedding", "LIMIT $3"}
 	for _, fragment := range required {
 		if !strings.Contains(recallSQL, fragment) {
 			t.Errorf("recall SQL missing %q", fragment)
@@ -40,7 +40,7 @@ func TestTaskLockAndRecallUseTheSameStrictLifecyclePredicate(t *testing.T) {
 func TestProcessClaimsRecallsPersistsAndCommitsInOneTransaction(t *testing.T) {
 	tx := &fakeTransaction{
 		execTags: []pgconn.CommandTag{pgconn.NewCommandTag("INSERT 0 1"), pgconn.NewCommandTag("INSERT 0 1")},
-		rows:     &fakeRows{values: [][]any{{"agent-a", 0.9, 0.8, 0.7, 0.6, 0.5, true}}},
+		rows:     &fakeRows{values: [][]any{{"agent-a", "model-a", 0.9, 0.8, 0.7, 0.6, 0.5, true, "[]"}}},
 	}
 	postgres := &Postgres{begin: func(context.Context) (transaction, error) { return tx, nil }, recallLimit: MaxRecallLimit}
 	result, err := postgres.Process(context.Background(), testEvent())
@@ -118,7 +118,7 @@ func TestProcessRollsBackWhenTaskIsNotMatching(t *testing.T) {
 func TestProcessRollsBackPersistFailure(t *testing.T) {
 	tx := &fakeTransaction{
 		execTags: []pgconn.CommandTag{pgconn.NewCommandTag("INSERT 0 1")},
-		rows:     &fakeRows{values: [][]any{{"agent-a", 0.9, 0.8, 0.7, 0.6, 0.5, false}}},
+		rows:     &fakeRows{values: [][]any{{"agent-a", "model-a", 0.9, 0.8, 0.7, 0.6, 0.5, false, "[]"}}},
 	}
 	postgres := &Postgres{begin: func(context.Context) (transaction, error) { return tx, nil }, recallLimit: DefaultRecallLimit}
 	if _, err := postgres.Process(context.Background(), testEvent()); err == nil {

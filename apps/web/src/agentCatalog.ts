@@ -5,6 +5,7 @@ export type AgentOwnership = "owner-trained" | "third-party/local-served" | "thi
 export type AgentVerification = "verified" | "implemented" | "pending-smoke" | "pending-credential" | "planned";
 export type AgentVisibility = "private" | "listed" | "marketplace";
 export type AgentSelectableBy = "owner-only" | "assigned-task" | "public-market";
+export type AgentArtifactStatus = "ready" | "provider-managed" | "metadata-pending";
 
 export type PublicAgentCatalogEntry = {
   id: string;
@@ -18,6 +19,7 @@ export type PublicAgentCatalogEntry = {
   visibility: AgentVisibility;
   selectableBy: AgentSelectableBy;
   capabilities: string[];
+  artifactStatus: AgentArtifactStatus;
   verification: AgentVerification;
   source: string;
   license: string;
@@ -46,6 +48,32 @@ export const publicAgentCatalog: PublicAgentCatalogEntry[] = [
     readinessScore: 96,
     verifiedOperations: 1,
     note: "Canonical owner-trained runtime. Served only through the signed local runtime boundary.",
+  }),
+  localAgent({
+    id: "personal-code-agent",
+    displayName: "Personal Code Agent",
+    ownership: "owner-trained",
+    modelTag: "personal-code-agent:v1",
+    modelDigest: "4b9c60671fff53a198630f9aaf6b76d7d46c356359f41030f52e61f77f7b83bb",
+    capabilities: ["completion", "code-planning", "implementation-plan", "verification-gates", "structured-json", "local-runtime"],
+    verification: "pending-smoke",
+    readinessScore: 30,
+    source: "Tiancheng-Xu/personal-ai-agent",
+    license: "Apache-2.0",
+    note: "Training artifact ready and installed locally. Agent Market runtime routing and end-to-end smoke remain pending.",
+  }),
+  localAgent({
+    id: "personal-image-agent",
+    displayName: "Personal Image Agent",
+    ownership: "owner-trained",
+    modelTag: "personal-image-agent:v1",
+    modelDigest: "59de62829334d7d5e9c672ec0bcaaff4b14ed91e91ae9ce4511c20edd67facbb",
+    capabilities: ["completion", "image-brief", "asset-manifest", "visual-quality-gates", "structured-json", "local-runtime"],
+    verification: "pending-smoke",
+    readinessScore: 30,
+    source: "Tiancheng-Xu/personal-ai-agent",
+    license: "Apache-2.0",
+    note: "Retrained artifact ready after the Asset Manifest gate. Agent Market runtime routing and end-to-end smoke remain pending.",
   }),
   localAgent({
     id: "personal-ai-agent-v4-1",
@@ -180,6 +208,7 @@ export function catalogEntryToAgent(entry: PublicAgentCatalogEntry): Agent {
       entry.ownership,
       entry.selectableBy,
       entry.verification,
+      entry.artifactStatus,
       ...entry.capabilities,
     ],
     reliability: entry.readinessScore,
@@ -201,14 +230,15 @@ export function agentProviderLabel(provider: CatalogProvider): string {
   return providerLabels[provider];
 }
 
-function localAgent(entry: Omit<PublicAgentCatalogEntry, "category" | "provider" | "providerLabel" | "source" | "license" | "visibility" | "selectableBy" | "verifiedOperations"> & { verifiedOperations?: number }): PublicAgentCatalogEntry {
+function localAgent(entry: Omit<PublicAgentCatalogEntry, "category" | "provider" | "providerLabel" | "source" | "license" | "visibility" | "selectableBy" | "verifiedOperations" | "artifactStatus"> & { source?: string; license?: string; verifiedOperations?: number }): PublicAgentCatalogEntry {
   return {
     ...entry,
     category: entry.ownership === "owner-trained" ? "Local owner-trained" : "Local served",
     provider: "ollama",
     providerLabel: providerLabels.ollama,
-    source: "Local Ollama runtime",
-    license: entry.ownership === "owner-trained" ? "owner training artifact" : "upstream model terms pending metadata",
+    source: entry.source ?? "Local Ollama runtime",
+    license: entry.license ?? (entry.ownership === "owner-trained" ? "owner training artifact" : "upstream model terms pending metadata"),
+    artifactStatus: entry.ownership === "owner-trained" ? "ready" : "metadata-pending",
     visibility: "private",
     selectableBy: "owner-only",
     verifiedOperations: entry.verifiedOperations ?? 0,
@@ -236,6 +266,7 @@ function providerAgent(
     visibility: "marketplace",
     selectableBy: "public-market",
     capabilities,
+    artifactStatus: "provider-managed",
     verification,
     source: providerLabels[provider],
     license: "provider terms pending metadata",
