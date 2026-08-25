@@ -1,80 +1,56 @@
 import { END, START, StateGraph } from "@langchain/langgraph";
-import { Mastra } from "@mastra/core";
-import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 
 const FrameworkStateSchema = z.object({
   operationName: z.string(),
-  taskId: z.string().optional(),
+  taskId: z.string().uuid().optional(),
   nodeId: z.string().optional(),
-  runtime: z.object({
-    mastra: z.literal("registered"),
-    langGraph: z.literal("compiled"),
-  }).optional(),
   stages: z.array(z.string()).default([]),
+  operationPolicy: z.string().optional(),
 });
 
 export type QueenFrameworkRuntime = {
-  mastra: Mastra;
   execute(input: z.infer<typeof FrameworkStateSchema>): Promise<z.infer<typeof FrameworkStateSchema>>;
 };
 
-const normalizeStep = createStep({
-  id: "normalize-queen-operation",
-  inputSchema: FrameworkStateSchema,
-  outputSchema: FrameworkStateSchema,
-  execute: async ({ inputData }) => ({
-    ...inputData,
-    stages: [...inputData.stages, "mastra:normalize"],
-  }),
-});
-
-const langGraphStep = createStep({
-  id: "execute-langgraph-state",
-  inputSchema: FrameworkStateSchema,
-  outputSchema: FrameworkStateSchema,
-  execute: async ({ inputData }) => executeLangGraph(inputData),
-});
-
-const queenWorkflow = createWorkflow({
-  id: "agent-market-queen-orchestration",
-  inputSchema: FrameworkStateSchema,
-  outputSchema: FrameworkStateSchema,
-})
-  .then(normalizeStep)
-  .then(langGraphStep)
-  .commit();
-
 export function createQueenFrameworkRuntime(): QueenFrameworkRuntime {
-  const mastra = new Mastra({
-    workflows: {
-      queenOrchestration: queenWorkflow,
-    },
-    logger: false,
-  });
+  const graph = new StateGraph(FrameworkStateSchema)
+    .addNode("normalize", (state) => ({
+      ...state,
+      stages: [...state.stages, "langgraph:normalize"],
+    }))
+    .addNode("route", async (state) => ({
+      ...state,
+      operationPolicy: operationToPolicy(state.operationName),
+      stages: [...state.stages, `langgraph:${operationToPolicy(state.operationName)}`],
+    }))
+    .addNode("policy-check", async (state) => ({
+      ...state,
+      stages: [...state.stages, "langgraph:policy-check"],
+    }))
+    .addEdge(START, "normalize")
+    .addEdge("normalize", "route")
+    .addEdge("route", "policy-check")
+    .addEdge("policy-check", END)
+    .compile();
 
   return {
-    mastra,
-    execute: executeLangGraph,
+    execute: async (input) => graph.invoke(input),
   };
 }
 
-async function executeLangGraph(input: z.infer<typeof FrameworkStateSchema>): Promise<z.infer<typeof FrameworkStateSchema>> {
-  const graph = new StateGraph(FrameworkStateSchema)
-    .addNode("runtime-boundary", async (state) => ({
-      ...state,
-      runtime: { mastra: "registered" as const, langGraph: "compiled" as const },
-      stages: [...state.stages, "langgraph:runtime-boundary"],
-    }))
-    .addNode("policy-gate", async (state) => ({
-      ...state,
-      stages: [...state.stages, "langgraph:policy-gate"],
-    }))
-    .addEdge(START, "runtime-boundary")
-    .addEdge("runtime-boundary", "policy-gate")
-    .addEdge("policy-gate", END)
-    .compile();
-
-  return graph.invoke(input);
+function operationToPolicy(operationName: string): string {
+  if (operationName.startsWith("Amend") || operationName.startsWith("Confirm") || operationName.startsWith("Propose")) {
+    return "graph-management";
+  }
+  if (operationName.startsWith("Rank") || operationName.startsWith("Select") || operationName.startsWith("Accept")) {
+    return "selection";
+  }
+  if (operationName.startsWith("Submit") || operationName.startsWith("Judge") || operationName.startsWith("Request") || operationName.startsWith("Repair") || operationName.startsWith("Final") || operationName.startsWith("Write")) {
+    return "execution";
+  }
+  if (operationName.startsWith("Start")) {
+    return "execution-control";
+  }
+  return "default";
 }
-

@@ -7,7 +7,7 @@ sequenceDiagram
   participant Provider as DeepSeek/Kimi/Qwen/Zhipu API
   participant Runner as Local Agent Runner
 
-  Runner->>Worker: register manifests / heartbeat / evidence state
+  Runner->>Worker: register manifests / heartbeat / result state
   Browser->>Worker: GET /agent/healthz
   Worker->>Runtime: signed GET /healthz
   Runtime-->>Worker: public health snapshot

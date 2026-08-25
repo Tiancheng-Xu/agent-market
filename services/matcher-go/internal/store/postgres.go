@@ -37,7 +37,7 @@ FOR SHARE`
 
 const recallSQL = `
 WITH target AS MATERIALIZED (
-  SELECT embedding, requirements, budget_atomic
+  SELECT embedding, requirements, budget_atomic, category, tags
   FROM agent_market.tasks
   WHERE id = $1 AND request_id = $2
     AND status = 'matching'
@@ -51,16 +51,33 @@ WITH target AS MATERIALIZED (
     AND a.embedding IS NOT NULL
     AND vector_norm(a.embedding) > 0
     AND a.capabilities @> t.requirements
+    AND (t.category = '' OR t.category = ANY(a.categories))
+    AND a.tags @> t.tags
     AND t.budget_atomic >= a.minimum_budget_atomic
 )
 SELECT
   id::text,
+  COALESCE(NULLIF(model_tag, ''), id::text) AS model_tag,
   (1 - (embedding <=> task_embedding))::double precision AS semantic_score,
   quality_score::double precision,
   reliability_score::double precision,
   price_score::double precision,
   freshness_score::double precision,
-  (completed_tasks = 0) AS is_newcomer
+  (completed_tasks = 0) AS is_newcomer,
+  COALESCE((
+    SELECT jsonb_agg(
+      jsonb_build_object('score', recent.score, 'occurredAt', recent.occurred_at)
+      ORDER BY recent.occurred_at DESC
+    )
+    FROM (
+      SELECT score, occurred_at
+      FROM agent_market.agent_score_events
+      WHERE agent_id = eligible.id
+        AND occurred_at >= NOW() - INTERVAL '90 days'
+      ORDER BY occurred_at DESC
+      LIMIT 20
+    ) AS recent
+  ), '[]'::jsonb)::text AS score_events_json
 FROM eligible
 ORDER BY embedding <=> task_embedding, id
 LIMIT $3`
@@ -194,8 +211,20 @@ func scanCandidates(rows rowIterator) ([]ranking.Candidate, error) {
 	candidates := make([]ranking.Candidate, 0)
 	for rows.Next() {
 		candidate := ranking.Candidate{Eligible: true}
-		if err := rows.Scan(&candidate.ID, &candidate.Semantic, &candidate.Quality, &candidate.Reliability, &candidate.Price, &candidate.Freshness, &candidate.IsNewcomer); err != nil {
+		var scoreEventsJSON string
+		if err := rows.Scan(&candidate.ID, &candidate.ModelTag, &candidate.Semantic, &candidate.Quality, &candidate.Reliability, &candidate.Price, &candidate.Freshness, &candidate.IsNewcomer, &scoreEventsJSON); err != nil {
 			return nil, fmt.Errorf("scan match candidate: %w", err)
+		}
+		var scoreEvents []struct {
+			Score      float64   `json:"score"`
+			OccurredAt time.Time `json:"occurredAt"`
+		}
+		if err := json.Unmarshal([]byte(scoreEventsJSON), &scoreEvents); err != nil {
+			return nil, fmt.Errorf("decode match candidate score events: %w", err)
+		}
+		candidate.ScoreEvents = make([]ranking.ScoreEvent, 0, len(scoreEvents))
+		for _, event := range scoreEvents {
+			candidate.ScoreEvents = append(candidate.ScoreEvents, ranking.ScoreEvent{Score: event.Score, OccurredAt: event.OccurredAt})
 		}
 		candidates = append(candidates, candidate)
 	}

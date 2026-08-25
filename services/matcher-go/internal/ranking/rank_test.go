@@ -4,6 +4,7 @@ import (
 	"math"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestSelectUsesFixedWeightsAndClampsScores(t *testing.T) {
@@ -59,6 +60,50 @@ func TestSelectReturnsActualCountWithoutPadding(t *testing.T) {
 	want := []string{"only"}
 	if !reflect.DeepEqual(candidateIDs(got), want) {
 		t.Fatalf("ids = %v, want %v", candidateIDs(got), want)
+	}
+}
+
+func TestDecayedQualityUsesRecentBoundedWindow(t *testing.T) {
+	now := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	score := DecayedQualityScore([]ScoreEvent{
+		{Score: 1, OccurredAt: time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)},
+		{Score: .8, OccurredAt: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)},
+		{Score: .2, OccurredAt: time.Date(2026, 8, 22, 0, 0, 0, 0, time.UTC)},
+	}, now)
+	if score <= .2 || score >= .5 {
+		t.Fatalf("decayed score = %f, want recent-weighted score between .2 and .5", score)
+	}
+	if initial := DecayedQualityScore([]ScoreEvent{}, now); initial != .3 {
+		t.Fatalf("initial score = %f, want .3", initial)
+	}
+}
+
+func TestSelectUsesOnlyFourCandidatePoolAndReturnsThree(t *testing.T) {
+	candidates := []Candidate{
+		{ID: "stable-a", ModelTag: "model-a", Semantic: 1, Quality: 1, Reliability: 1, Price: 1, Freshness: 1, Eligible: true},
+		{ID: "stable-b", ModelTag: "model-b", Semantic: .9, Quality: .9, Reliability: .9, Price: .9, Freshness: .9, Eligible: true},
+		{ID: "stable-c", ModelTag: "model-c", Semantic: .8, Quality: .8, Reliability: .8, Price: .8, Freshness: .8, Eligible: true},
+		{ID: "explore", ModelTag: "model-new", Semantic: .7, Quality: .7, Reliability: .7, Price: .7, Freshness: .7, IsNewcomer: true, Eligible: true},
+		{ID: "outside-pool", ModelTag: "model-outside", Semantic: .6, Quality: .6, Reliability: .6, Price: .6, Freshness: .6, IsNewcomer: true, Eligible: true},
+	}
+
+	got := Select(candidates, "request-four", "model-v1")
+	want := []string{"stable-a", "stable-b", "explore"}
+	if !reflect.DeepEqual(candidateIDs(got), want) {
+		t.Fatalf("ids = %v, want %v", candidateIDs(got), want)
+	}
+}
+
+func TestSelectDeduplicatesCandidatesBackedByTheSameModel(t *testing.T) {
+	candidates := []Candidate{
+		{ID: "same-a", ModelTag: "shared-model", Semantic: 1, Quality: 1, Reliability: 1, Price: 1, Freshness: 1, Eligible: true},
+		{ID: "same-b", ModelTag: "shared-model", Semantic: .9, Quality: .9, Reliability: .9, Price: .9, Freshness: .9, Eligible: true},
+		{ID: "other", ModelTag: "other-model", Semantic: .8, Quality: .8, Reliability: .8, Price: .8, Freshness: .8, Eligible: true},
+	}
+
+	got := Select(candidates, "request-model", "model-v1")
+	if !reflect.DeepEqual(candidateIDs(got), []string{"same-a", "other"}) {
+		t.Fatalf("ids = %v, want distinct models", candidateIDs(got))
 	}
 }
 

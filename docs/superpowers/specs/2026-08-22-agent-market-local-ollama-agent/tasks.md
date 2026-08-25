@@ -4,7 +4,8 @@
 - [x] T2：实现 loopback-only Ollama client、DeepSeek/Kimi/Qwen/Zhipu provider API client、模型自动发现、owner-trained/third-party adapter、超时取消和安全 metadata。
 - [x] T3：实现 HMAC 签名/验签、重放保护、控制面 HTTP client、幂等 runner、heartbeat/offline 和 mock 全链测试。
 - [x] T4：新增 `/agents/local` 双语响应式页面，把 `personal-ai-agent-runtime:v4.1` 设为默认本地 Agent，并展示 DeepSeek/Kimi/Qwen/Zhipu provider API 节点；浏览器不直连 Ollama 或 provider key。
-- [x] T4b：按 C 方案新增 Live Chat 协议、Worker `/agent/chat`/`/agent/healthz`、Local Stream Runtime 和 Mastra-style playground。
+- [x] T4b：按 C 方案新增 Live Chat 协议、Worker `/agent/chat`/`/agent/healthz`、Local Stream Runtime 和工作流 playground。
+- [x] T4c：移除 Mastra 运行依赖，以纯 LangGraph 承担状态边界；实现 Amend → Confirm → Start → Lock，并在页面提供节点标题编辑与节点 Agent 候选下拉选择。
 - [ ] T5：生成架构图、时序图、manifest 与 mock/真实 smoke Evidence；运行一次默认模型真实本机调用并保留诚实边界。
 - [ ] T6：完成全仓 QA、敏感内容扫描、375/390/430/1440、Repository Policy、PR 与 Preview；生产保持 manual-pending。
 - [ ] T7（二期）：用户手动添加 Agent registry。真实注册表写控制面数据库（优先 D1，必要时 PostgreSQL），浏览器只保存表单草稿、最近选择和 UI cache；API key、模型权重、私有 endpoint 不进入浏览器存储或公开 Evidence。

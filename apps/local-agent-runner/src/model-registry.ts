@@ -1,4 +1,4 @@
-import { AgentManifestSchema, type AgentManifest } from "@agent-market/shared-contracts";
+import { AgentManifestSchema, OwnerTrainedModels, type AgentManifest } from "@agent-market/shared-contracts";
 
 import type { RunnerConfig } from "./config";
 import { isModelAllowed } from "./config";
@@ -54,20 +54,23 @@ export function ollamaMetadataToManifest(
   }
 
   const details = { ...tag.details, ...show.details };
-  const capabilities = toCompletionCapabilities(show.capabilities ?? tag.capabilities);
-  const isOwnerModel = tag.name === config.defaultOwnerModel && tag.digest === config.defaultOwnerModelDigest;
-  if (tag.name === config.defaultOwnerModel && !isOwnerModel) {
+  const ownerModel = OwnerTrainedModels.find((model) => model.tag === tag.name);
+  const isOwnerModel = ownerModel !== undefined && tag.digest === ownerModel.digest;
+  if (ownerModel !== undefined && !isOwnerModel) {
     return undefined;
   }
-  const digest = isOwnerModel ? config.defaultOwnerModelDigest : tag.digest;
+  const capabilities = ownerModel === undefined
+    ? toCompletionCapabilities(show.capabilities ?? tag.capabilities)
+    : [...ownerModel.capabilities];
+  const digest = ownerModel?.digest ?? tag.digest;
 
   if (digest === undefined || !/^[0-9a-f]{64}$/.test(digest)) {
     return undefined;
   }
 
   return AgentManifestSchema.parse({
-    id: slugify(tag.name),
-    displayName: toDisplayName(tag.name),
+    id: ownerModel?.id ?? slugify(tag.name),
+    displayName: ownerModel?.displayName ?? toDisplayName(tag.name),
     ownership: isOwnerModel ? "owner-trained" : "third-party/local-served",
     provider: "ollama",
     capabilities,
@@ -75,14 +78,15 @@ export function ollamaMetadataToManifest(
     model: {
       tag: tag.name,
       digest,
-      parentModel: readNonEmpty(details.parent_model) ?? readString(show.model_info, "general.basename"),
-      family: details.family ?? readString(show.model_info, "general.architecture") ?? "pending metadata",
-      parameterSize: details.parameter_size ?? "pending metadata",
-      quantization: details.quantization_level ?? "pending metadata",
-      contextLength: details.context_length ?? readPositiveInteger(show.model_info, "llama.context_length") ?? 4096,
+      parentModel: ownerModel?.parentModel ?? readNonEmpty(details.parent_model) ?? readString(show.model_info, "general.basename"),
+      ...(ownerModel?.revision === undefined ? {} : { revision: ownerModel.revision }),
+      family: ownerModel?.family ?? details.family ?? readString(show.model_info, "general.architecture") ?? "pending metadata",
+      parameterSize: ownerModel?.parameterSize ?? details.parameter_size ?? "pending metadata",
+      quantization: ownerModel?.quantization ?? details.quantization_level ?? "pending metadata",
+      contextLength: ownerModel?.contextLength ?? details.context_length ?? readPositiveInteger(show.model_info, "llama.context_length") ?? 4096,
       embeddingLength: details.embedding_length ?? readPositiveInteger(show.model_info, "llama.embedding_length"),
-      source: isOwnerModel ? "owner-trained" : "local-served via Ollama",
-      license: show.license ?? "pending metadata",
+      source: ownerModel?.source ?? "local-served via Ollama",
+      license: ownerModel?.license ?? show.license ?? "pending metadata",
     },
     health: {
       status: "online",

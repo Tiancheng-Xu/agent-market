@@ -49,6 +49,7 @@ export const AssignmentStatusSchema = z.enum([
 
 export const QueenMutationNameSchema = z.enum([
   "ProposeTaskGraph",
+  "AmendTaskGraph",
   "RankNodeAgents",
   "SelectNodeAgent",
   "AcceptNodeAssignment",
@@ -142,10 +143,16 @@ export const TaskGraphSchema = z.strictObject({
   }
 });
 
+const AgentScoreEventSchema = z.strictObject({
+  score: z.number().min(0).max(1),
+  occurredAt: z.string().datetime(),
+});
+
 export const AgentCandidateSchema = z.strictObject({
   agentId: z.string().min(1).max(160),
   displayName: z.string().min(1).max(160),
   capabilities: z.array(z.string().min(1).max(80)).min(1).max(24),
+  categories: z.array(z.string().min(1).max(80)).max(16).optional(),
   tags: z.array(z.string().min(1).max(80)).max(32).default([]),
   license: z.string().min(1).max(160).optional(),
   provider: z.enum(["ollama", "deepseek", "kimi", "qwen", "zhipu", "codex", "custom"]),
@@ -155,6 +162,7 @@ export const AgentCandidateSchema = z.strictObject({
   costPer1kTokensUsd: z.number().nonnegative(),
   latencyMs: z.number().int().nonnegative().optional(),
   qualityScore: z.number().min(0).max(1),
+  scoreEvents: z.array(AgentScoreEventSchema).max(100).optional(),
   firstSeenAt: z.string().datetime().optional(),
   modelTag: z.string().min(1).max(160),
   modelDigest: z.union([z.string().regex(/^[0-9a-f]{64}$/), z.literal("provider-managed"), z.literal("local-private")]),
@@ -179,6 +187,7 @@ export const QueenWorkflowEventSchema = z.strictObject({
   graphRevision: z.number().int().positive(),
   eventType: z.enum([
     "graph_proposed",
+    "graph_amended",
     "agents_ranked",
     "agent_selected",
     "assignment_accepted",

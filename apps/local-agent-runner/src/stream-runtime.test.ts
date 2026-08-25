@@ -222,37 +222,49 @@ describe("local stream runtime", () => {
       signingKey,
       now,
     });
-    const proposedBody = JSON.stringify({
-      query: "mutation ProposeTaskGraph($input: ProposeTaskGraphInput!) { proposeTaskGraph(input: $input) { taskId } }",
-      operationName: "ProposeTaskGraph",
-      variables: { input: { requirement: "Build workflow", queenAgentId: "queen-router-v1" } },
-    });
-    const proposedHeaders = signRequest("POST", "/graphql", proposedBody, { key: signingKey, now, nonce: () => "nonce-propose-exec" });
-    const proposed = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(proposedHeaders) },
-      body: proposedBody,
-    }));
-    const proposedPayload = await proposed.json();
-    const submitBody = JSON.stringify({
-      query: "mutation SubmitNodeOutput($input: SubmitNodeOutputInput!) { submitNodeOutput(input: $input) { output } }",
-      operationName: "SubmitNodeOutput",
-      variables: {
-        input: {
-          taskId: proposedPayload.data.proposeTaskGraph.taskId,
-          nodeId: "execute-1",
-          executorAgentId: "personal-ai-agent-runtime-v4-1",
-        },
-      },
-    });
-    const submitHeaders = signRequest("POST", "/graphql", submitBody, { key: signingKey, now, nonce: () => "nonce-submit-exec" });
-
-    const response = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(submitHeaders) },
-      body: submitBody,
-    }));
-    const payload = await response.json();
+    let nonceIndex = 0;
+    const mutateRuntime = async (operationName: string, query: string, input: Record<string, unknown>) => {
+      const body = JSON.stringify({ query, operationName, variables: { input } });
+      const signed = signRequest("POST", "/graphql", body, {
+        key: signingKey,
+        now,
+        nonce: () => `nonce-runtime-${operationName}-${nonceIndex++}`,
+      });
+      const response = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(signed) },
+        body,
+      }));
+      return response.json();
+    };
+    const proposedPayload = await mutateRuntime(
+      "ProposeTaskGraph",
+      "mutation ProposeTaskGraph($input: ProposeTaskGraphInput!) { proposeTaskGraph(input: $input) { taskId nodes { nodeId required } } }",
+      { requirement: "Build workflow", queenAgentId: "queen-router-v1" },
+    );
+    const taskId = proposedPayload.data.proposeTaskGraph.taskId;
+    for (const node of proposedPayload.data.proposeTaskGraph.nodes.filter((item: { required: boolean }) => item.required)) {
+      await mutateRuntime(
+        "AcceptNodeAssignment",
+        "mutation AcceptNodeAssignment($input: AcceptNodeAssignmentInput!) { acceptNodeAssignment(input: $input) { status } }",
+        { taskId, nodeId: node.nodeId, agentId: "personal-ai-agent-runtime-v4-1" },
+      );
+    }
+    await mutateRuntime(
+      "ConfirmTaskGraph",
+      "mutation ConfirmTaskGraph($input: ConfirmTaskGraphInput!) { confirmTaskGraph(input: $input) { confirmationStatus } }",
+      { taskId },
+    );
+    await mutateRuntime(
+      "StartTaskRun",
+      "mutation StartTaskRun($input: StartTaskRunInput!) { startTaskRun(input: $input) { status } }",
+      { taskId },
+    );
+    const payload = await mutateRuntime(
+      "SubmitNodeOutput",
+      "mutation SubmitNodeOutput($input: SubmitNodeOutputInput!) { submitNodeOutput(input: $input) { output } }",
+      { taskId, nodeId: "execute-1", executorAgentId: "personal-ai-agent-runtime-v4-1" },
+    );
 
     expect(payload.data.submitNodeOutput.output).toBe("runtime executor output");
   });

@@ -27,11 +27,12 @@ describe("full delivery chain evidence", () => {
     expect(markup).toContain('decoding="async"');
   });
 
-  it("mounts the complete chain exactly once on the interactive Evidence route", () => {
+  it("mounts only the V3 business architecture on the interactive Evidence route", () => {
     const main = readFileSync(new URL("../main.tsx", import.meta.url), "utf8");
     const page = readFileSync(new URL("../pages/EvidencePage.tsx", import.meta.url), "utf8");
     expect(main).not.toContain("FullChainEvidence");
-    expect(page.match(/<FullChainEvidence\s*\/>/g)).toHaveLength(1);
+    expect(page).not.toContain("FullChainEvidence");
+    expect(page.match(/file: "agent-market-v3-workflow"/g)).toHaveLength(1);
   });
 
   it("keeps traceability columns readable inside a contained horizontal scroller", () => {

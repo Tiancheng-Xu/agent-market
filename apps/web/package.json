@@ -7,6 +7,8 @@
     "build": "node ../../scripts/generate-public-evidence.mjs && tsc -p tsconfig.json && node scripts/build-pages.mjs",
     "check": "pnpm typecheck",
     "dev": "node ../../scripts/generate-public-evidence.mjs && vite",
+    "dev:full": "node ../../scripts/dev-agent-market-local.mjs",
+    "preview:worker": "pnpm build && wrangler dev --local --port 4173 --compatibility-date 2026-07-29",
     "test": "vitest run",
     "typecheck": "node ../../scripts/generate-public-evidence.mjs && tsc -p tsconfig.json"
   },

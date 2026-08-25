@@ -27,7 +27,7 @@ export function LanguageProvider({ children, storage }: PropsWithChildren<{ stor
 }
 export function useLanguage(): LanguageValue { return useContext(LanguageContext); }
 
-const stringProps = new Set(["aria-label", "description", "eyebrow", "label", "note", "placeholder", "title"]);
+const stringProps = new Set(["alt", "aria-label", "description", "eyebrow", "label", "note", "placeholder", "title"]);
 function localizeNode(node: ReactNode, locale: Locale, path = "root"): ReactNode {
   if (typeof node === "string") return translateVisibleText(locale, node);
   if (Array.isArray(node)) {

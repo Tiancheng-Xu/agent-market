@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AgentCandidate } from "@agent-market/shared-contracts";
 
-import { rankAgentCandidates } from "./queen-ranking";
+import { computeDecayedQualityScore, rankAgentCandidates, selectThreeFromFour } from "./queen-ranking";
 
 describe("queen agent ranking", () => {
   it("prioritizes lower cost after capability match and minimum quality", () => {
@@ -114,6 +114,79 @@ describe("queen agent ranking", () => {
     expect(ranked.map((item) => item.agentId)).toEqual(["new-model"]);
     expect(ranked[0]!.rankingReasons).toContain("new-model-exploration");
     expect(ranked[0]!.rankingReasons).toContain("tags:new-model|fast-draft");
+  });
+
+  it("hard-filters by task category and every required tag before scoring", () => {
+    const ranked = rankAgentCandidates({
+      nodeType: "execute",
+      category: "code",
+      requiredTags: ["typescript", "frontend"],
+      requiredCapabilities: ["completion"],
+      now: new Date("2026-08-22T12:00:00.000Z"),
+      candidates: [
+        candidate("exact", { categories: ["code"], tags: ["typescript", "frontend"], costPer1kTokensUsd: 0.01, qualityScore: 0.7 }),
+        candidate("wrong-category", { categories: ["research"], tags: ["typescript", "frontend"], costPer1kTokensUsd: 0, qualityScore: 0.99 }),
+        candidate("missing-tag", { categories: ["code"], tags: ["typescript"], costPer1kTokensUsd: 0, qualityScore: 0.99 }),
+      ],
+    });
+
+    expect(ranked.map((item) => item.agentId)).toEqual(["exact"]);
+    expect(ranked[0]!.rankingReasons).toContain("category:code");
+    expect(ranked[0]!.rankingReasons).toContain("required-tags:typescript|frontend");
+  });
+
+  it("computes quality from a bounded event window with exponential time decay", () => {
+    const score = computeDecayedQualityScore(
+      candidate("history", {
+        costPer1kTokensUsd: 0.01,
+        qualityScore: 0.99,
+        scoreEvents: [
+          { score: 1, occurredAt: "2026-06-01T00:00:00.000Z" },
+          { score: 0.8, occurredAt: "2026-08-01T00:00:00.000Z" },
+          { score: 0.2, occurredAt: "2026-08-22T00:00:00.000Z" },
+        ],
+      }),
+      new Date("2026-08-22T12:00:00.000Z"),
+    );
+
+    expect(score).toBeGreaterThan(0.2);
+    expect(score).toBeLessThan(0.5);
+  });
+
+  it("selects three distinct models from the top four and reserves exploration when needed", () => {
+    const selected = selectThreeFromFour({
+      nodeType: "execute",
+      requiredCapabilities: ["completion"],
+      now: new Date("2026-08-22T12:00:00.000Z"),
+      candidates: [
+        candidate("stable-a", { costPer1kTokensUsd: 0.001, qualityScore: 0.91 }),
+        candidate("stable-b", { costPer1kTokensUsd: 0.002, qualityScore: 0.88 }),
+        candidate("stable-c", { costPer1kTokensUsd: 0.003, qualityScore: 0.86 }),
+        candidate("new-agent", { costPer1kTokensUsd: 0.004, qualityScore: 0.3, firstSeenAt: "2026-08-22T00:00:00.000Z", scoreEvents: [] }),
+        candidate("outside-pool", { costPer1kTokensUsd: 0.05, qualityScore: 0.99 }),
+      ],
+    });
+
+    expect(selected).toHaveLength(3);
+    expect(selected.map((item) => item.agentId)).toEqual(["stable-a", "stable-b", "new-agent"]);
+    expect(new Set(selected.map((item) => item.modelTag)).size).toBe(3);
+  });
+
+  it("allows owner-only candidates only under an authenticated owner scope", () => {
+    const ownerCandidate = candidate("local-owner", {
+      selectableBy: "owner-only",
+      costPer1kTokensUsd: 0,
+      qualityScore: 0.8,
+    });
+    const baseInput = {
+      nodeType: "execute" as const,
+      requiredCapabilities: ["completion"],
+      now: new Date("2026-08-22T12:00:00.000Z"),
+      candidates: [ownerCandidate],
+    };
+
+    expect(rankAgentCandidates({ ...baseInput, callerScope: "public" })).toEqual([]);
+    expect(rankAgentCandidates({ ...baseInput, callerScope: "owner" }).map((item) => item.agentId)).toEqual(["local-owner"]);
   });
 });
 
