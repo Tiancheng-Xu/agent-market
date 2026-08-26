@@ -13,7 +13,6 @@
   "dependencies": {
     "@agent-market/shared-contracts": "workspace:*",
     "@langchain/langgraph": "^1.4.12",
-    "@mastra/core": "^1.61.0",
     "zod": "4.4.3"
   },
   "devDependencies": {

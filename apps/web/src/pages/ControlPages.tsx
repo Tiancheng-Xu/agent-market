@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Badge, DemoNotice, PageHeader, Panel, Stat } from "../components/Ui";
 import { Localized } from "../i18n/LanguageProvider";
 
@@ -5,8 +7,11 @@ export function DashboardPage() {
   return <Localized><><PageHeader eyebrow="MULTI-ROLE DASHBOARD" title="One view across work and settlement" description="Fixture cards demonstrate the publisher, agent, and committee perspectives without claiming deployed activity." /><DemoNotice /><div className="stats-grid"><Stat label="Draft tasks" value="2" note="Local fixture" /><Stat label="Active agents" value="1" note="Local fixture" tone="cyan" /><Stat label="Verified transactions" value="0" note="External evidence required" tone="amber" /></div><div className="two-column"><Panel><h2>My work</h2><div className="activity-list"><div><Badge tone="cyan">WORKING</Badge><strong>Normalize product feedback</strong><span>Submission due in 24 hours</span></div><div><Badge tone="neutral">DRAFT</Badge><strong>Research market brief</strong><span>Escrow not submitted</span></div></div></Panel><Panel><h2>Request trace lookup</h2><input placeholder="Paste a request ID" /><button className="button button-ghost">Lookup unavailable offline</button><p className="muted">Production lookup will correlate API, event, match, training, and transaction records.</p></Panel></div></></Localized>;
 }
 
-export function CommitteePage() {
-  return <Localized><><PageHeader eyebrow="ARBITRATION COMMITTEE" title="Conflict-aware case queue" description="Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary." /><DemoNotice /><div className="committee-grid"><Panel className="seat-card"><Badge tone="amber">ACTION REQUIRED</Badge><h2>Case assignment demo</h2><p>Review relationships before opening the evidence packet.</p><button className="button button-primary">Declare no conflict</button></Panel><Panel className="seat-card"><Badge tone="neutral">NO TASKS</Badge><h2>Replacement queue</h2><p>No externally verified cases are assigned.</p></Panel><Panel className="seat-card"><Badge tone="cyan">RULE</Badge><h2>2 of 3</h2><p>A ruling forms immediately when either outcome reaches two valid votes.</p></Panel></div></></Localized>;
+export function CommitteePage({ initialConflictStatus = "pending" }: { initialConflictStatus?: "pending" | "declared" } = {}) {
+  const [conflictStatus, setConflictStatus] = useState(initialConflictStatus);
+  const declared = conflictStatus === "declared";
+
+  return <Localized><><PageHeader eyebrow="ARBITRATION COMMITTEE" title="Conflict-aware case queue" description="Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary." /><DemoNotice /><div className="committee-grid"><Panel className="seat-card"><Badge tone={declared ? "cyan" : "amber"}>{declared ? "DECLARATION RECORDED" : "ACTION REQUIRED"}</Badge><h2>Case assignment demo</h2><p role="status" aria-live="polite">{declared ? "Conflict declaration recorded locally. No vote or blockchain transaction was submitted." : "Review relationships before opening the evidence packet."}</p><button type="button" className="button button-primary" disabled={declared} onClick={() => setConflictStatus("declared")}>{declared ? "No conflict declared" : "Declare no conflict"}</button></Panel><Panel className="seat-card"><Badge tone="neutral">NO TASKS</Badge><h2>Replacement queue</h2><p>No externally verified cases are assigned.</p></Panel><Panel className="seat-card"><Badge tone="cyan">RULE</Badge><h2>2 of 3</h2><p>A ruling forms immediately when either outcome reaches two valid votes.</p></Panel></div></></Localized>;
 }
 
 export function OpsPage() {

@@ -1,0 +1,65 @@
+{
+  "recordedAt": "2026-08-25",
+  "environment": "local-preview",
+  "browser": "external-google-chrome",
+  "capture": {
+    "file": "apps/web/public/evidence/agent-market-v3-full-workflow.mp4",
+    "poster": "apps/web/public/evidence/agent-market-v3-full-workflow-poster.png",
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 15,
+    "durationSeconds": 506.533333,
+    "sha256": "e8467cff1396da4ba3ab61c71b9f56004286035a3fa99f81b96611346d732174",
+    "posterSha256": "d11d12d966e4542556cde41d78031dfff74d21143900b3b9fcdc3067798463fb"
+  },
+  "observed": [
+    {
+      "node": "wallet_connection",
+      "status": "completed-local",
+      "detail": "MetaMask Account 1 connected on Sepolia; no signature or transaction was submitted."
+    },
+    {
+      "node": "agent_registry",
+      "status": "completed-local",
+      "detail": "A free HTTPS Agent metadata record was saved to the wallet-scoped browser registry and a duplicate record was removed."
+    },
+    {
+      "node": "task_publish_preview",
+      "status": "completed-local",
+      "detail": "Draft validation and transaction-state preview completed; the UI explicitly reported that no wallet transaction was sent."
+    },
+    {
+      "node": "graphql_dag",
+      "status": "started-non-terminal",
+      "detail": "A six-node DAG was generated, revised manually, and started. Execute used Kimi K2.7 Code and Judge used Kimi K2.7 Code Highspeed. The run remained running beyond the bounded observation window."
+    },
+    {
+      "node": "dashboard",
+      "status": "displayed-demo-data",
+      "detail": "The dashboard explicitly identified fixture data and unavailable offline request lookup."
+    },
+    {
+      "node": "staking",
+      "status": "calculator-only",
+      "detail": "The linear 6 percent test-yield calculator reacted to slider input; the transaction action remained disabled."
+    },
+    {
+      "node": "committee",
+      "status": "missing-visible-feedback",
+      "detail": "The conflict declaration control was clicked but produced no visible status change."
+    },
+    {
+      "node": "operations",
+      "status": "read-only",
+      "detail": "The page identified local-only readiness and unavailable external telemetry."
+    }
+  ],
+  "truthBoundary": {
+    "productionVerifiedByThisRecording": false,
+    "awsVerifiedByThisRecording": false,
+    "sepoliaTransactionSubmitted": false,
+    "workflowTerminalSuccessObserved": false,
+    "secretsPublished": false
+  }
+}

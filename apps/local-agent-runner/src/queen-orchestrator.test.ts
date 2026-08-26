@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AgentCandidate, QueenMutationName } from "@agent-market/shared-contracts";
 
 import { createQueenOrchestrator } from "./queen-orchestrator";
+import { createQueenFrameworkRuntime } from "./queen-workflow-runtime";
 
 const now = () => new Date("2026-08-22T12:00:00.000Z");
 
@@ -57,12 +58,90 @@ describe("queen orchestrator state machine", () => {
     expect(started.data.startTaskRun.reasonCode).toBe("ASSIGNMENT_NOT_ACCEPTED");
   });
 
+  it("blocks start until the current graph and accepted assignments are confirmed", async () => {
+    const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1" });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+    const taskId = proposed.data.proposeTaskGraph.taskId;
+    await acceptRequiredAssignments(orchestrator, proposed.data.proposeTaskGraph);
+
+    const started = await mutate(orchestrator, "StartTaskRun", { taskId });
+
+    expect(started.data.startTaskRun).toMatchObject({
+      taskId,
+      status: "blocked",
+      reasonCode: "GRAPH_NOT_CONFIRMED",
+    });
+  });
+
+  it("amends before confirmation, then locks graph and assignments at confirmation", async () => {
+    const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1" });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+    const graph = proposed.data.proposeTaskGraph;
+    await acceptRequiredAssignments(orchestrator, graph);
+
+    const amended = await mutate(orchestrator, "AmendTaskGraph", {
+      taskId: graph.taskId,
+      nodes: graph.nodes.map((node: { nodeId: string; title: string }) => (
+        node.nodeId === "execute-1" ? { ...node, title: "Execute revised scope" } : node
+      )),
+      edges: graph.edges,
+    });
+
+    expect(amended.data.amendTaskGraph).toMatchObject({
+      taskId: graph.taskId,
+      graphRevision: 2,
+      confirmationStatus: "pending",
+    });
+    expect(amended.data.amendTaskGraph.preservedAssignmentNodeIds).toEqual(
+      graph.nodes.filter((node: { required: boolean }) => node.required).map((node: { nodeId: string }) => node.nodeId),
+    );
+    await mutate(orchestrator, "ConfirmTaskGraph", { taskId: graph.taskId });
+
+    const lockedAmendment = await mutate(orchestrator, "AmendTaskGraph", {
+      taskId: graph.taskId,
+      nodes: amended.data.amendTaskGraph.nodes,
+      edges: amended.data.amendTaskGraph.edges,
+    });
+    expect(lockedAmendment.errors[0].message).toContain("locked after confirmation");
+  });
+
+  it("locks graph amendments after the task run starts", async () => {
+    const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1" });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+    const graph = proposed.data.proposeTaskGraph;
+    await acceptRequiredAssignments(orchestrator, graph);
+    await mutate(orchestrator, "ConfirmTaskGraph", { taskId: graph.taskId });
+    const started = await mutate(orchestrator, "StartTaskRun", { taskId: graph.taskId });
+
+    const amended = await mutate(orchestrator, "AmendTaskGraph", {
+      taskId: graph.taskId,
+      nodes: graph.nodes,
+      edges: graph.edges,
+    });
+
+    expect(started.data.startTaskRun.status).toBe("running");
+    expect(amended.errors[0]).toMatchObject({
+      extensions: { code: "STATE_ERROR" },
+    });
+    expect(amended.errors[0].message).toContain("locked");
+  });
+
   it("rejects judge self-review and final arbitration by Queen", async () => {
     const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1" });
     const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
       requirement: "Write a simple implementation plan",
       queenAgentId: "queen-router-v1",
     });
+    await startGraph(orchestrator, proposed.data.proposeTaskGraph);
     await mutate(orchestrator, "SubmitNodeOutput", {
       taskId: proposed.data.proposeTaskGraph.taskId,
       nodeId: "execute-1",
@@ -93,6 +172,7 @@ describe("queen orchestrator state machine", () => {
       requirement: "Write a simple implementation plan",
       queenAgentId: "queen-router-v1",
     });
+    await startGraph(orchestrator, proposed.data.proposeTaskGraph);
     await mutate(orchestrator, "SubmitNodeOutput", {
       taskId: proposed.data.proposeTaskGraph.taskId,
       nodeId: "execute-1",
@@ -137,6 +217,7 @@ describe("queen orchestrator state machine", () => {
       queenAgentId: "queen-router-v1",
     });
     const taskId = proposed.data.proposeTaskGraph.taskId;
+    await startGraph(orchestrator, proposed.data.proposeTaskGraph);
 
     const submitted = await mutate(orchestrator, "SubmitNodeOutput", {
       taskId,
@@ -166,7 +247,9 @@ describe("queen orchestrator state machine", () => {
     expect(submitted.data.submitNodeOutput.output).toBe("executor output");
     expect(judged.data.judgeNodeOutput).toMatchObject({ verdict: "needs_revision", score: 0.52, redTeamRequired: true });
     expect(redTeamed.data.requestAdversarialReview.findings).toBe("finding: missing evidence");
+    expect(redTeamed.data.requestAdversarialReview).toMatchObject({ reviewNodeId: "red_team-execute-1-1", graphRevision: 2 });
     expect(repaired.data.repairNode.output).toBe("repair output");
+    expect(repaired.data.repairNode).toMatchObject({ repairNodeId: "repair-execute-1-1", graphRevision: 3 });
     expect(final.data.finalArbitrate.finalOutput).toBe("final approved output");
     expect(executeAgentText.mock.calls.map(([request]) => request.role)).toEqual([
       "executor",
@@ -177,8 +260,8 @@ describe("queen orchestrator state machine", () => {
     ]);
   });
 
-  it("runs Queen mutations through the Mastra/LangGraph framework boundary", async () => {
-    const frameworkRuntime = { mastra: {} as any, execute: vi.fn(async (input) => ({ ...input, runtime: { mastra: "registered", langGraph: "compiled" }, stages: ["test"] })) };
+  it("runs Queen mutations through the injected framework boundary", async () => {
+    const frameworkRuntime = { execute: vi.fn(async (input) => ({ ...input, stages: ["test"] })) };
     const orchestrator = createQueenOrchestrator({
       agents: agents(),
       now,
@@ -195,6 +278,22 @@ describe("queen orchestrator state machine", () => {
       operationName: "ProposeTaskGraph",
       stages: [],
     }));
+  });
+
+  it("routes graph amendments through the pure LangGraph policy boundary", async () => {
+    const runtime = createQueenFrameworkRuntime();
+
+    const result = await runtime.execute({
+      operationName: "AmendTaskGraph",
+      stages: [],
+    });
+
+    expect(result.operationPolicy).toBe("graph-management");
+    expect(result.stages).toEqual([
+      "langgraph:normalize",
+      "langgraph:graph-management",
+      "langgraph:policy-check",
+    ]);
   });
 
   it("rejects owner-only local agents from public workflow selection", async () => {
@@ -239,6 +338,29 @@ async function mutate(
     operationName,
     variables: { input },
   });
+}
+
+async function acceptRequiredAssignments(
+  orchestrator: ReturnType<typeof createQueenOrchestrator>,
+  graph: { taskId: string; nodes: Array<{ nodeId: string; required: boolean }> },
+): Promise<void> {
+  for (const node of graph.nodes.filter((candidate) => candidate.required)) {
+    await mutate(orchestrator, "AcceptNodeAssignment", {
+      taskId: graph.taskId,
+      nodeId: node.nodeId,
+      agentId: "cheap-executor",
+    });
+  }
+}
+
+async function startGraph(
+  orchestrator: ReturnType<typeof createQueenOrchestrator>,
+  graph: { taskId: string; nodes: Array<{ nodeId: string; required: boolean }> },
+): Promise<void> {
+  await acceptRequiredAssignments(orchestrator, graph);
+  await mutate(orchestrator, "ConfirmTaskGraph", { taskId: graph.taskId });
+  const started = await mutate(orchestrator, "StartTaskRun", { taskId: graph.taskId });
+  if (started.data.startTaskRun.status !== "running") throw new Error(`Failed to start graph ${graph.taskId}`);
 }
 
 function agents(): AgentCandidate[] {

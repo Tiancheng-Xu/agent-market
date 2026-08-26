@@ -7,12 +7,68 @@ const ModelIdentitySchema = z.strictObject({
   digest: ModelDigestSchema,
 });
 
-const OwnerTrainedModel = {
-  tag: "personal-ai-agent-runtime:v4.1",
-  digest: "2c422ec890241b8492e08d4ba69f79f25efcf8ae4220e83797d2df9cbc7eb52a",
-} as const;
+export const OwnerTrainedModels = [
+  {
+    id: "personal-ai-agent-runtime-v4-1",
+    displayName: "Personal AI Runtime v4.1",
+    tag: "personal-ai-agent-runtime:v4.1",
+    digest: "2c422ec890241b8492e08d4ba69f79f25efcf8ae4220e83797d2df9cbc7eb52a",
+    capabilities: ["completion", "thinking", "tools"],
+    parentModel: "personal-ai-agent:v4.1",
+    revision: undefined,
+    family: "qwen3",
+    parameterSize: "8.2B",
+    quantization: "Q4_K_M",
+    contextLength: 40960,
+    source: "owner-trained",
+    license: "pending metadata",
+  },
+  {
+    id: "personal-code-agent",
+    displayName: "Personal Code Agent",
+    tag: "personal-code-agent:v1",
+    digest: "4b9c60671fff53a198630f9aaf6b76d7d46c356359f41030f52e61f77f7b83bb",
+    capabilities: ["completion", "code-planning", "implementation-plan", "verification-gates", "structured-json", "local-runtime"],
+    parentModel: "Qwen3-8B",
+    revision: "b968826d9c46dd6066d109eabc6255188de91218",
+    family: "qwen3",
+    parameterSize: "8B",
+    quantization: "Q4_K_M",
+    contextLength: 8192,
+    source: "Tiancheng-Xu/personal-ai-agent",
+    license: "Apache-2.0",
+  },
+  {
+    id: "personal-image-agent",
+    displayName: "Personal Image Agent",
+    tag: "personal-image-agent:v1",
+    digest: "59de62829334d7d5e9c672ec0bcaaff4b14ed91e91ae9ce4511c20edd67facbb",
+    capabilities: ["completion", "image-brief", "asset-manifest", "visual-quality-gates", "structured-json", "local-runtime"],
+    parentModel: "Qwen3-8B",
+    revision: "b968826d9c46dd6066d109eabc6255188de91218",
+    family: "qwen3",
+    parameterSize: "8B",
+    quantization: "Q4_K_M",
+    contextLength: 8192,
+    source: "Tiancheng-Xu/personal-ai-agent",
+    license: "Apache-2.0",
+  },
+] as const;
 
-const CapabilitySchema = z.enum(["completion", "thinking", "tools", "embedding"]);
+const CapabilitySchema = z.enum([
+  "completion",
+  "thinking",
+  "tools",
+  "embedding",
+  "code-planning",
+  "implementation-plan",
+  "verification-gates",
+  "structured-json",
+  "local-runtime",
+  "image-brief",
+  "asset-manifest",
+  "visual-quality-gates",
+]);
 
 const ToolSchema = z.strictObject({
   name: z.string().min(1),
@@ -24,6 +80,7 @@ const AgentModelSchema = z.strictObject({
   tag: z.string().min(1),
   digest: ModelDigestSchema,
   parentModel: z.string().min(1).optional(),
+  revision: z.string().min(1).optional(),
   family: z.string().min(1),
   parameterSize: z.string().min(1),
   quantization: z.string().min(1),
@@ -88,14 +145,15 @@ export const AgentManifestSchema = z
     message: "Owner-trained agents must be served by the local Ollama adapter",
     path: ["provider"],
   })
-  .refine((value) => value.ownership !== "owner-trained" || value.model.tag === OwnerTrainedModel.tag, {
-    message: "Owner-trained ownership is reserved for the canonical trained model tag",
-    path: ["model", "tag"],
-  })
-  .refine((value) => value.ownership !== "owner-trained" || value.model.digest === OwnerTrainedModel.digest, {
-    message: "Owner-trained ownership is reserved for the canonical trained model digest",
-    path: ["model", "digest"],
-  })
+  .refine(
+    (value) =>
+      value.ownership !== "owner-trained" ||
+      OwnerTrainedModels.some((model) => model.tag === value.model.tag && model.digest === value.model.digest),
+    {
+      message: "Owner-trained ownership requires a registered model tag and digest pair",
+      path: ["model"],
+    },
+  )
   .refine((value) => value.provider !== "ollama" || value.access.selectableBy === "owner-only", {
     message: "Local Ollama agents are owner-only by default",
     path: ["access", "selectableBy"],

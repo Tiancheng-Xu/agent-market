@@ -27,12 +27,17 @@ export {
   AgentManifestSchema,
   AgentTaskLeaseSchema,
   AgentTaskResultSchema,
+  OwnerTrainedModels,
   SignedRequestHeadersSchema,
   type AgentManifest,
   type AgentTaskLease,
   type AgentTaskResult,
   type SignedRequestHeaders,
 } from "./local-agent";
+export {
+  AgentNodeExchangeSchema,
+  type AgentNodeExchange,
+} from "./agent-node-exchange";
 export {
   LiveAgentGraphqlRequestSchema,
   LiveAgentHealthSchema,

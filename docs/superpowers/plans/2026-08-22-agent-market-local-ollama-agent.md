@@ -102,7 +102,7 @@
 - [ ] Assert the browser bundle contains no `11434`, key material or private paths.
 - [ ] Run Web tests/typecheck/build and record T4 review/checkpoint.
 
-### Task 4b: Live Chat Data Plane and Mastra-style Playground
+### Task 4b: Live Chat Data Plane and Workflow Playground
 
 **Files:**
 - Create: `packages/shared-contracts/src/live-chat.ts`
@@ -116,7 +116,7 @@
 - Modify: `apps/web/src/styles.css`
 
 **Interfaces:**
-- Produces: reusable Chat Request, SSE Event, Health and Error contracts; Worker gateway; local runtime handler; Mastra-style live chat UI.
+- Produces: reusable Chat Request, SSE Event, Health and Error contracts; Worker gateway; local runtime handler; workflow live chat UI without a Mastra runtime dependency.
 - Consumes: Agent manifests, provider clients, Ollama loopback client and Worker runtime secrets.
 
 - [x] Freeze public-safe chat request, SSE event, health and error schemas.

@@ -3,6 +3,10 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Badge, PageHeader, Panel } from "../components/Ui";
 import { agentProviderLabel, publicAgentCatalog } from "../agentCatalog";
 import { Localized } from "../i18n/LanguageProvider";
+import { parseGraphqlResponse } from "../lib/graphqlResponse";
+import { listOwnerAgents, type OwnerAgentRecord } from "../ownerAgentRegistry";
+
+export { parseGraphqlResponse } from "../lib/graphqlResponse";
 
 type AgentId = string;
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -51,6 +55,7 @@ type QueenTaskGraphResult = {
   riskLevel: "low" | "medium" | "high";
   startPolicy: "auto" | "manualRequired";
   nodes: QueenTaskNode[];
+  edges: Array<{ from: string; to: string; condition?: "always" | "approved" | "needs_revision" | "rejected" }>;
   rescuePolicy: { mode: "auto"; visibleToUser: false; evidenceVisible: true };
 };
 type QueenRankResult = {
@@ -64,12 +69,14 @@ type QueenAssignmentResult = {
   status: string;
 };
 type QueenWorkflowState = {
-  status: "idle" | "proposing" | "ready" | "error";
+  status: "idle" | "proposing" | "ready" | "running" | "succeeded" | "error" | "cancelled";
   graph?: QueenTaskGraphResult;
+  activeNodeId?: string;
   log: string[];
 };
 
 const MAX_ORCHESTRATION_AGENTS = 3;
+const WORKFLOW_OPERATION_TIMEOUT_MS = 45_000;
 const ORCHESTRATE_AGENTS_MUTATION = `
 mutation OrchestrateAgents($input: AgentOrchestrationInput!) {
   orchestrateAgents(input: $input) {
@@ -91,6 +98,22 @@ mutation ProposeTaskGraph($input: ProposeTaskGraphInput!) {
     startPolicy
     rescuePolicy { mode visibleToUser evidenceVisible }
     nodes { nodeId type title dependencies required }
+    edges { from to condition }
+  }
+}
+`;
+const AMEND_TASK_GRAPH_MUTATION = `
+mutation AmendTaskGraph($input: AmendTaskGraphInput!) {
+  amendTaskGraph(input: $input) {
+    taskId
+    graphRevision
+    riskLevel
+    startPolicy
+    confirmationStatus
+    preservedAssignmentNodeIds
+    rescuePolicy { mode visibleToUser evidenceVisible }
+    nodes { nodeId type title dependencies required judgesNodeId repairsNodeId }
+    edges { from to condition }
   }
 }
 `;
@@ -110,6 +133,24 @@ mutation AcceptNodeAssignment($input: AcceptNodeAssignmentInput!) {
     nodeId
     selectedAgentId
     status
+  }
+}
+`;
+const SELECT_NODE_AGENT_MUTATION = `
+mutation SelectNodeAgent($input: SelectNodeAgentInput!) {
+  selectNodeAgent(input: $input) {
+    nodeId
+    selectedAgentId
+    status
+  }
+}
+`;
+const CONFIRM_TASK_GRAPH_MUTATION = `
+mutation ConfirmTaskGraph($input: ConfirmTaskGraphInput!) {
+  confirmTaskGraph(input: $input) {
+    taskId
+    graphRevision
+    confirmationStatus
   }
 }
 `;
@@ -197,7 +238,7 @@ const fallbackAgents: DisplayAgent[] = publicAgentCatalog.map((agent) => ({
   verification: agent.verification,
 }));
 
-export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow?: QueenWorkflowState } = {}) {
+export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: { initialQueenWorkflow?: QueenWorkflowState; walletAddress?: string | null } = {}) {
   const [selectedId, setSelectedId] = useState<AgentId>("personal-ai-agent-runtime-v4-1");
   const [health, setHealth] = useState<Health>({ status: "offline", agents: [], reasonCode: "RUNTIME_OFFLINE" });
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -212,9 +253,11 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
   const [queenAssignments, setQueenAssignments] = useState<Record<string, QueenAssignmentResult>>({});
   const [queenNodeOutputs, setQueenNodeOutputs] = useState<Record<string, string>>({});
   const [queenBusy, setQueenBusy] = useState<string | null>(null);
+  const [queenDraftGraph, setQueenDraftGraph] = useState<QueenTaskGraphResult | null>(null);
+  const [ownerAgents, setOwnerAgents] = useState<OwnerAgentRecord[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const displayAgents = useMemo(() => buildDisplayAgents(health.agents), [health.agents]);
+  const displayAgents = useMemo(() => buildDisplayAgents(health.agents, ownerAgents), [health.agents, ownerAgents]);
   const selectedAgent = useMemo(
     () => displayAgents.find((agent) => agent.id === selectedId) ?? displayAgents[0]!,
     [displayAgents, selectedId],
@@ -232,6 +275,14 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
     && !orchestrationAgents.some((agent) => agent.model.toLowerCase() === selectedAgent.model.toLowerCase());
   const orchestrationModelConflict = hasDuplicateModels(orchestrationAgents);
   const canRunOrchestration = !busy && orchestrationAgents.length >= 2 && !orchestrationModelConflict && draft.trim().length > 0;
+  const visibleQueenGraph = queenDraftGraph ?? queenWorkflow.graph;
+
+  useEffect(() => {
+    let active = true;
+    if (!walletAddress) { setOwnerAgents([]); return () => { active = false; }; }
+    void listOwnerAgents(walletAddress).then((records) => { if (active) setOwnerAgents(records); }).catch(() => { if (active) setOwnerAgents([]); });
+    return () => { active = false; };
+  }, [walletAddress]);
 
   useEffect(() => {
     let active = true;
@@ -401,6 +452,88 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
     return accepted;
   }
 
+  function beginQueenWorkflowEdit() {
+    if (!queenWorkflow.graph || queenBusy) return;
+    setQueenDraftGraph({
+      ...queenWorkflow.graph,
+      nodes: queenWorkflow.graph.nodes.map((node) => ({ ...node, dependencies: [...node.dependencies] })),
+      edges: queenWorkflow.graph.edges.map((edge) => ({ ...edge })),
+    });
+  }
+
+  async function saveQueenWorkflowEdit() {
+    if (!queenDraftGraph || queenBusy) return;
+    if (queenDraftGraph.nodes.some((node) => node.title.trim().length === 0)) {
+      setLastError("Every workflow node needs a title before saving.");
+      return;
+    }
+    const abort = new AbortController();
+    abortRef.current = abort;
+    setQueenBusy("amend");
+    setLastError(null);
+    try {
+      const data = await runQueenMutation<{ amendTaskGraph: QueenTaskGraphResult & { confirmationStatus: string; preservedAssignmentNodeIds: string[] } }>({
+        operationName: "AmendTaskGraph",
+        query: AMEND_TASK_GRAPH_MUTATION,
+        input: {
+          taskId: queenDraftGraph.taskId,
+          nodes: queenDraftGraph.nodes.map((node) => ({ ...node, title: node.title.trim() })),
+          edges: queenDraftGraph.edges,
+        },
+        signal: abort.signal,
+      });
+      setQueenWorkflow((current) => ({
+        ...current,
+        graph: data.amendTaskGraph,
+        log: [...current.log, `Workflow revision ${data.amendTaskGraph.graphRevision} saved; confirmation is pending.`].slice(-10),
+      }));
+      setQueenDraftGraph(null);
+    } catch (error) {
+      if (!abort.signal.aborted) {
+        const message = error instanceof Error ? error.message : "Workflow amendment failed";
+        setLastError(message);
+        appendQueenLog(`Workflow amendment failed: ${message}`);
+      }
+    } finally {
+      setQueenBusy(null);
+      abortRef.current = null;
+    }
+  }
+
+  async function selectQueenNodeAgent(nodeId: string, selectedAgentId: string) {
+    const graph = queenWorkflow.graph;
+    if (!graph || queenBusy) return;
+    const abort = new AbortController();
+    abortRef.current = abort;
+    setQueenBusy(`select:${nodeId}`);
+    setLastError(null);
+    try {
+      await runQueenMutation<{ selectNodeAgent: QueenAssignmentResult }>({
+        operationName: "SelectNodeAgent",
+        query: SELECT_NODE_AGENT_MUTATION,
+        input: { taskId: graph.taskId, nodeId, selectedAgentId, selectedBy: "user" },
+        signal: abort.signal,
+      });
+      const accepted = await runQueenMutation<{ acceptNodeAssignment: QueenAssignmentResult }>({
+        operationName: "AcceptNodeAssignment",
+        query: ACCEPT_NODE_ASSIGNMENT_MUTATION,
+        input: { taskId: graph.taskId, nodeId, agentId: selectedAgentId },
+        signal: abort.signal,
+      });
+      setQueenAssignments((current) => ({ ...current, [nodeId]: accepted.acceptNodeAssignment }));
+      appendQueenLog(`User selected ${selectedAgentId} for ${nodeId}; confirmation is pending.`);
+    } catch (error) {
+      if (!abort.signal.aborted) {
+        const message = error instanceof Error ? error.message : "Agent selection failed";
+        setLastError(message);
+        appendQueenLog(`Agent selection failed for ${nodeId}: ${message}`);
+      }
+    } finally {
+      setQueenBusy(null);
+      abortRef.current = null;
+    }
+  }
+
   async function runQueenNodeAction(node: QueenTaskNode, action: "rank" | "accept" | "execute" | "judge" | "red_team" | "repair" | "final" | "learn") {
     if (!queenWorkflow.graph || queenBusy) return;
     const graph = queenWorkflow.graph;
@@ -531,11 +664,26 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
     const abort = new AbortController();
     abortRef.current = abort;
     setQueenBusy("workflow");
+    setLastError(null);
+    setQueenWorkflow((current) => ({
+      ...current,
+      status: "running",
+      activeNodeId: "confirm-workflow",
+      log: [...current.log, "Confirming workflow and accepted assignments..."].slice(-10),
+    }));
     try {
       const assignments = graph.nodes.some((node) => queenAssignments[node.nodeId]?.status !== "accepted")
         ? await prepareQueenAssignments(graph, abort.signal)
         : queenAssignments;
       if (Object.keys(assignments).length > 0) appendQueenLog("Recommended agents are confirmed.");
+
+      const confirmation = await runQueenMutation<{ confirmTaskGraph: { graphRevision: number; confirmationStatus: string } }>({
+        operationName: "ConfirmTaskGraph",
+        query: CONFIRM_TASK_GRAPH_MUTATION,
+        input: { taskId: graph.taskId },
+        signal: abort.signal,
+      });
+      appendQueenLog(`Workflow revision ${confirmation.confirmTaskGraph.graphRevision} is ${confirmation.confirmTaskGraph.confirmationStatus}.`);
 
       const data = await runQueenMutation<{ startTaskRun: { status: string; reasonCode?: string; runId?: string } }>({
         operationName: "StartTaskRun",
@@ -547,8 +695,17 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
         signal: abort.signal,
       });
       appendQueenLog(`Workflow start: ${data.startTaskRun.status}${data.startTaskRun.reasonCode ? ` / ${data.startTaskRun.reasonCode}` : ""}${data.startTaskRun.runId ? ` / ${data.startTaskRun.runId}` : ""}`);
+      if (data.startTaskRun.status !== "running") {
+        throw new Error(data.startTaskRun.reasonCode ?? `Workflow start returned ${data.startTaskRun.status}`);
+      }
 
       for (const node of graph.nodes) {
+        setQueenWorkflow((current) => ({
+          ...current,
+          status: "running",
+          activeNodeId: node.nodeId,
+          log: [...current.log, `Running ${node.nodeId}: ${node.title}`].slice(-10),
+        }));
         if (node.type === "execute") {
           const executorAgentId = assignments[node.nodeId]?.selectedAgentId;
           if (!executorAgentId) throw new Error(`No confirmed executor for ${node.title}.`);
@@ -620,12 +777,19 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
           appendQueenLog(`Learning Loop record: ${memory.writeLearningLoop.status}; ${clipLog(memory.writeLearningLoop.summary)}`);
         }
       }
+      setQueenWorkflow((current) => finalizeQueenWorkflowState(current, "succeeded", "Workflow completed with all required nodes."));
     } catch (error) {
+      const message = abort.signal.aborted
+        ? "Workflow cancelled by user."
+        : error instanceof Error ? error.message : "Queen start failed";
       if (!abort.signal.aborted) {
-        const message = error instanceof Error ? error.message : "Queen start failed";
         setLastError(message);
-        appendQueenLog(`Start error: ${message}`);
       }
+      setQueenWorkflow((current) => finalizeQueenWorkflowState(
+        current,
+        abort.signal.aborted ? "cancelled" : "error",
+        abort.signal.aborted ? message : `Start error: ${message}`,
+      ));
     } finally {
       setQueenBusy(null);
       abortRef.current = null;
@@ -639,6 +803,10 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
   function cancel() {
     abortRef.current?.abort();
     setBusy(false);
+  }
+
+  function cancelQueenWorkflow() {
+    abortRef.current?.abort();
   }
 
   function addSelectedToOrchestration() {
@@ -657,7 +825,7 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
         <PageHeader
           eyebrow="LIVE AGENT PLAYGROUND"
           title="Talk to real agents"
-          description="Mastra-style control surface for the local trained runtime plus DeepSeek, Kimi, Qwen, and Zhipu provider agents. Select agents in order, then let the lead agent orchestrate the final answer."
+          description="Workflow control surface for the local trained runtime plus DeepSeek, Kimi, Qwen, and Zhipu provider agents. Select agents in order, then let the lead agent orchestrate the final answer."
           actions={<Badge tone={health.status === "online" ? "cyan" : health.status === "degraded" ? "amber" : "rose"}>{health.status.toUpperCase()}</Badge>}
         />
 
@@ -667,7 +835,7 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
               <h2>Queen-led GraphQL workflow</h2>
               <p>Describe the task once. Queen plans the DAG, auto-fills recommended agents, asks for high-risk confirmation, then runs independent Judge and Final Arbiter gates behind one user-level flow.</p>
             </div>
-            <Badge tone={queenWorkflow.status === "ready" ? "cyan" : queenWorkflow.status === "error" ? "rose" : "neutral"}>
+            <Badge tone={queenWorkflow.status === "ready" || queenWorkflow.status === "succeeded" ? "cyan" : queenWorkflow.status === "running" ? "amber" : queenWorkflow.status === "error" || queenWorkflow.status === "cancelled" ? "rose" : "neutral"}>
               {queenWorkflow.status.toUpperCase()}
             </Badge>
           </div>
@@ -678,9 +846,11 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
               <button type="button" className="button button-primary" disabled={queenWorkflow.status === "proposing" || queenBusy !== null} onClick={proposeQueenWorkflow}>
                 {queenWorkflow.status === "proposing" || queenBusy === "prepare" ? "Planning..." : "Generate workflow plan"}
               </button>
-              <button type="button" className="button button-warning" disabled={!queenWorkflow.graph || queenBusy !== null} onClick={startQueenWorkflow}>
-                {queenBusy === "workflow" ? "Running..." : "Start workflow"}
+              <button type="button" className="button button-warning" disabled={!queenWorkflow.graph || queenBusy !== null || queenWorkflow.status === "succeeded"} onClick={startQueenWorkflow}>
+                {queenBusy === "workflow" ? "Running..." : queenWorkflow.status === "succeeded" ? "Workflow completed" : "Start workflow"}
               </button>
+              {queenBusy === "workflow" ? <button type="button" className="button button-ghost" onClick={cancelQueenWorkflow}>Cancel workflow</button> : null}
+              {queenWorkflow.activeNodeId ? <span role="status"><strong>Current node</strong>: {queenWorkflow.activeNodeId}</span> : null}
             </div>
             <div className="queen-workflow-log">
               {(queenWorkflow.log.length > 0 ? queenWorkflow.log : ["No task graph proposed yet."]).map((item, index) => (
@@ -688,17 +858,25 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
               ))}
             </div>
           </div>
-          {queenWorkflow.graph ? (
+          {visibleQueenGraph ? (
             <div className="queen-dag">
               <div className="queen-dag-meta">
-                <span>taskId: {queenWorkflow.graph.taskId}</span>
-                <span>risk: {queenWorkflow.graph.riskLevel}</span>
-                <span>start: {queenWorkflow.graph.startPolicy}</span>
-                <span>rescue: {queenWorkflow.graph.rescuePolicy.mode}</span>
+                <span>taskId: {visibleQueenGraph.taskId}</span>
+                <span>risk: {visibleQueenGraph.riskLevel}</span>
+                <span>start: {visibleQueenGraph.startPolicy}</span>
+                <span>rescue: {visibleQueenGraph.rescuePolicy.mode}</span>
                 <span>agents: Auto-filled</span>
+                {queenDraftGraph ? (
+                  <>
+                    <button type="button" className="button button-primary" disabled={queenBusy !== null} onClick={saveQueenWorkflowEdit}>Save workflow changes</button>
+                    <button type="button" className="button button-ghost" disabled={queenBusy !== null} onClick={() => setQueenDraftGraph(null)}>Cancel editing</button>
+                  </>
+                ) : (
+                  <button type="button" className="button button-ghost" disabled={queenBusy !== null} onClick={beginQueenWorkflowEdit}>Edit workflow</button>
+                )}
               </div>
               <div className="queen-node-list">
-                {queenWorkflow.graph.nodes.map((node) => {
+                {visibleQueenGraph.nodes.map((node) => {
                   const selectedAgentId = queenAssignments[node.nodeId]?.selectedAgentId ?? queenRanks[node.nodeId]?.autoSelectedAgentId;
                   const nodeStatus = queenAssignments[node.nodeId]?.status === "accepted"
                     ? "Accepted"
@@ -706,11 +884,29 @@ export function LocalAgentsPage({ initialQueenWorkflow }: { initialQueenWorkflow
                   return (
                     <div key={node.nodeId} className={`queen-node queen-node-${node.type}`}>
                       <strong>{node.type}</strong>
-                      <span>{node.title}</span>
+                      {queenDraftGraph ? (
+                        <input
+                          aria-label={`Edit ${node.nodeId} title`}
+                          maxLength={160}
+                          value={node.title}
+                          onChange={(event) => setQueenDraftGraph((current) => current ? updateQueenNodeTitle(current, node.nodeId, event.target.value) : current)}
+                        />
+                      ) : <span>{node.title}</span>}
                       <small>{node.nodeId} {node.required ? "/ required" : "/ rescue"}</small>
                       <em>{node.dependencies.length > 0 ? `after ${node.dependencies.join(", ")}` : "entry"}</em>
                       <small>agent: {selectedAgentId ?? "Auto-fill pending"}</small>
                       <small>status: {nodeStatus}</small>
+                      <select
+                        aria-label={`Select agent for ${node.nodeId}`}
+                        disabled={queenBusy !== null || (queenRanks[node.nodeId]?.candidates.length ?? 0) === 0}
+                        value={selectedAgentId ?? ""}
+                        onChange={(event) => { void selectQueenNodeAgent(node.nodeId, event.target.value); }}
+                      >
+                        {!selectedAgentId ? <option value="">Auto-fill pending</option> : null}
+                        {(queenRanks[node.nodeId]?.candidates ?? []).map((candidate) => (
+                          <option key={candidate.agentId} value={candidate.agentId}>{candidate.displayName}</option>
+                        ))}
+                      </select>
                       {(() => {
                         const output = queenNodeOutputs[node.nodeId];
                         return output ? <em>{clipLog(output)}</em> : null;
@@ -838,7 +1034,7 @@ async function runGraphqlOrchestration(options: {
     }),
     signal: options.signal,
   });
-  const payload = await response.json() as unknown;
+  const payload = await parseGraphqlResponse(response);
   if (!response.ok) throw new Error(`GraphQL gateway returned ${response.status}`);
   if (!isRecord(payload)) throw new Error("GraphQL response is invalid");
   const errors = payload.errors;
@@ -858,17 +1054,26 @@ async function runQueenMutation<T>(options: {
   input: Record<string, unknown>;
   signal: AbortSignal;
 }): Promise<T> {
-  const response = await fetch("/agent/graphql", {
-    method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({
-      query: options.query,
-      operationName: options.operationName,
-      variables: { input: options.input },
-    }),
-    signal: options.signal,
-  });
-  const payload = await response.json() as unknown;
+  const operationSignal = createWorkflowOperationSignal(options.signal);
+  let response: Response;
+  try {
+    response = await fetch("/agent/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        query: options.query,
+        operationName: options.operationName,
+        variables: { input: options.input },
+      }),
+      signal: operationSignal,
+    });
+  } catch (error) {
+    if (operationSignal.aborted && !options.signal.aborted) {
+      throw new Error(`${options.operationName} timed out after ${WORKFLOW_OPERATION_TIMEOUT_MS / 1000} seconds.`);
+    }
+    throw error;
+  }
+  const payload = await parseGraphqlResponse(response);
   if (!response.ok) throw new Error(`GraphQL gateway returned ${response.status}`);
   if (!isRecord(payload)) throw new Error("GraphQL response is invalid");
   const errors = payload.errors;
@@ -878,6 +1083,19 @@ async function runQueenMutation<T>(options: {
   }
   if (!isRecord(payload.data)) throw new Error("GraphQL response data is invalid");
   return payload.data as T;
+}
+
+export function createWorkflowOperationSignal(parentSignal: AbortSignal, timeoutMs = WORKFLOW_OPERATION_TIMEOUT_MS): AbortSignal {
+  return AbortSignal.any([parentSignal, AbortSignal.timeout(timeoutMs)]);
+}
+
+export function finalizeQueenWorkflowState(
+  current: QueenWorkflowState,
+  status: "succeeded" | "error" | "cancelled",
+  message: string,
+): QueenWorkflowState {
+  const { activeNodeId: _activeNodeId, ...rest } = current;
+  return { ...rest, status, log: [...current.log, message].slice(-10) };
 }
 
 async function runAgentRequest(options: {
@@ -916,7 +1134,7 @@ function readRuntimeError(payload: Record<string, unknown>) {
   return "Agent runtime failed";
 }
 
-function buildDisplayAgents(healthAgents: HealthAgent[]) {
+function buildDisplayAgents(healthAgents: HealthAgent[], ownerAgents: OwnerAgentRecord[] = []) {
   const fallbackById = new Map(fallbackAgents.map((agent) => [agent.id, agent]));
   const liveAgents = healthAgents.map((agent) => {
     const fallback = fallbackById.get(agent.agentId);
@@ -933,7 +1151,25 @@ function buildDisplayAgents(healthAgents: HealthAgent[]) {
     };
   });
   const liveIds = new Set(liveAgents.map((agent) => agent.id));
-  return [...liveAgents, ...fallbackAgents.filter((agent) => !liveIds.has(agent.id))];
+  const ownerEntries = ownerAgents
+    .filter((agent) => !liveIds.has(agent.id))
+    .map((agent) => ({
+      id: agent.id,
+      name: agent.displayName,
+      provider: agent.provider === "ollama" ? "Ollama" : "User HTTPS",
+      ownership: "user-managed",
+      model: agent.modelTag,
+      visibility: agent.listingStatus,
+      selectableBy: agent.selectableBy,
+      note: agent.provider === "ollama"
+        ? "Owner-only metadata. Offline until the signed local Runtime reports the same model."
+        : agent.listingStatus === "pending-platform-test"
+          ? "Paid Agent is hidden from the market until the platform test passes."
+          : "Free HTTPS Agent admitted by the deterministic listing policy.",
+      verification: agent.provider === "ollama" ? "offline" : agent.platformTestStatus,
+    }));
+  const ownerIds = new Set(ownerEntries.map((agent) => agent.id));
+  return [...liveAgents, ...ownerEntries, ...fallbackAgents.filter((agent) => !liveIds.has(agent.id) && !ownerIds.has(agent.id))];
 }
 
 function hasDuplicateModels(agents: DisplayAgent[]): boolean {
@@ -961,6 +1197,13 @@ function capabilitiesForQueenNode(node: QueenTaskNode): string[] {
   if (node.type === "red_team") return ["red_team"];
   if (node.type === "synthesize" || node.type === "deliver") return ["final_arbitration"];
   return ["completion"];
+}
+
+export function updateQueenNodeTitle(graph: QueenTaskGraphResult, nodeId: string, title: string): QueenTaskGraphResult {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node) => node.nodeId === nodeId ? { ...node, title } : node),
+  };
 }
 
 function firstNodeId(graph: QueenTaskGraphResult, type: string): string {

@@ -14,7 +14,7 @@
 - 页面明确标记该模型为 `owner-trained`，展示 tag、digest、Q4_K_M、8.2B、40960 context 和最近验证时间。
 - 其他 allowlist 模型可作为 `third-party/local-served` 节点出现，并展示来源与 License 状态；没有来源证据时必须显示 `pending metadata`。
 - DeepSeek/Kimi/Qwen/Zhipu 作为外部 provider API 节点出现，展示 provider、模型 ID、凭据边界和最近验证状态；API key 不进入浏览器、仓库或 Evidence。
-- `/agents/local` 页面采用类似 Mastra 的 Agent playground：左侧 Agent 列表，右侧真实聊天面板，支持本地 owner-trained 模型和 DeepSeek/Kimi/Qwen/Zhipu provider API。
+- `/agents/local` 页面采用工作流 playground：左侧 Agent 列表，右侧真实聊天面板；早期布局仅参考同类控制台，不引入 Mastra 运行时。页面支持本地 owner-trained 模型和 DeepSeek/Kimi/Qwen/Zhipu provider API。
 - 本机 runner 在线时自动注册并发送 heartbeat；退出或超时后控制面显示 offline。
 - 公开页面不得直接请求 `localhost:11434`，也不得把静态快照冒充实时在线状态。
 
@@ -93,7 +93,8 @@ Worker 负责 CORS、输入大小、Turnstile 可选验证、Runtime 超时和�
 ## 验收
 
 - Runner 单元、协议、mock Ollama 和集成测试通过。
-- Live Chat 协议、Runtime、Worker proxy 和 Mastra-style 页面测试通过。
+- Live Chat 协议、Runtime、Worker proxy 和工作流 playground 页面测试通过。
+- Queen GraphQL 使用纯 LangGraph 状态边界；用户可在启动前修改 DAG 节点标题和节点 Agent，保存后服务端递增 graphRevision，重新确认后才允许启动，启动后锁定 DAG 与分配。
 - 一次真实本机 smoke 通过，默认模型 tag/digest 与 manifest 一致。
 - 浏览器构建产物不包含 `11434`、HMAC key 或本机私有路径。
 - 375、390、430、1440 页面无根级横向溢出，触控目标至少 44px。

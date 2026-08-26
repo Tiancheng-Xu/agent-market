@@ -4,6 +4,7 @@ import {
   AgentManifestSchema,
   AgentTaskLeaseSchema,
   AgentTaskResultSchema,
+  OwnerTrainedModels,
   SignedRequestHeadersSchema,
 } from "./index";
 
@@ -205,6 +206,32 @@ describe("local agent shared contracts", () => {
     expect(AgentManifestSchema.parse(manifest)).toEqual(manifest);
   });
 
+  it("accepts every registered owner-trained model identity and capability contract", () => {
+    for (const ownerModel of OwnerTrainedModels) {
+      const candidate = {
+        ...manifest,
+        id: ownerModel.id,
+        displayName: ownerModel.displayName,
+        capabilities: [...ownerModel.capabilities],
+        model: {
+          ...manifest.model,
+          tag: ownerModel.tag,
+          digest: ownerModel.digest,
+          parentModel: ownerModel.parentModel,
+          ...(ownerModel.revision === undefined ? {} : { revision: ownerModel.revision }),
+          family: ownerModel.family,
+          parameterSize: ownerModel.parameterSize,
+          quantization: ownerModel.quantization,
+          contextLength: ownerModel.contextLength,
+          source: ownerModel.source,
+          license: ownerModel.license,
+        },
+      };
+
+      expect(AgentManifestSchema.parse(candidate)).toEqual(candidate);
+    }
+  });
+
   it("accepts third-party provider API manifests without local model digests", () => {
     expect(AgentManifestSchema.parse(deepSeekManifest)).toEqual(deepSeekManifest);
     expect(AgentManifestSchema.parse(kimiManifest)).toEqual(kimiManifest);
@@ -318,6 +345,16 @@ describe("local agent shared contracts", () => {
       AgentManifestSchema.parse({
         ...manifest,
         model: { ...manifest.model, digest: "a".repeat(64) },
+      }),
+    ).toThrow();
+    expect(() =>
+      AgentManifestSchema.parse({
+        ...manifest,
+        model: {
+          ...manifest.model,
+          tag: "personal-code-agent:v1",
+          digest: "a".repeat(64),
+        },
       }),
     ).toThrow();
     expect(() =>

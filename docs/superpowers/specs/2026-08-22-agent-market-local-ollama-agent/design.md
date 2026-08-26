@@ -101,7 +101,7 @@ Zod schema 冻结 manifest、lease、result、签名 header、live chat request�
 
 ### Web
 
-新增 `/agents/local`。页面采用 Mastra-style playground，从 `/agent/healthz` 获取真实状态，通过 `/agent/chat` 发起 SSE 对话；不请求 localhost、不接触 provider key、不把静态 snapshot 显示为实时 online。
+新增 `/agents/local`。页面采用工作流 playground（早期布局参考不构成框架依赖），从 `/agent/healthz` 获取真实状态，通过 `/agent/chat` 发起 SSE 对话；不请求 localhost、不接触 provider key、不把静态 snapshot 显示为实时 online。Queen GraphQL 以纯 LangGraph 管理 DAG 修改、版本确认、启动锁定、失败分支与恢复；LangChain 只在确有节点内模型/Prompt/Tool 组合时使用。
 
 ### Worker/Tunnel
 
