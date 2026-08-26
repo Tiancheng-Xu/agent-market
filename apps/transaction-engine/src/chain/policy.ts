@@ -31,6 +31,10 @@ export function deriveIntentRequestId(actorWallet: string, resourceId: string, m
   );
 }
 
+export function deriveAccountResourceId(walletAddress: string): string {
+  return uuidv5(`agent-market:chain-account:${getAddress(walletAddress)}`, uuidv5.URL);
+}
+
 export function normalizeContractAllowlist(input: ContractAllowlist): ContractAllowlist {
   return {
     token: getAddress(input.token).toLowerCase(),
@@ -69,9 +73,16 @@ export function bindMethodArguments(
     bound.agent = record.agentWallet;
   }
   if (method === "approve") {
-    const spender = typeof bound.spender === "string" ? getAddress(bound.spender).toLowerCase() : "";
+    const target = bound.target === "escrow" ? "escrow" : bound.target === "vault" ? "vault" : null;
+    const requestedSpender = target === null ? bound.spender : contracts[target];
+    const spender = typeof requestedSpender === "string" ? getAddress(requestedSpender).toLowerCase() : "";
     if (spender !== contracts.escrow && spender !== contracts.vault) throw new Error("CHAIN_SPENDER_FORBIDDEN");
     bound.spender = spender;
+    if (target === "escrow") {
+      if (record === undefined) throw new Error("CHAIN_RESOURCE_EXPECTATION_MISSING");
+      bound.amountAtomic = record.budgetAtomic;
+    }
+    delete bound.target;
   }
   return bound;
 }

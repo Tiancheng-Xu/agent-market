@@ -1,36 +1,46 @@
 {
   "schemaVersion": 1,
-  "runId": "0424cdbc-cf90-45fd-86a8-ca719680cbef",
-  "feature": "agent-market-phase2",
-  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
-  "currentNode": "N6",
+  "runId": "d6738bc2-0d2d-4d69-b040-3b485ce61d93",
+  "feature": "agent-market-live-agent-closure",
+  "contractHash": "4f6145fcbd0a1ee2f9e11f9385a407375fe7c0455932964051d60513e4ada79e",
+  "currentNode": "N7",
   "completedTask": "T8",
   "nextTask": null,
   "changedFiles": [
-    ".tc-flow/change-manifest.json"
+    "apps/web/src/pages/LocalAgentsPage.tsx",
+    "apps/web/src/pages/EvidencePage.tsx",
+    "apps/web/public/evidence/agent-market-v3-full-workflow.mp4",
+    "apps/web/public/evidence/agent-market-v3-full-workflow-poster.png",
+    "docs/evidence/testing/2026-08-26-external-chrome-full-workflow-recording.json",
+    "docs/evidence/testing/2026-08-26-visual-route-audit.json"
   ],
   "evidence": {
+    "recording": "docs/evidence/testing/2026-08-26-external-chrome-full-workflow-recording.json",
+    "visualAudit": "docs/evidence/testing/2026-08-26-visual-route-audit.json",
+    "graphqlPreflight": "docs/evidence/testing/2026-08-26-live-graphql-terminal-preflight.json",
     "featureQa": ".tc-flow/feature-qa.json",
-    "t8Test": ".tc-flow/reviews/T8.test-evidence.json",
-    "t8Review": ".tc-flow/reviews/T8.result.json"
+    "independentReview": ".tc-flow/reviews/T8.live-agent-closure.result.json",
+    "repositoryPolicy": "local audit pass with --require-caller"
   },
   "retries": {
-    "reviewRepair": 1,
+    "reviewRepair": 2,
     "max": 3
   },
   "externalState": {
-    "sepolia": "pending-external",
-    "aws": "pending-external",
-    "cloudflare": "pending-action-after-github",
-    "production": "not-touched"
+    "sepoliaMutation": "not-executed-action-approval-required",
+    "awsV2Production": "pending-external-action-approval-required",
+    "cloudflarePreview": "pending-after-commit",
+    "production": "manual-pending"
   },
   "history": [
-    "T1 checkpoint preserved in events",
-    "T2 rounds 1-3 recorded in reviews",
-    "T3-T8 implementation and reviews completed",
-    "N6 fresh local feature QA passed"
+    "T7 external Chrome full-screen recording completed and privacy-cropped",
+    "recording metadata, SHA-256, poster and fact ledger verified locally",
+    "18 routes x 2 locales x 5 widths passed 180/180",
+    "full pnpm verify passed",
+    "independent review found two P1 model-independence bypasses; both repaired and resolved",
+    "N6 Feature QA passed; N7 Stop Hook repository policy passed"
   ],
-  "createdAt": "2026-08-21T15:56:41.770Z",
-  "nextNode": "N7",
-  "updatedAt": "2026-08-21T21:14:54.496Z"
+  "createdAt": "2026-08-26T08:46:28.735Z",
+  "updatedAt": "2026-08-26T09:05:32.919Z",
+  "nextNode": "N7"
 }

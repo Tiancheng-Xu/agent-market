@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "agent-market.evidence.v1",
+  "recordedAt": "2026-08-26",
+  "status": "verified-local",
+  "subject": "Agent Market Cocos virtual office",
+  "implementation": {
+    "engine": "Cocos Creator 3.8.8",
+    "target": "Web Desktop",
+    "scene": "AgentMarketOffice",
+    "mode": "programmatic-cocos-scene-with-gui-assets",
+    "sceneUuidCount": 3,
+    "scriptPackageCount": 1,
+    "responsiveHost": true
+  },
+  "runtimeGate": {
+    "scene": "AgentMarketOffice",
+    "batcherReady": true,
+    "drawCalls": 33,
+    "cameraVisibility": 33554432,
+    "canvasLayer": 33554432,
+    "graphicsComponents": 10,
+    "labels": 23,
+    "iframeViewport": "759x618",
+    "gameViewport": "759x618",
+    "canvasViewport": "759x618"
+  },
+  "deterministicGates": {
+    "artifactTests": "1/1 passed",
+    "webTests": "89/89 passed",
+    "routeViewportChecks": "180/180 passed",
+    "targetWidths": [
+      375,
+      390,
+      430,
+      1440,
+      1920
+    ],
+    "routeCount": 18,
+    "locales": [
+      "zh-CN",
+      "en"
+    ]
+  },
+  "securityBoundary": {
+    "input": "sanitized OfficeSnapshotV1 only",
+    "output": "select-desk event only",
+    "forbidden": [
+      "wallet signing",
+      "private node input or output",
+      "result download payload",
+      "workflow mutation",
+      "agent execution",
+      "API keys",
+      "local model endpoints"
+    ],
+    "authoritativeLayer": "React owner boundary and private AWS control plane"
+  },
+  "screenshot": "apps/web/public/evidence/agent-market-cocos-office-local.png",
+  "externalStatus": "not-production-proof"
+}

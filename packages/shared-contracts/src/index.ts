@@ -99,3 +99,4 @@ export {
   type TransactionIntentV1,
   type TransactionVerificationV1,
 } from "./transactions";
+export * from "./office";

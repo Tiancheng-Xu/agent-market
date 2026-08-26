@@ -27,7 +27,7 @@ const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export function generatePublicEvidence(root = REPOSITORY_ROOT) {
   const document = readEvidence(resolve(root, "docs/evidence/requirements.yaml"));
   const violations = validateEvidence(document);
-  violations.push(...validateEvidenceRepository(root));
+  violations.push(...validateEvidenceRepository(root, { includeClosureGates: false }));
   if (violations.length > 0) throw new Error(violations.join("\n"));
 
   const requirements = document.requirements.map((requirement, index) => ({

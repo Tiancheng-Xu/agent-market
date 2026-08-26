@@ -1,91 +1,145 @@
 {
   "schemaVersion": 1,
-  "runId": "0424cdbc-cf90-45fd-86a8-ca719680cbef",
-  "feature": "agent-market-phase2",
-  "version": 2,
-  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
-  "goal": "Close V2 items 1 through 9 with a verifiable Sepolia marketplace flow.",
+  "runId": "d6738bc2-0d2d-4d69-b040-3b485ce61d93",
+  "feature": "agent-market-live-agent-closure",
+  "version": 5,
+  "contractHash": "4f6145fcbd0a1ee2f9e11f9385a407375fe7c0455932964051d60513e4ada79e",
+  "goal": "Close the signed local-agent and Queen GraphQL path, then connect wallet-authenticated task publishing to server-generated unsigned Sepolia intents without sending transactions during implementation.",
   "amendments": [
     {
-      "approvedAt": "2026-08-21",
-      "decision": "The six-percent agent bond is non-refundable, never counted in yield, and always transferred to the deployment-specified platform treasury on settlement. Gas is never reimbursed."
+      "approvedAt": "2026-08-26",
+      "decision": "Use current personal-image-agent:v1 Ollama manifest digest 2fa405e1244629244798cb4d7b8f4b3a5dd9e47aaf9ea7329e8dbe27bd32cffd; preserve GGUF SHA-256 4bba2f8f38a08edb2ad74a9a7b1a8927d5df4c31e7ec6270a6bdb3309706bfba as the model-layer identity; treat historical 59de6282 as stale or misrecorded."
+    },
+    {
+      "approvedAt": "2026-08-26",
+      "decision": "Add the local task-publishing chain adapter: wallet challenge, server-owned task resource, allowlisted unsigned intents, wallet confirmation, and independent receipt/event verification. No transaction, AWS mutation, or production deployment is executed by this implementation task."
+    },
+    {
+      "approvedAt": "2026-08-26",
+      "decision": "Model staking as a wallet-owned account chain resource, never as a task resource; restrict it to vault methods and keep actual transactions action-time confirmed by the wallet."
+    },
+    {
+      "approvedAt": "2026-08-26",
+      "decision": "Replace the machine-specific worktree path with a repository-relative root so sanitized TC Flow artifacts do not publish a private local path."
     }
   ],
   "nonGoals": [
-    "mainnet",
-    "real yield",
-    "Privy or social login",
-    "paymaster",
-    "The Graph critical-path integration",
-    "customer-managed KMS creation",
+    "Mastra runtime",
+    "Evidence as a DAG node",
+    "model training, pull, deletion, or weight publication",
+    "AWS resource mutation",
+    "Sepolia transaction submission",
     "automatic production deployment"
   ],
   "repositories": [
     {
-      "path": "/Users/shier/Desktop/repos/agent-market/.worktrees/phase2-184ef819",
+      "path": ".",
       "role": "monorepo",
-      "baseCommit": "47a1a4071338b38e28fb75d54691f859e7864d65",
-      "branch": "tc/phase2-184ef819"
+      "baseCommit": "fd5a231b05785e5225f698cfda6bd925af296d87",
+      "branch": "tc/live-agent-closure-a90e1f51"
     }
   ],
   "allowedWritePaths": [
     ".tc-flow/**",
-    "README.md",
-    ".github/**",
-    "apps/transaction-engine/**",
+    ".github/workflows/verify.yml",
+    "apps/local-agent-runner/**",
+    "apps/web/src/agentCatalog.ts",
+    "apps/web/src/agentCatalog.test.ts",
+    "apps/web/src/i18n/translations.ts",
+    "apps/web/src/pages/LocalAgentsPage.tsx",
+    "apps/web/src/pages/LocalAgentsPage.test.tsx",
     "apps/web/src/pages/EvidencePage.tsx",
-    "apps/web/src/evidence/**",
-    "database/migrations/**",
-    "docs/architecture/**",
-    "docs/evidence/**",
-    "docs/superpowers/**",
-    "infra/aws/**",
-    "packages/contracts/**",
-    "packages/shared-contracts/**",
-    "scripts/aws/**",
-    "scripts/blockchain/**",
-    "services/matcher-go/**",
-    "services/trainer/**"
+    "apps/web/src/pages-worker.test.ts",
+    "apps/web/public/evidence/agent-market-v3-full-workflow.mp4",
+    "apps/web/public/evidence/agent-market-v3-full-workflow-poster.png",
+    "docs/evidence/testing/**",
+    "docs/superpowers/plans/2026-08-26-agent-market-live-agent-closure.md",
+    "docs/superpowers/specs/2026-08-26-agent-market-live-agent-closure/**",
+    "packages/shared-contracts/src/**",
+    "apps/web/src/App.tsx",
+    "apps/web/src/lib/chainClient.ts",
+    "apps/web/src/lib/chainClient.test.ts",
+    "apps/web/src/pages/DirectoryPages.tsx",
+    "apps/web/src/pages/DirectoryPages.test.tsx",
+    "apps/web/src/pages/WorkflowPages.tsx",
+    "apps/web/src/pages/ControlPages.tsx",
+    "apps/web/src/pages-worker.ts",
+    "apps/transaction-engine/src/app/api/tasks/route.ts",
+    "apps/transaction-engine/src/app/api/transactions/transaction-routes.test.ts",
+    "apps/transaction-engine/src/auth/**",
+    "apps/transaction-engine/src/chain/resources.ts",
+    "apps/transaction-engine/src/chain/policy.ts",
+    "apps/transaction-engine/src/chain/resources.test.ts",
+    "database/migrations/0008_chain_account_resources.sql",
+    "apps/transaction-engine/src/app/api/chain/account/route.ts",
+    "apps/web/src/pages/WorkflowPages.test.tsx",
+    "apps/web/src/pages/HomePage.tsx",
+    "apps/web/src/components/CocosOfficeFrame.tsx",
+    "apps/web/src/officeModel.test.ts",
+    "apps/office-cocos/**",
+    "apps/web/public/architecture/**",
+    "scripts/visual-route-audit.mjs",
+    "scripts/validate-evidence.mjs",
+    "scripts/validate-evidence.test.mjs",
+    "docs/evidence/testing/2026-08-22-live-agent-chat-smoke.json"
   ],
   "allowedTools": [
     "filesystem",
     "git-read",
     "pnpm",
     "node",
-    "hardhat-local",
-    "go",
-    "python-local",
-    "docker-local",
-    "aws-read-only-after-login",
-    "blockscout-after-unlock"
+    "ollama-list-show-run-local",
+    "cloudflare-preview",
+    "browser-recording"
   ],
   "network": {
     "allowedRead": [
       "GitHub",
-      "AWS us-east-1 inventory",
-      "Ethereum Sepolia RPC",
-      "Blockscout Sepolia"
+      "Cloudflare Preview",
+      "configured provider API metadata"
     ],
     "blockedWithoutActionApproval": [
-      "Sepolia transaction submission",
-      "AWS resource mutation",
-      "paid resource creation",
       "production deployment",
+      "AWS resource mutation or paid creation",
+      "Sepolia transaction submission",
       "destructive cleanup"
     ]
   },
   "data": {
     "secrets": "environment-only and never logged",
-    "privateKeys": "never stored in repository, browser bundle, logs, or Evidence",
+    "ollama": "127.0.0.1 only; never publish port 11434",
+    "modelWeights": "never copied into repository or public Evidence",
     "pii": "redact before external review",
     "evidence": "bounded sanitized projections only"
   },
+  "aiEngineering": {
+    "deterministicGates": [
+      "schema and exact model identity",
+      "HMAC, replay and owner-scope access",
+      "GraphQL terminal states and idempotency",
+      "independent Judge and Final Arbiter",
+      "tests, typecheck, build, responsive and public-content scan"
+    ],
+    "llmJudge": "qualitative output only; independent and unable to override a deterministic failure",
+    "rag": "disabled for this feature",
+    "dag": "LangGraph owns state, failure routing, repair, cancellation and recovery; Evidence is out-of-band",
+    "metrics": [
+      "quality",
+      "correctness",
+      "safety",
+      "latency",
+      "cost",
+      "reliability"
+    ]
+  },
   "acceptance": [
-    "all eight tasks pass independent review",
-    "full pnpm verify passes",
-    "Go vet and tests pass",
-    "Python tests pass",
-    "repository policy returns ALLOW",
-    "external states remain pending until fresh readback exists"
+    "personal-code-agent:v1 and personal-image-agent:v1 exact identities pass signed Agent Market Runtime smoke",
+    "public caller scope cannot select owner-only local agents",
+    "Queen GraphQL success, provider failure, timeout and cancel each end exactly once",
+    "Judge and Final Arbiter are independent from execution agents",
+    "sanitized Evidence and a post-gate recording exist",
+    "focused and full repository gates pass",
+    "Preview is read back; production remains manual-pending",
+    "Wallet-authenticated task drafts can produce allowlisted approve/createTask unsigned intents; UI requires a second confirmation and never treats submission as verified before receipt/event reconciliation."
   ]
 }

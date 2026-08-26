@@ -217,6 +217,7 @@ describe("local agent shared contracts", () => {
           ...manifest.model,
           tag: ownerModel.tag,
           digest: ownerModel.digest,
+          ...("artifactDigest" in ownerModel ? { artifactDigest: ownerModel.artifactDigest } : {}),
           parentModel: ownerModel.parentModel,
           ...(ownerModel.revision === undefined ? {} : { revision: ownerModel.revision }),
           family: ownerModel.family,

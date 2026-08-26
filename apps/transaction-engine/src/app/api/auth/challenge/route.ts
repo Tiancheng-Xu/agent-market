@@ -16,9 +16,13 @@ export function createChallengeHandler(service: WalletAuthService, authOrigin: U
     const requestId = resolveRequestId(request.headers);
     const requestUrl = new URL(request.url);
     const forwardedHost = request.headers.get("x-forwarded-host")?.split(",", 1)[0]?.trim();
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",", 1)[0]?.trim();
+    const effectiveOrigin = forwardedHost === undefined
+      ? requestUrl.origin
+      : `${forwardedProto === "http" ? "http" : "https"}://${forwardedHost}`;
     if (
       request.headers.get("origin") !== authOrigin.origin
-      || requestUrl.origin !== authOrigin.origin
+      || effectiveOrigin !== authOrigin.origin
       || (forwardedHost !== undefined && forwardedHost !== authOrigin.host)
     ) return jsonError("AUTH_ORIGIN_MISMATCH", requestId, 403);
     let address: string;

@@ -15,6 +15,7 @@ export const serverRoutes: readonly ServerRouteDefinition[] = [
   { path: "/tasks/new", title: "Create a Task", summary: "Define a scoped task, requirements, deadline, and escrow-backed budget.", area: "Tasks" },
   { path: "/tasks/:id/matches", title: "Agent Matches", summary: "Compare deterministic matcher recommendations and newcomer allocation.", area: "Tasks" },
   { path: "/tasks/:id/workspace", title: "Delivery Workspace", summary: "Track assignment, submission, acceptance, and settlement events.", area: "Tasks" },
+  { path: "/office", title: "Virtual Agent Office", summary: "Visualize in-progress and completed task desks through the privacy-bounded Cocos office.", area: "Tasks" },
   { path: "/tasks/:id", title: "Task Detail", summary: "Review task requirements, escrow state, participants, and event history.", area: "Tasks" },
   { path: "/disputes/:id", title: "Dispute Case", summary: "Inspect committee seats, conflict handling, votes, and final ruling.", area: "Governance" },
   { path: "/staking", title: "Stake and Yield", summary: "Stake YD and inspect the fixed six percent linear reward model.", area: "Economics" },

@@ -135,7 +135,7 @@ describe("queen orchestrator state machine", () => {
     expect(amended.errors[0].message).toContain("locked");
   });
 
-  it("rejects judge self-review and final arbitration by Queen", async () => {
+  it("rejects judge self-review and final arbitration by Queen, executor, or judge", async () => {
     const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1" });
     const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
       requirement: "Write a simple implementation plan",
@@ -161,9 +161,67 @@ describe("queen orchestrator state machine", () => {
       finalArbiterAgentId: "queen-router-v1",
       finalOutput: "final output",
     });
+    const executorArbitrated = await mutate(orchestrator, "FinalArbitrate", {
+      taskId: proposed.data.proposeTaskGraph.taskId,
+      finalArbiterAgentId: "cheap-executor",
+      finalOutput: "final output",
+    });
 
     expect(judged.errors[0].extensions.code).toBe("JUDGE_NOT_INDEPENDENT");
     expect(arbitrated.errors[0].extensions.code).toBe("FINAL_ARBITER_NOT_INDEPENDENT");
+    expect(executorArbitrated.errors[0].extensions.code).toBe("FINAL_ARBITER_NOT_INDEPENDENT");
+  });
+
+  it("rejects self-review aliases that use the same model tag", async () => {
+    const orchestrator = createQueenOrchestrator({
+      agents: [...agents(), candidate("executor-alias", { modelTag: "cheap-executor", capabilities: ["judge", "completion"] })],
+      now,
+      queenAgentId: "queen-router-v1",
+    });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", { requirement: "Write a plan", queenAgentId: "queen-router-v1" });
+    const graph = proposed.data.proposeTaskGraph;
+    await acceptRequiredAssignments(orchestrator, graph);
+    await mutate(orchestrator, "AcceptNodeAssignment", { taskId: graph.taskId, nodeId: "judge-1", agentId: "executor-alias" });
+    await mutate(orchestrator, "ConfirmTaskGraph", { taskId: graph.taskId });
+    await mutate(orchestrator, "StartTaskRun", { taskId: graph.taskId });
+    await mutate(orchestrator, "SubmitNodeOutput", { taskId: graph.taskId, nodeId: "execute-1", executorAgentId: "cheap-executor", output: "output" });
+
+    const judged = await mutate(orchestrator, "JudgeNodeOutput", {
+      taskId: graph.taskId,
+      nodeId: "execute-1",
+      judgeAgentId: "executor-alias",
+      score: 0.9,
+      verdict: "approved",
+    });
+
+    expect(judged.errors[0].extensions.code).toBe("JUDGE_NOT_INDEPENDENT");
+  });
+
+  it("binds execution to accepted assignments and makes model-backed terminal mutations idempotent", async () => {
+    const executeAgentText = vi.fn(async (request: { role: string }) => request.role === "judge" ? "verdict: approved\nscore: 0.91" : `${request.role} output`);
+    const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1", executeAgentText });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", { requirement: "Write a plan", queenAgentId: "queen-router-v1" });
+    const graph = proposed.data.proposeTaskGraph;
+    await startGraph(orchestrator, graph);
+
+    const wrongExecutor = await mutate(orchestrator, "SubmitNodeOutput", {
+      taskId: graph.taskId,
+      nodeId: "execute-1",
+      executorAgentId: "expensive-executor",
+    });
+    expect(wrongExecutor.errors[0].extensions.code).toBe("STATE_ERROR");
+
+    const firstOutput = await mutate(orchestrator, "SubmitNodeOutput", { taskId: graph.taskId, nodeId: "execute-1", executorAgentId: "cheap-executor" });
+    const repeatedOutput = await mutate(orchestrator, "SubmitNodeOutput", { taskId: graph.taskId, nodeId: "execute-1", executorAgentId: "cheap-executor" });
+    const firstJudge = await mutate(orchestrator, "JudgeNodeOutput", { taskId: graph.taskId, nodeId: "execute-1", judgeAgentId: "judge-agent" });
+    const repeatedJudge = await mutate(orchestrator, "JudgeNodeOutput", { taskId: graph.taskId, nodeId: "execute-1", judgeAgentId: "judge-agent" });
+    const firstFinal = await mutate(orchestrator, "FinalArbitrate", { taskId: graph.taskId, finalArbiterAgentId: "final-arbiter-agent" });
+    const repeatedFinal = await mutate(orchestrator, "FinalArbitrate", { taskId: graph.taskId, finalArbiterAgentId: "final-arbiter-agent" });
+
+    expect(repeatedOutput.data.submitNodeOutput.outputId).toBe(firstOutput.data.submitNodeOutput.outputId);
+    expect(repeatedJudge.data.judgeNodeOutput).toEqual(firstJudge.data.judgeNodeOutput);
+    expect(repeatedFinal.data.finalArbitrate).toEqual(firstFinal.data.finalArbitrate);
+    expect(executeAgentText.mock.calls.map(([request]) => request.role)).toEqual(["executor", "judge", "final_arbiter"]);
   });
 
   it("triggers red-team on low judge score and writes redacted learning-loop records", async () => {
@@ -342,20 +400,27 @@ async function mutate(
 
 async function acceptRequiredAssignments(
   orchestrator: ReturnType<typeof createQueenOrchestrator>,
-  graph: { taskId: string; nodes: Array<{ nodeId: string; required: boolean }> },
+  graph: { taskId: string; nodes: Array<{ nodeId: string; type?: string; required: boolean }> },
 ): Promise<void> {
   for (const node of graph.nodes.filter((candidate) => candidate.required)) {
+    const agentId = node.nodeId.startsWith("judge-")
+      ? "judge-agent"
+      : node.nodeId.startsWith("final-")
+        ? "final-arbiter-agent"
+        : node.nodeId.startsWith("redteam-")
+          ? "red-team-agent"
+          : "cheap-executor";
     await mutate(orchestrator, "AcceptNodeAssignment", {
       taskId: graph.taskId,
       nodeId: node.nodeId,
-      agentId: "cheap-executor",
+      agentId,
     });
   }
 }
 
 async function startGraph(
   orchestrator: ReturnType<typeof createQueenOrchestrator>,
-  graph: { taskId: string; nodes: Array<{ nodeId: string; required: boolean }> },
+  graph: { taskId: string; nodes: Array<{ nodeId: string; type?: string; required: boolean }> },
 ): Promise<void> {
   await acceptRequiredAssignments(orchestrator, graph);
   await mutate(orchestrator, "ConfirmTaskGraph", { taskId: graph.taskId });

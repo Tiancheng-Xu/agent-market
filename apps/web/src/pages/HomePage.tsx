@@ -21,7 +21,7 @@ export function HomePage() {
       </section>
       <DemoNotice />
       <section className="stats-grid stagger">
-        <Stat label="Flow coverage" value="15 routes" note="One responsive component tree" tone="cyan" />
+        <Stat label="Flow coverage" value="18 routes" note="One responsive component tree" tone="cyan" />
         <Stat label="Matching policy" value="2 + 1" note="Top candidates plus newcomer" />
         <Stat label="Yield rule" value="6% linear" note="Test YD, floor rounded" tone="amber" />
       </section>

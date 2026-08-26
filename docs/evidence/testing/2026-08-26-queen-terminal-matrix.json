@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "agent-market.queen-terminal-matrix.v1",
+  "recordedAt": "2026-08-26T02:10:00Z",
+  "status": "verified-local",
+  "entrypoint": "/agent/graphql",
+  "frameworkBoundary": "LangGraph state machine; no Mastra runtime",
+  "terminalStates": [
+    { "path": "success", "expected": "succeeded", "gate": "signed orchestration response plus deterministic node contracts", "status": "passed" },
+    { "path": "provider failure", "expected": "MODEL_UNAVAILABLE", "gate": "no fake fallback success", "status": "passed" },
+    { "path": "runtime timeout", "expected": "UPSTREAM_TIMEOUT", "gate": "AbortSignal reaches model request", "status": "passed" },
+    { "path": "user cancellation", "expected": "CANCELLED", "gate": "later nodes do not execute", "status": "passed" }
+  ],
+  "roleGates": {
+    "acceptedAssignmentRequired": true,
+    "judgeIndependentFromQueenAndExecutor": true,
+    "finalArbiterIndependentFromQueenExecutorsAndJudges": true,
+    "sameModelAliasRejected": true,
+    "distinctnessKey": "modelTag",
+    "contexts": "isolated execution hook per role"
+  },
+  "idempotency": {
+    "startTaskRun": "same runId on repeat",
+    "submitNodeOutput": "same outputId and no second model call",
+    "judgeNodeOutput": "same judgment and no second model call",
+    "finalArbitrate": "same arbitration and no second model call",
+    "repairAndRedTeam": "versioned system node key"
+  },
+  "gates": {
+    "queenOrchestrator": "14/14 passed",
+    "streamRuntime": "13/13 passed",
+    "runnerTypecheck": "passed"
+  },
+  "publicBoundary": "This is local deterministic verification, not production workflow proof."
+}

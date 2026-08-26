@@ -61,8 +61,41 @@ type QueenTaskGraphResult = {
 type QueenRankResult = {
   nodeId: string;
   autoSelectedAgentId?: string;
-  candidates: Array<{ agentId: string; displayName: string; costPer1kTokensUsd: number; qualityScore: number; status: string; rankingScore?: number }>;
+  candidates: QueenRankCandidate[];
 };
+type QueenRankCandidate = {
+  agentId: string;
+  displayName: string;
+  modelTag: string;
+  costPer1kTokensUsd: number;
+  qualityScore: number;
+  status: string;
+  rankingScore?: number;
+};
+
+export function isIndependentQueenCandidate(
+  node: QueenTaskNode,
+  candidate: QueenRankCandidate,
+  graph: QueenTaskGraphResult,
+  selectedModelTags: Record<string, string>,
+): boolean {
+  const modelTag = candidate.modelTag.trim().toLowerCase();
+  if (!modelTag) return false;
+
+  const blockedNodeIds = node.type === "judge"
+    ? [
+      ...(node.judgesNodeId ? [node.judgesNodeId] : []),
+      ...graph.nodes.filter((entry) => entry.type === "synthesize").map((entry) => entry.nodeId),
+    ]
+    : node.type === "synthesize"
+      ? graph.nodes.filter((entry) => entry.type === "execute" || entry.type === "judge").map((entry) => entry.nodeId)
+      : node.type === "execute"
+        ? graph.nodes
+          .filter((entry) => (entry.type === "judge" && entry.judgesNodeId === node.nodeId) || entry.type === "synthesize")
+          .map((entry) => entry.nodeId)
+        : [];
+  return blockedNodeIds.every((nodeId) => selectedModelTags[nodeId]?.trim().toLowerCase() !== modelTag);
+}
 type QueenAssignmentResult = {
   nodeId: string;
   selectedAgentId: string;
@@ -76,7 +109,7 @@ type QueenWorkflowState = {
 };
 
 const MAX_ORCHESTRATION_AGENTS = 3;
-const WORKFLOW_OPERATION_TIMEOUT_MS = 45_000;
+const WORKFLOW_OPERATION_TIMEOUT_MS = 75_000;
 const ORCHESTRATE_AGENTS_MUTATION = `
 mutation OrchestrateAgents($input: AgentOrchestrationInput!) {
   orchestrateAgents(input: $input) {
@@ -123,7 +156,7 @@ mutation RankNodeAgents($input: RankNodeAgentsInput!) {
     nodeId
     autoSelectedAgentId
     rankingPolicy
-    candidates { agentId displayName costPer1kTokensUsd qualityScore status rankingScore }
+    candidates { agentId displayName modelTag costPer1kTokensUsd qualityScore status rankingScore }
   }
 }
 `;
@@ -424,6 +457,7 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
 
   async function prepareQueenAssignments(graph: QueenTaskGraphResult, signal: AbortSignal) {
     const accepted: Record<string, QueenAssignmentResult> = {};
+    const selectedModelTags: Record<string, string> = {};
     for (const node of graph.nodes) {
       const rankData = await runQueenMutation<{ rankNodeAgents: QueenRankResult }>({
         operationName: "RankNodeAgents",
@@ -437,8 +471,11 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
       });
       setQueenRanks((current) => ({ ...current, [node.nodeId]: rankData.rankNodeAgents }));
 
-      const selectedAgentId = rankData.rankNodeAgents.autoSelectedAgentId;
-      if (!selectedAgentId) throw new Error(`No eligible agent for ${node.title}.`);
+      const selectedCandidate = rankData.rankNodeAgents.candidates.find((candidate) =>
+        isIndependentQueenCandidate(node, candidate, graph, selectedModelTags),
+      );
+      if (!selectedCandidate) throw new Error(`节点「${node.title}」没有独立且合格的 Agent / No independent eligible agent.`);
+      const selectedAgentId = selectedCandidate.agentId;
 
       const assignmentData = await runQueenMutation<{ acceptNodeAssignment: QueenAssignmentResult }>({
         operationName: "AcceptNodeAssignment",
@@ -447,6 +484,7 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
         signal,
       });
       accepted[node.nodeId] = assignmentData.acceptNodeAssignment;
+      selectedModelTags[node.nodeId] = selectedCandidate.modelTag;
       setQueenAssignments((current) => ({ ...current, [node.nodeId]: assignmentData.acceptNodeAssignment }));
     }
     return accepted;
@@ -508,6 +546,17 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
     setQueenBusy(`select:${nodeId}`);
     setLastError(null);
     try {
+      const node = graph.nodes.find((candidate) => candidate.nodeId === nodeId);
+      const selectedCandidate = queenRanks[nodeId]?.candidates.find((candidate) => candidate.agentId === selectedAgentId);
+      const selectedModelTags = Object.fromEntries(
+        Object.entries(queenAssignments).flatMap(([assignedNodeId, assignment]) => {
+          const modelTag = queenRanks[assignedNodeId]?.candidates.find((candidate) => candidate.agentId === assignment.selectedAgentId)?.modelTag;
+          return modelTag ? [[assignedNodeId, modelTag]] : [];
+        }),
+      );
+      if (!node || !selectedCandidate || !isIndependentQueenCandidate(node, selectedCandidate, graph, selectedModelTags)) {
+        throw new Error("Judge 与 Final Arbiter 必须使用独立于被审查工作的模型 / independent review models are required.");
+      }
       await runQueenMutation<{ selectNodeAgent: QueenAssignmentResult }>({
         operationName: "SelectNodeAgent",
         query: SELECT_NODE_AGENT_MUTATION,

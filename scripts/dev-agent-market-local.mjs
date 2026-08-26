@@ -11,6 +11,7 @@ const sharedSecret = process.env.AGENT_RUNTIME_SHARED_SECRET ?? randomBytes(32).
 const temporaryDirectory = await mkdtemp(path.join(tmpdir(), "agent-market-local-"));
 const workerEnvironment = path.join(temporaryDirectory, "worker.env");
 const children = new Set();
+let cleaningUp = false;
 
 await writeFile(
   workerEnvironment,
@@ -65,7 +66,6 @@ function run(command, args, cwd, env) {
   });
 }
 
-let cleaningUp = false;
 async function cleanup(exitCode) {
   if (cleaningUp) return;
   cleaningUp = true;

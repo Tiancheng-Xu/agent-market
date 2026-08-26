@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "feature": "wallet-authenticated-chain-interaction-adapter",
+  "contractHash": "00075d144ad64bfdb2c407cea849b56e1693a6c6abb765715de7d6368d0c790c",
+  "status": "implemented-local-external-pending",
+  "implemented": {
+    "taskPublishing": ["wallet challenge", "server task resource", "approve intent", "createTask intent", "receipt and TaskCreated verification"],
+    "staking": ["wallet account resource", "vault approve", "stake", "unstake", "claimYield", "receipt and event verification"],
+    "committee": ["server-side membership", "castVote intent", "immutable wallet confirmation", "receipt and VoteCast verification"],
+    "edge": ["same-origin allowlist", "32KB payload limit", "authorization stripping", "fail-closed offline state"]
+  },
+  "deterministicGates": {
+    "transactionEngineTests": "90 passed, 5 skipped integration tests",
+    "webTests": "84 passed",
+    "transactionEngineTypecheck": "passed",
+    "webTypecheck": "passed"
+  },
+  "notExecuted": [
+    "No Sepolia transaction was submitted.",
+    "No AWS resource was created, resumed, or modified.",
+    "No Cloudflare production configuration was changed."
+  ],
+  "externalStatus": "pending-action-approval-and-readback"
+}

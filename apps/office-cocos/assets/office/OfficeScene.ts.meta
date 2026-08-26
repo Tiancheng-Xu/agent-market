@@ -1,0 +1,13 @@
+{
+  "ver": "4.0.24",
+  "importer": "typescript",
+  "imported": true,
+  "uuid": "7ab4c3d2-1e5f-4a90-b8c7-6d5e4f3a2b1c",
+  "files": [],
+  "subMetas": {},
+  "userData": {
+    "moduleId": "project:///assets/office/OfficeScene.js",
+    "importerSettings": 7,
+    "simulateGlobals": []
+  }
+}

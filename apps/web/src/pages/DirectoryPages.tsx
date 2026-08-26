@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import type { TransactionIntentV1 } from "@agent-market/shared-contracts";
 
 import { Badge, DemoNotice, EmptyState, PageHeader, Panel } from "../components/Ui";
 import { Localized } from "../i18n/LanguageProvider";
@@ -13,6 +14,15 @@ import {
   type OwnerAgentRecord,
 } from "../ownerAgentRegistry";
 import type { Agent } from "../types";
+import {
+  authenticateWalletSession,
+  createTaskDraft,
+  createTransactionIntent,
+  sendTransactionIntent,
+  verifyTransactionIntent,
+  ydIntegerToAtomic,
+  type TaskDraftResponse,
+} from "../lib/chainClient";
 
 const expertTypes = ["Research agent", "Data analyst", "Content operator", "Code agent", "Security reviewer", "Final arbiter"];
 
@@ -116,19 +126,98 @@ export function TasksPage() {
   return <Localized><><PageHeader eyebrow="TASK MARKET" title="Open work with explicit settlement" description="Budgets are denominated in test YD and become open only after Sepolia escrow verification." actions={<Link className="button button-primary" to="/tasks/new">Publish task</Link>} /><DemoNotice /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="neutral">{filtered.length} TASKS</Badge>} /><div className="task-list stagger">{filtered.map((task) => <Panel key={task.id} className="task-row"><div><Badge tone={task.status === "open" ? "cyan" : "indigo"}>{task.status.toUpperCase()}</Badge><h2>{task.title}</h2><p>{task.summary}</p><div className="tag-row">{task.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="task-value"><strong>{task.budget} YD</strong><span>{task.due}</span><Link className="button button-ghost" to={`/tasks/${task.id}`}>Details</Link></div></Panel>)}</div></></Localized>;
 }
 
-export function TaskNewPage() {
-  const [step, setStep] = useState<"draft" | "wallet" | "ready">("draft");
+export function TaskNewPage({ walletAddress = null }: { walletAddress?: string | null }) {
+  const [step, setStep] = useState<"draft" | "wallet" | "approval" | "escrow" | "ready">("draft");
   const [message, setMessage] = useState("Draft not validated yet.");
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<null | { title: string; category: string; budget: string; description: string; completionHours: number; expertType: string }>(null);
+  const [task, setTask] = useState<TaskDraftResponse | null>(null);
+  const [pending, setPending] = useState<null | { stage: "approval" | "escrow"; intent: TransactionIntentV1; txHash: string; task: TaskDraftResponse }>(null);
+
   function validateDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const completionText = String(form.get("completionWindow") ?? "");
+    const completionHours = Math.min(720, Math.max(1, Number.parseInt(completionText, 10) || 48));
+    setDraft({
+      title: String(form.get("title") ?? "").trim(),
+      category: String(form.get("category") ?? "Research"),
+      budget: String(form.get("budget") ?? "").trim(),
+      description: String(form.get("description") ?? "").trim(),
+      completionHours,
+      expertType: String(form.get("expertType") ?? "Research agent"),
+    });
     setStep("wallet");
-    setMessage("Draft validated locally. Next: connect MetaMask, approve YD, then submit escrow.");
+    setMessage(walletAddress ? "Draft validated. Review the risk notice before requesting wallet signatures." : "Draft validated. Connect MetaMask and switch to Sepolia before funding.");
   }
+
   function previewTransactionStates() {
-    setStep("ready");
-    setMessage("Preview only: approve YD -> submit escrow -> wait for RPC receipt. No wallet transaction was sent.");
+    setMessage("Preview only: wallet authentication -> YD approval -> escrow submission -> independent RPC and event verification. No transaction was sent.");
   }
-  return <Localized><><PageHeader eyebrow="TASK PUBLISHING" title="Fund a verifiable task" description="Publishing separates draft validation, YD approval, escrow submission, and independent RPC verification." /><Panel className="form-panel"><div className="stepper"><span className="active">1 Draft</span><span className={step !== "draft" ? "active" : ""}>2 Wallet</span><span className={step === "ready" ? "active" : ""}>3 Verify</span></div><form className="form-grid" onSubmit={validateDraft} onInvalid={() => setMessage("Complete the required fields before validating the draft.")}><label className="span-two">Task title<input required /></label><label>Category<select required defaultValue="Research"><option>Research</option><option>Data</option><option>Content</option></select></label><label>Budget<input required type="number" min="1" step="1" /><span className="input-suffix">YD</span></label><label className="span-two">Acceptance criteria<textarea required rows={5} /></label><label>Completion window<input required placeholder="48 hours" /></label><label>Expert type<select required defaultValue="Research agent">{expertTypes.map((type) => <option key={type}>{type}</option>)}</select></label><div className="form-actions span-two"><button className="button button-primary">Validate draft</button><button type="button" className="button button-ghost" onClick={previewTransactionStates}>Preview transaction states</button></div></form><div className="inline-state" role="status" aria-live="polite">{message}</div><div className="transaction-rail"><div className={step !== "draft" ? "complete" : "active"}>Draft validated</div><div className={step === "wallet" ? "active" : step === "ready" ? "complete" : ""}>Await YD approval</div><div className={step === "ready" ? "active" : ""}>Escrow submitted</div><div className={step === "ready" ? "active" : ""}>RPC receipt verified</div></div></Panel></></Localized>;
+
+  async function submitCreateTask(nextTask: TaskDraftResponse) {
+    if (!walletAddress || !draft) throw new Error("WALLET_OR_DRAFT_MISSING");
+    const deadline = Math.floor(Date.now() / 1_000) + draft.completionHours * 3_600;
+    const intent = await createTransactionIntent(nextTask.resourceId, "createTask", { deadline });
+    const txHash = await sendTransactionIntent(intent, walletAddress);
+    setPending({ stage: "escrow", intent, txHash, task: nextTask });
+    setStep("escrow");
+    setMessage("Escrow transaction submitted. Recheck RPC receipt and TaskCreated event before treating the task as funded.");
+  }
+
+  async function publishTask() {
+    if (!draft) { setMessage("Validate the draft first."); return; }
+    if (!walletAddress) { setMessage("Connect MetaMask before creating a wallet session."); return; }
+    const approved = window.confirm("Sepolia test transaction warning: this flow requests a message signature and up to two MetaMask transaction confirmations. Test YD and gas may be spent. The proposed 6% platform publishing fee is not charged until contract support is independently verified. Continue?");
+    if (!approved) { setMessage("Funding cancelled before any transaction was requested."); return; }
+    setBusy(true);
+    try {
+      await authenticateWalletSession(walletAddress);
+      const nextTask = await createTaskDraft({
+        title: draft.title,
+        description: draft.description,
+        category: draft.category,
+        tags: [draft.category, draft.expertType],
+        budgetAtomic: ydIntegerToAtomic(draft.budget),
+      });
+      setTask(nextTask);
+      const intent = await createTransactionIntent(nextTask.resourceId, "approve", { target: "escrow" });
+      const txHash = await sendTransactionIntent(intent, walletAddress);
+      setPending({ stage: "approval", intent, txHash, task: nextTask });
+      setStep("approval");
+      setMessage("YD approval submitted. Recheck its RPC receipt before the escrow transaction can be requested.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "TASK_FUNDING_FAILED");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function recheckPendingTransaction() {
+    if (!pending) return;
+    setBusy(true);
+    try {
+      const checked = await verifyTransactionIntent(pending.intent.intentId, pending.txHash);
+      if (checked.verification.status === "confirmed") {
+        if (pending.stage === "approval") await submitCreateTask(pending.task);
+        else {
+          setStep("ready");
+          setPending(null);
+          setMessage("RPC receipt and expected event verified. The task funding state is now externally verified.");
+        }
+      } else {
+        setMessage(checked.verification.status === "verifying"
+          ? "Transaction is still confirming. No success state has been claimed."
+          : "Verification stopped with status: " + checked.verification.status + ".");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "CHAIN_VERIFY_FAILED");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <Localized><><PageHeader eyebrow="TASK PUBLISHING" title="Fund a verifiable task" description="Publishing separates draft validation, wallet authentication, YD approval, escrow submission, and independent RPC verification." /><Panel className="form-panel"><div className="stepper"><span className={draft ? "complete" : "active"}>1 Draft</span><span className={step === "wallet" || step === "approval" ? "active" : step === "escrow" || step === "ready" ? "complete" : ""}>2 Wallet</span><span className={step === "escrow" ? "active" : step === "ready" ? "complete" : ""}>3 Verify</span></div><form className="form-grid" onSubmit={validateDraft} onInvalid={() => setMessage("Complete the required fields before validating the draft.")}><label className="span-two">Task title<input name="title" required minLength={3} /></label><label>Category<select name="category" required defaultValue="Research"><option>Research</option><option>Data</option><option>Content</option></select></label><label>Budget<input name="budget" required type="number" min="1" step="1" /><span className="input-suffix">YD</span></label><label className="span-two">Acceptance criteria<textarea name="description" required minLength={3} rows={5} /></label><label>Completion window<input name="completionWindow" required placeholder="48 hours" /></label><label>Expert type<select name="expertType" required defaultValue="Research agent">{expertTypes.map((type) => <option key={type}>{type}</option>)}</select></label><div className="form-actions span-two"><button className="button button-primary" disabled={busy}>Validate draft</button><button type="button" className="button button-ghost" onClick={previewTransactionStates}>Preview transaction states</button><button type="button" className="button button-warning" disabled={busy || !draft || !walletAddress} onClick={() => void publishTask()}>{busy ? "Working..." : "Prepare & fund on Sepolia"}</button>{pending ? <button type="button" className="button button-primary" disabled={busy} onClick={() => void recheckPendingTransaction()}>Recheck RPC receipt</button> : null}</div></form><div className="inline-state" role="status" aria-live="polite">{message}</div>{task ? <div className="inline-state"><strong>Resource:</strong> {task.resourceId}<br /><strong>6% platform fee:</strong> {task.platformFeeAtomic} atomic YD / {task.platformFeeStatus}</div> : null}<div className="transaction-rail"><div className={draft ? "complete" : "active"}>Draft validated</div><div className={step === "approval" ? "active" : step === "escrow" || step === "ready" ? "complete" : ""}>YD approval</div><div className={step === "escrow" ? "active" : step === "ready" ? "complete" : ""}>Escrow submitted</div><div className={step === "ready" ? "complete" : ""}>RPC receipt verified</div></div></Panel></></Localized>;
 }
 
 export function TaskDetailPage() {

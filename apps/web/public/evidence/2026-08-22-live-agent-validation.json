@@ -1,0 +1,99 @@
+{
+  "evidenceType": "live-agent-local-validation",
+  "capturedAt": "2026-08-22T00:00:00-04:00",
+  "feature": "local-ollama-and-provider-api-agents",
+  "secretPolicy": "No API keys, shared secrets, raw prompts, cookies, account IDs, or private local paths are stored in this evidence.",
+  "officialReferences": [
+    "https://api-docs.deepseek.com/quick_start/pricing",
+    "https://platform.moonshot.ai/docs/api/chat",
+    "https://help.aliyun.com/en/model-studio/qwen-api-via-openai-chat-completions",
+    "https://docs.z.ai/guides/develop/openai/python",
+    "https://docs.ollama.com/capabilities/thinking",
+    "https://developers.cloudflare.com/workers/best-practices/workers-best-practices/"
+  ],
+  "commands": [
+    {
+      "command": "pnpm --filter @agent-market/shared-contracts test",
+      "result": "pass",
+      "summary": "3 files, 15 tests passed"
+    },
+    {
+      "command": "pnpm --filter @agent-market/local-agent-runner test",
+      "result": "pass",
+      "summary": "2 files, 23 tests passed"
+    },
+    {
+      "command": "pnpm --filter @agent-market/local-agent-runner typecheck",
+      "result": "pass",
+      "summary": "tsc completed"
+    },
+    {
+      "command": "pnpm --filter @agent-market/web test",
+      "result": "pass",
+      "summary": "9 files, 25 tests passed"
+    },
+    {
+      "command": "pnpm --filter @agent-market/web typecheck",
+      "result": "pass",
+      "summary": "evidence generation and tsc completed"
+    },
+    {
+      "command": "pnpm --filter @agent-market/web build",
+      "result": "pass",
+      "summary": "Cloudflare Pages edge build ready; /evidence SSR 200, workspace SSR 200, missing route SSR 404"
+    },
+    {
+      "command": "pnpm verify",
+      "result": "pass",
+      "summary": "repository, evidence, TypeScript workspace tests/typecheck/build, contracts, Go, and Python trainer passed; trainer pytest 3 passed"
+    }
+  ],
+  "smokeSummary": {
+    "verifiedAgents": [
+      "personal-ai-agent-runtime-v4-1",
+      "deepseek-deepseek-v4-flash",
+      "kimi-kimi-k2-7-code",
+      "qwen-qwen-plus",
+      "zhipu-glm-5-3"
+    ],
+    "pendingAgents": [
+      {
+        "agentId": "kimi-kimi-k3",
+        "reason": "Provider catalog lists the model, but current Agent Market smoke is verified only for kimi-k2.7-code"
+      }
+    ]
+  },
+  "orchestrationPolicy": {
+    "selection": "sequential-gated",
+    "transport": "GraphQL mutation via /agent/graphql",
+    "minimumAgents": 2,
+    "maximumAgents": 3,
+    "leadAgent": "the first selected agent",
+    "unlockRule": "slot N+1 is selectable only after slot N is filled",
+    "execution": "GraphQL orchestrateAgents mutation sends agentIds to the runtime resolver; runtime collects each selected agent output in order, then asks the lead agent to synthesize the final answer"
+  },
+  "productionStatus": "manual-pending",
+  "queenLedGraphqlWorkflow": {
+    "status": "implemented",
+    "entrypoint": "/agent/graphql",
+    "requiredStages": [
+      "requirement",
+      "graph",
+      "ranking",
+      "acceptance",
+      "execution",
+      "judge",
+      "final_arbitration",
+      "delivery"
+    ],
+    "graphModel": "DAG",
+    "rankingPolicy": "capability gate, then cost priority, availability, latency, historical score, low-score old-model retirement, new-model protection",
+    "redTeamPolicy": "risk-triggered",
+    "rescuePolicy": "auto-added-user-invisible-evidence-visible",
+    "judgePolicy": "independent Judge agent; cannot be Queen or the node executor",
+    "finalArbiterPolicy": "independent Final Arbiter agent; cannot be Queen and must use isolated context",
+    "learningLoop": "redacted structured summary only",
+    "localCodexBoundary": "private-preview-demo-only through Local Runtime; not public production default",
+    "runtimeSmokeEvidence": "docs/evidence/testing/2026-08-22-queen-graphql-runtime-smoke.json"
+  }
+}

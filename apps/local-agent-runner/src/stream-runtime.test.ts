@@ -84,6 +84,97 @@ describe("local stream runtime", () => {
     expect(response.status).toBe(401);
   });
 
+  it("rejects owner-only chat from a public caller without invoking Ollama", async () => {
+    const chatStream = vi.fn();
+    const runtime = createLocalStreamRuntime({ manifests: [manifest()], ollamaClient: { chatStream }, signingKey, now });
+    const body = JSON.stringify({
+      requestId: "11111111-1111-4111-8111-111111111111",
+      agentId: "personal-ai-agent-runtime-v4-1",
+      messages: [{ role: "user", content: "hi" }],
+    });
+    const headers = signRequest("POST", "/agent/chat", body, { key: signingKey, now, nonce: () => "public-owner-only" });
+
+    const response = await runtime.fetch(new Request("http://127.0.0.1:8789/agent/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...signedHeaders(headers) },
+      body,
+    }));
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "FORBIDDEN", retryable: false });
+    expect(chatStream).not.toHaveBeenCalled();
+  });
+
+  it("rejects a replayed signed request before a second model call", async () => {
+    const chatStream = vi.fn(async (_request, onDelta) => onDelta({ content: "ok", raw: {} }));
+    const runtime = createLocalStreamRuntime({ manifests: [manifest()], ollamaClient: { chatStream }, signingKey, now });
+    const body = JSON.stringify({
+      requestId: "11111111-1111-4111-8111-111111111111",
+      agentId: "personal-ai-agent-runtime-v4-1",
+      messages: [{ role: "user", content: "hi" }],
+    });
+    const signed = signRequest("POST", "/agent/chat", body, { key: signingKey, now, nonce: () => "single-use-nonce" });
+    const request = () => new Request("http://127.0.0.1:8789/agent/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(signed) },
+      body,
+    });
+
+    expect((await runtime.fetch(request())).status).toBe(200);
+    const replay = await runtime.fetch(request());
+
+    expect(replay.status).toBe(401);
+    expect(chatStream).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { name: "provider failure", expectedCode: "MODEL_UNAVAILABLE", abort: false, timeoutMs: 1_000 },
+    { name: "runtime timeout", expectedCode: "UPSTREAM_TIMEOUT", abort: false, timeoutMs: 5 },
+    { name: "user cancellation", expectedCode: "CANCELLED", abort: true, timeoutMs: 1_000 },
+  ])("returns an explicit GraphQL terminal error for $name", async ({ expectedCode, abort, timeoutMs }) => {
+    const provider = providerManifest();
+    const controller = new AbortController();
+    const runtime = createLocalStreamRuntime({
+      manifests: [manifest(), provider],
+      ollamaClient: {
+        chatStream: async (_request, onDelta, signal) => {
+          if (expectedCode === "MODEL_UNAVAILABLE") {
+            onDelta({ content: "local", raw: {} });
+            return;
+          }
+          await new Promise<void>((_resolve, reject) => signal?.addEventListener("abort", () => reject(new Error("model request aborted")), { once: true }));
+        },
+      },
+      providerClients: {
+        deepseek: {
+          chat: expectedCode === "MODEL_UNAVAILABLE"
+            ? vi.fn().mockRejectedValue(new Error("provider unavailable"))
+            : vi.fn().mockResolvedValue({ content: "provider" }),
+        },
+      },
+      signingKey,
+      now,
+      requestTimeoutMs: timeoutMs,
+    });
+    const body = JSON.stringify({
+      query: "mutation OrchestrateAgents($input: AgentOrchestrationInput!) { orchestrateAgents(input: $input) { finalOutput } }",
+      operationName: "OrchestrateAgents",
+      variables: { input: { requestId: "11111111-1111-4111-8111-111111111111", agentIds: [manifest().id, provider.id], messages: [{ role: "user", content: "hi" }] } },
+    });
+    const signed = signRequest("POST", "/graphql", body, { key: signingKey, now, nonce: () => `terminal-${expectedCode}` });
+    const responsePromise = runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(signed) },
+      body,
+      signal: controller.signal,
+    }));
+    if (abort) setTimeout(() => controller.abort(), 1);
+    const payload = await (await responsePromise).json();
+
+    expect(payload.errors[0].extensions.code).toBe(expectedCode);
+    expect(payload.data).toBeNull();
+  });
+
   it("runs signed GraphQL orchestration through selected agents and lead synthesis", async () => {
     const localAgent = manifest();
     const providerAgent: AgentManifest = {
@@ -302,5 +393,25 @@ function manifest(): AgentManifest {
       selectableBy: "owner-only",
       ownerScope: "local-runtime-owner",
     },
+  };
+}
+
+function providerManifest(): AgentManifest {
+  return {
+    ...manifest(),
+    id: "deepseek-deepseek-v4-flash",
+    displayName: "DeepSeek V4 Flash",
+    ownership: "third-party/provider-api",
+    provider: "deepseek",
+    model: {
+      ...manifest().model,
+      tag: "deepseek-v4-flash",
+      digest: "provider-managed",
+      family: "deepseek",
+      parameterSize: "provider-managed",
+      quantization: "provider-managed",
+      source: "DeepSeek API",
+    },
+    access: { visibility: "marketplace", selectableBy: "public-market" },
   };
 }

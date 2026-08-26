@@ -4,12 +4,47 @@ import { describe, expect, it } from "vitest";
 import {
   createWorkflowOperationSignal,
   finalizeQueenWorkflowState,
+  isIndependentQueenCandidate,
   LocalAgentsPage,
   parseGraphqlResponse,
   updateQueenNodeTitle,
 } from "./LocalAgentsPage";
 
 describe("local agents Queen workflow", () => {
+  it("keeps Judge and Final Arbiter on independent model tags", () => {
+    const graph = {
+      taskId: "task-1",
+      graphRevision: 1,
+      riskLevel: "low" as const,
+      startPolicy: "auto" as const,
+      rescuePolicy: { mode: "auto" as const, visibleToUser: false as const, evidenceVisible: true as const },
+      nodes: [
+        { nodeId: "execute-1", type: "execute" as const, title: "Execute", dependencies: [], required: true },
+        { nodeId: "judge-1", type: "judge" as const, title: "Judge", dependencies: ["execute-1"], required: true, judgesNodeId: "execute-1" },
+        { nodeId: "final-1", type: "synthesize" as const, title: "Final", dependencies: ["judge-1"], required: true },
+      ],
+      edges: [],
+    };
+    const candidate = {
+      agentId: "alias-agent",
+      displayName: "Alias Agent",
+      modelTag: "shared-model:v1",
+      costPer1kTokensUsd: 0,
+      qualityScore: 0.8,
+      status: "online",
+    };
+
+    expect(isIndependentQueenCandidate(graph.nodes[1]!, candidate, graph, { "execute-1": "shared-model:v1" })).toBe(false);
+    expect(isIndependentQueenCandidate(graph.nodes[1]!, candidate, graph, { "final-1": "shared-model:v1" })).toBe(false);
+    expect(isIndependentQueenCandidate(graph.nodes[1]!, { ...candidate, modelTag: "judge-model:v1" }, graph, { "execute-1": "shared-model:v1" })).toBe(true);
+    expect(isIndependentQueenCandidate(graph.nodes[0]!, candidate, graph, { "judge-1": "shared-model:v1" })).toBe(false);
+    expect(isIndependentQueenCandidate(graph.nodes[0]!, { ...candidate, modelTag: "executor-model:v1" }, graph, { "judge-1": "shared-model:v1" })).toBe(true);
+    expect(isIndependentQueenCandidate(graph.nodes[2]!, { ...candidate, modelTag: "judge-model:v1" }, graph, {
+      "execute-1": "shared-model:v1",
+      "judge-1": "judge-model:v1",
+    })).toBe(false);
+  });
+
   it("reports an unavailable GraphQL gateway when a response body is empty", async () => {
     const response = new Response(null, { status: 404 });
 

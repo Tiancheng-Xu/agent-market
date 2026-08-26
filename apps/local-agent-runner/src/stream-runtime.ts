@@ -16,7 +16,7 @@ import {
 import type { ChatMessage, OllamaClient } from "./ollama-client";
 import type { ProviderApiClient, ProviderName } from "./provider-api-client";
 import { createQueenOrchestrator } from "./queen-orchestrator";
-import { verifySignedRequest, type SigningKey } from "./signing";
+import { NonceReplayStore, verifySignedRequest, type SigningKey } from "./signing";
 
 type OllamaStreamingClient = Pick<OllamaClient, "chatStream">;
 type ProviderClients = Partial<Record<ProviderName, Pick<ProviderApiClient, "chat">>>;
@@ -36,6 +36,7 @@ type CallerAccess = {
 
 export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
   const manifests = new Map(options.manifests.map((manifest) => [manifest.id, manifest]));
+  const nonceStore = new NonceReplayStore();
   const now = options.now ?? (() => new Date());
   const queenAgents = agentCandidatesFromManifests([...manifests.values()], now);
   const publicQueenOrchestrator = createQueenOrchestrator({
@@ -97,6 +98,7 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
         const verified = verifySignedRequest("POST", url.pathname, body, request.headers, {
           keys: { [options.signingKey.keyId]: options.signingKey.secret },
           now,
+          nonceStore,
         });
         if (!verified.ok) {
           return jsonError("UNAUTHORIZED", "Runtime assertion failed", undefined, false, 401);
@@ -201,7 +203,7 @@ async function handleGraphqlOrchestration(options: {
     });
   } catch (error) {
     return graphqlError(
-      signal.aborted ? "UPSTREAM_TIMEOUT" : "MODEL_UNAVAILABLE",
+      options.requestSignal.aborted ? "CANCELLED" : signal.aborted ? "UPSTREAM_TIMEOUT" : "MODEL_UNAVAILABLE",
       safeMessage(error),
       requestId,
       true,
@@ -394,7 +396,7 @@ function streamChat(options: {
         send({
           event: "error",
           error: {
-            code: signal.aborted ? "UPSTREAM_TIMEOUT" : "MODEL_UNAVAILABLE",
+            code: options.requestSignal.aborted ? "CANCELLED" : signal.aborted ? "UPSTREAM_TIMEOUT" : "MODEL_UNAVAILABLE",
             message: safeMessage(error),
             requestId,
             retryable: true,

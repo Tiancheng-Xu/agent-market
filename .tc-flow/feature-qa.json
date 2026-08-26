@@ -1,28 +1,42 @@
 {
   "schemaVersion": 1,
-  "runId": "0424cdbc-cf90-45fd-86a8-ca719680cbef",
-  "feature": "agent-market-phase2",
-  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
-  "generatedAt": "2026-08-21T21:14:54.496Z",
+  "runId": "d6738bc2-0d2d-4d69-b040-3b485ce61d93",
+  "feature": "agent-market-live-agent-closure",
+  "contractHash": "4f6145fcbd0a1ee2f9e11f9385a407375fe7c0455932964051d60513e4ada79e",
+  "generatedAt": "2026-08-26T09:05:32.919Z",
   "verdict": "pass",
   "renderingMode": "edge-ssr-with-single-csr-fallback",
   "gates": {
     "rootVerify": "pass",
-    "trainerDocker": "pass",
-    "realPostgres": {
-      "auth": "1/1",
-      "chain": "1/1",
-      "replay": "3/3",
-      "matcherPgvector": "1/1"
+    "webTests": "91/91",
+    "sharedContracts": "30/30",
+    "visualRoutes": "180/180",
+    "evidenceValidation": "pass",
+    "externalChromeRecording": {
+      "status": "verified-local",
+      "durationSeconds": 300.055442,
+      "dimensions": "1920x960",
+      "sha256": "6b336d52c7228001543beb85aaa5e716ed7036bd8023092d8b1df5992f926170"
     },
-    "iacSharedResource": "pass",
-    "specialized": "42/42",
-    "evidenceResponsive": "pass",
-    "independentReview": "pass"
+    "independentReview": {
+      "verdict": "resolved",
+      "p0": 0,
+      "p1Found": 2,
+      "p1Remaining": 0,
+      "repairRounds": 2,
+      "scope": "core-role model independence, timeout terminal state, Evidence truth boundary, model identity"
+    },
+    "repositoryPolicy": "pass",
+    "stagedDiffCheck": "pass",
+    "typescriptBuild": "pass",
+    "solidity": "pass",
+    "goVetAndTest": "pass",
+    "python": "33/33"
   },
   "truthBoundary": {
-    "verified": "local implementation, local databases, container build, Evidence rendering and static delivery gates",
-    "pending": "fresh V2 AWS, Sepolia and Cloudflare identifiers plus public readback",
-    "deferred": "The Graph"
+    "verified": "local implementation, signed runtime and GraphQL preflight, distinct-model workflow terminal state, full-screen Chrome recording, Cocos office, Evidence, bilingual routes and repository gates",
+    "pending": "Cloudflare Preview readback, remote PR checks, fresh AWS V2 production readback, and any newly authorized Sepolia transaction",
+    "production": "manual-pending",
+    "prohibitedClaims": "local or Preview evidence does not inherit AWS, Sepolia, or production status"
   }
 }

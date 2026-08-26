@@ -11,6 +11,7 @@ import type { ChainObservation, ChainReader } from "../../../chain/reconcile";
 import { MemoryTransactionStore } from "../../../chain/transaction-store";
 import { createIntentHandler } from "./intents/route";
 import { createTransactionVerifyHandler } from "./verify/route";
+import { createTaskDraftHandler } from "../tasks/route";
 
 const now = new Date("2026-08-21T12:00:00.000Z");
 const requestId = "0191f6f8-cb6b-7f31-81ad-c497d7d90301";
@@ -84,6 +85,38 @@ function reader(intent: { data: string; from: string }): ChainReader {
 }
 
 describe("transaction intent and verification routes", () => {
+  it("creates a wallet-owned funding-pending task resource without accepting actor overrides", async () => {
+    const { auth, wallet, cookie } = await authenticatedWallet();
+    const resources = new MemoryChainResourceRepository([]);
+    const response = await createTaskDraftHandler({
+      auth,
+      resources,
+      authOrigin: new URL("https://agent-market.test"),
+      id: () => resourceId,
+    })(new Request("https://agent-market.test/api/tasks", {
+      method: "POST",
+      headers: { cookie, origin: "https://agent-market.test", "content-type": "application/json", "x-request-id": requestId },
+      body: JSON.stringify({
+        title: "Verified task",
+        description: "Deliver a source-backed result.",
+        category: "Research",
+        tags: ["Research", "citations"],
+        budgetAtomic: "100000000000000000000",
+      }),
+    }));
+    const body = await response.json() as { task: { resourceId: string; platformFeeAtomic: string; platformFeeStatus: string } };
+    expect(response.status).toBe(201);
+    expect(body.task).toEqual(expect.objectContaining({
+      resourceId,
+      platformFeeAtomic: "6000000000000000000",
+      platformFeeStatus: "contract-support-pending",
+    }));
+    await expect(resources.requireAuthorized(resourceId, wallet.address, "createTask")).resolves.toMatchObject({
+      publisherWallet: wallet.address.toLowerCase(),
+      status: "funding_pending",
+    });
+  });
+
   it("derives the sender from the signed session and rejects signing-material overrides", async () => {
     const { auth, wallet, cookie } = await authenticatedWallet();
     const store = new MemoryTransactionStore();

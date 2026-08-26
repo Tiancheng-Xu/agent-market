@@ -31,5 +31,5 @@
   <path d="M250 195 H320" class="edge"/><path d="M530 195 H600" class="edge"/><path d="M830 195 H900" class="edge"/>
   <path d="M715 240 V330" class="edge"/><path d="M600 377 H530" class="edge"/><path d="M425 424 V520" class="edge"/><path d="M530 567 H600" class="edge"/>
   <path d="M250 377 H320" class="dash"/><path d="M830 377 C910 377 900 250 982 250" class="dash"/>
-  <text x="62" y="690" class="small">Implemented now: SSR, hydration fallback, explicit offline health, lazy images on Evidence, archived AWS sample. TODO: automatic degraded mode and Preview Web Vitals writeback.</text>
+  <text x="62" y="690" class="small">Implemented: SSR, hydration fallback, offline health, lazy media and device/network degradation. AWS V2 Web Vitals readback remains pending.</text>
 </svg>

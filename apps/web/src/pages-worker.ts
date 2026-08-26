@@ -15,12 +15,61 @@ import { routeForPath } from "./ssr/routeDefinitions";
 export interface PagesEnvironment {
   ASSETS: { fetch(request: Request): Promise<Response> };
   API_ORIGIN?: string;
+  TRANSACTION_ENGINE_ORIGIN?: string;
   AGENT_ALLOWED_ORIGINS?: string;
   AGENT_CHAT_MAX_BYTES?: string;
   AGENT_RUNTIME_KEY_ID?: string;
   AGENT_RUNTIME_ORIGIN?: string;
   AGENT_RUNTIME_SHARED_SECRET?: string;
   TURNSTILE_SECRET?: string;
+}
+
+const TRANSACTION_ENGINE_PATHS = new Set([
+  "/api/auth/challenge",
+  "/api/auth/verify",
+  "/api/auth/logout",
+  "/api/tasks",
+  "/api/chain/account",
+  "/api/transactions/intents",
+  "/api/transactions/verify",
+]);
+
+async function proxyTransactionEngine(request: Request, environment: PagesEnvironment, upstreamFetch: typeof fetch): Promise<Response> {
+  if (request.method !== "POST") return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405 });
+  const requestUrl = new URL(request.url);
+  if (request.headers.get("origin") !== requestUrl.origin) {
+    return Response.json({ error: "AUTH_ORIGIN_MISMATCH" }, { status: 403 });
+  }
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (!Number.isFinite(contentLength) || contentLength > 32_768) {
+    return Response.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+  }
+  const body = await request.arrayBuffer();
+  if (body.byteLength > 32_768) {
+    return Response.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+  }
+  if (!environment.TRANSACTION_ENGINE_ORIGIN) {
+    return Response.json({ error: "TRANSACTION_ENGINE_OFFLINE" }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+  const origin = environment.TRANSACTION_ENGINE_ORIGIN.endsWith("/")
+    ? environment.TRANSACTION_ENGINE_ORIGIN
+    : `${environment.TRANSACTION_ENGINE_ORIGIN}/`;
+  const headers = new Headers(request.headers);
+  headers.delete("authorization");
+  headers.delete("x-forwarded-host");
+  headers.delete("x-forwarded-proto");
+  headers.set("x-forwarded-host", requestUrl.host);
+  headers.set("x-forwarded-proto", requestUrl.protocol.slice(0, -1));
+  const upstream = await upstreamFetch(new Request(new URL(requestUrl.pathname.slice(1), origin), {
+    method: "POST",
+    headers,
+    body,
+    redirect: "manual",
+  }));
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.set("cache-control", "no-store");
+  responseHeaders.delete("server");
+  return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
 }
 
 type RenderRoute = (
@@ -138,6 +187,10 @@ export function createPagesHandler(options: HandlerOptions = {}) {
         return handleAgentGraphql(request, environment, upstreamFetch);
       }
 
+      if (TRANSACTION_ENGINE_PATHS.has(requestUrl.pathname)) {
+        return proxyTransactionEngine(request, environment, upstreamFetch);
+      }
+
       if (requestUrl.pathname === "/api/performance") {
         if (request.method !== "POST") {
           return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405 });
@@ -160,10 +213,13 @@ export function createPagesHandler(options: HandlerOptions = {}) {
         return upstreamFetch(upstreamRequest);
       }
 
+      const pathname = new URL(request.url).pathname;
+      if (pathname === "/office-cocos" || pathname.startsWith("/office-cocos/")) {
+        return environment.ASSETS.fetch(request);
+      }
       if (!isDocumentRequest(request)) return environment.ASSETS.fetch(request);
 
       const startedAt = now();
-      const pathname = new URL(request.url).pathname;
       const status = routeForPath(pathname) ? 200 : 404;
       const templateResponse = await loadTemplate(request, environment);
       if (!templateResponse.ok) return templateResponse;

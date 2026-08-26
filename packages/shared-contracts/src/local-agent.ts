@@ -28,6 +28,7 @@ export const OwnerTrainedModels = [
     displayName: "Personal Code Agent",
     tag: "personal-code-agent:v1",
     digest: "4b9c60671fff53a198630f9aaf6b76d7d46c356359f41030f52e61f77f7b83bb",
+    artifactDigest: "928df447cbc20d75c19d30b66bd2504701231841749e67b72887311478020121",
     capabilities: ["completion", "code-planning", "implementation-plan", "verification-gates", "structured-json", "local-runtime"],
     parentModel: "Qwen3-8B",
     revision: "b968826d9c46dd6066d109eabc6255188de91218",
@@ -42,7 +43,8 @@ export const OwnerTrainedModels = [
     id: "personal-image-agent",
     displayName: "Personal Image Agent",
     tag: "personal-image-agent:v1",
-    digest: "59de62829334d7d5e9c672ec0bcaaff4b14ed91e91ae9ce4511c20edd67facbb",
+    digest: "2fa405e1244629244798cb4d7b8f4b3a5dd9e47aaf9ea7329e8dbe27bd32cffd",
+    artifactDigest: "4bba2f8f38a08edb2ad74a9a7b1a8927d5df4c31e7ec6270a6bdb3309706bfba",
     capabilities: ["completion", "image-brief", "asset-manifest", "visual-quality-gates", "structured-json", "local-runtime"],
     parentModel: "Qwen3-8B",
     revision: "b968826d9c46dd6066d109eabc6255188de91218",
@@ -79,6 +81,7 @@ const ToolSchema = z.strictObject({
 const AgentModelSchema = z.strictObject({
   tag: z.string().min(1),
   digest: ModelDigestSchema,
+  artifactDigest: HexDigestSchema.optional(),
   parentModel: z.string().min(1).optional(),
   revision: z.string().min(1).optional(),
   family: z.string().min(1),
@@ -153,6 +156,12 @@ export const AgentManifestSchema = z
       message: "Owner-trained ownership requires a registered model tag and digest pair",
       path: ["model"],
     },
+  )
+  .refine(
+    (value) => value.ownership !== "owner-trained" || OwnerTrainedModels.some((model) => (
+      model.tag === value.model.tag && (!("artifactDigest" in model) || model.artifactDigest === value.model.artifactDigest)
+    )),
+    { message: "Owner-trained artifact digest must match the registered provenance record", path: ["model", "artifactDigest"] },
   )
   .refine((value) => value.provider !== "ollama" || value.access.selectableBy === "owner-only", {
     message: "Local Ollama agents are owner-only by default",
