@@ -1,7 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { LocalAgentsPage, parseGraphqlResponse, updateQueenNodeTitle } from "./LocalAgentsPage";
+import {
+  createWorkflowOperationSignal,
+  finalizeQueenWorkflowState,
+  LocalAgentsPage,
+  parseGraphqlResponse,
+  updateQueenNodeTitle,
+} from "./LocalAgentsPage";
 
 describe("local agents Queen workflow", () => {
   it("reports an unavailable GraphQL gateway when a response body is empty", async () => {
@@ -72,5 +78,28 @@ describe("local agents Queen workflow", () => {
     expect(markup).not.toContain(">Repair<");
     expect(markup).not.toContain(">Arbitrate<");
     expect(markup).not.toContain(">Write loop<");
+  });
+
+  it.each(["succeeded", "error", "cancelled"] as const)(
+    "moves a running workflow into the %s terminal state",
+    (outcome) => {
+      const result = finalizeQueenWorkflowState({
+        status: "running",
+        activeNodeId: "execute-1",
+        log: ["Executing execute-1..."],
+      }, outcome, `Workflow ${outcome}.`);
+
+      expect(result.status).toBe(outcome);
+      expect(result.activeNodeId).toBeUndefined();
+      expect(result.log.at(-1)).toBe(`Workflow ${outcome}.`);
+    },
+  );
+
+  it("aborts one GraphQL operation at its deadline instead of waiting indefinitely", async () => {
+    const signal = createWorkflowOperationSignal(new AbortController().signal, 10);
+
+    await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+
+    expect(signal.aborted).toBe(true);
   });
 });

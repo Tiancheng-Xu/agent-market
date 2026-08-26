@@ -69,12 +69,14 @@ type QueenAssignmentResult = {
   status: string;
 };
 type QueenWorkflowState = {
-  status: "idle" | "proposing" | "ready" | "error";
+  status: "idle" | "proposing" | "ready" | "running" | "succeeded" | "error" | "cancelled";
   graph?: QueenTaskGraphResult;
+  activeNodeId?: string;
   log: string[];
 };
 
 const MAX_ORCHESTRATION_AGENTS = 3;
+const WORKFLOW_OPERATION_TIMEOUT_MS = 45_000;
 const ORCHESTRATE_AGENTS_MUTATION = `
 mutation OrchestrateAgents($input: AgentOrchestrationInput!) {
   orchestrateAgents(input: $input) {
@@ -662,6 +664,13 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
     const abort = new AbortController();
     abortRef.current = abort;
     setQueenBusy("workflow");
+    setLastError(null);
+    setQueenWorkflow((current) => ({
+      ...current,
+      status: "running",
+      activeNodeId: "confirm-workflow",
+      log: [...current.log, "Confirming workflow and accepted assignments..."].slice(-10),
+    }));
     try {
       const assignments = graph.nodes.some((node) => queenAssignments[node.nodeId]?.status !== "accepted")
         ? await prepareQueenAssignments(graph, abort.signal)
@@ -686,8 +695,17 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
         signal: abort.signal,
       });
       appendQueenLog(`Workflow start: ${data.startTaskRun.status}${data.startTaskRun.reasonCode ? ` / ${data.startTaskRun.reasonCode}` : ""}${data.startTaskRun.runId ? ` / ${data.startTaskRun.runId}` : ""}`);
+      if (data.startTaskRun.status !== "running") {
+        throw new Error(data.startTaskRun.reasonCode ?? `Workflow start returned ${data.startTaskRun.status}`);
+      }
 
       for (const node of graph.nodes) {
+        setQueenWorkflow((current) => ({
+          ...current,
+          status: "running",
+          activeNodeId: node.nodeId,
+          log: [...current.log, `Running ${node.nodeId}: ${node.title}`].slice(-10),
+        }));
         if (node.type === "execute") {
           const executorAgentId = assignments[node.nodeId]?.selectedAgentId;
           if (!executorAgentId) throw new Error(`No confirmed executor for ${node.title}.`);
@@ -759,12 +777,19 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
           appendQueenLog(`Learning Loop record: ${memory.writeLearningLoop.status}; ${clipLog(memory.writeLearningLoop.summary)}`);
         }
       }
+      setQueenWorkflow((current) => finalizeQueenWorkflowState(current, "succeeded", "Workflow completed with all required nodes."));
     } catch (error) {
+      const message = abort.signal.aborted
+        ? "Workflow cancelled by user."
+        : error instanceof Error ? error.message : "Queen start failed";
       if (!abort.signal.aborted) {
-        const message = error instanceof Error ? error.message : "Queen start failed";
         setLastError(message);
-        appendQueenLog(`Start error: ${message}`);
       }
+      setQueenWorkflow((current) => finalizeQueenWorkflowState(
+        current,
+        abort.signal.aborted ? "cancelled" : "error",
+        abort.signal.aborted ? message : `Start error: ${message}`,
+      ));
     } finally {
       setQueenBusy(null);
       abortRef.current = null;
@@ -778,6 +803,10 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
   function cancel() {
     abortRef.current?.abort();
     setBusy(false);
+  }
+
+  function cancelQueenWorkflow() {
+    abortRef.current?.abort();
   }
 
   function addSelectedToOrchestration() {
@@ -806,7 +835,7 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
               <h2>Queen-led GraphQL workflow</h2>
               <p>Describe the task once. Queen plans the DAG, auto-fills recommended agents, asks for high-risk confirmation, then runs independent Judge and Final Arbiter gates behind one user-level flow.</p>
             </div>
-            <Badge tone={queenWorkflow.status === "ready" ? "cyan" : queenWorkflow.status === "error" ? "rose" : "neutral"}>
+            <Badge tone={queenWorkflow.status === "ready" || queenWorkflow.status === "succeeded" ? "cyan" : queenWorkflow.status === "running" ? "amber" : queenWorkflow.status === "error" || queenWorkflow.status === "cancelled" ? "rose" : "neutral"}>
               {queenWorkflow.status.toUpperCase()}
             </Badge>
           </div>
@@ -817,9 +846,11 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
               <button type="button" className="button button-primary" disabled={queenWorkflow.status === "proposing" || queenBusy !== null} onClick={proposeQueenWorkflow}>
                 {queenWorkflow.status === "proposing" || queenBusy === "prepare" ? "Planning..." : "Generate workflow plan"}
               </button>
-              <button type="button" className="button button-warning" disabled={!queenWorkflow.graph || queenBusy !== null} onClick={startQueenWorkflow}>
-                {queenBusy === "workflow" ? "Running..." : "Start workflow"}
+              <button type="button" className="button button-warning" disabled={!queenWorkflow.graph || queenBusy !== null || queenWorkflow.status === "succeeded"} onClick={startQueenWorkflow}>
+                {queenBusy === "workflow" ? "Running..." : queenWorkflow.status === "succeeded" ? "Workflow completed" : "Start workflow"}
               </button>
+              {queenBusy === "workflow" ? <button type="button" className="button button-ghost" onClick={cancelQueenWorkflow}>Cancel workflow</button> : null}
+              {queenWorkflow.activeNodeId ? <span role="status"><strong>Current node</strong>: {queenWorkflow.activeNodeId}</span> : null}
             </div>
             <div className="queen-workflow-log">
               {(queenWorkflow.log.length > 0 ? queenWorkflow.log : ["No task graph proposed yet."]).map((item, index) => (
@@ -1023,16 +1054,25 @@ async function runQueenMutation<T>(options: {
   input: Record<string, unknown>;
   signal: AbortSignal;
 }): Promise<T> {
-  const response = await fetch("/agent/graphql", {
-    method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({
-      query: options.query,
-      operationName: options.operationName,
-      variables: { input: options.input },
-    }),
-    signal: options.signal,
-  });
+  const operationSignal = createWorkflowOperationSignal(options.signal);
+  let response: Response;
+  try {
+    response = await fetch("/agent/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        query: options.query,
+        operationName: options.operationName,
+        variables: { input: options.input },
+      }),
+      signal: operationSignal,
+    });
+  } catch (error) {
+    if (operationSignal.aborted && !options.signal.aborted) {
+      throw new Error(`${options.operationName} timed out after ${WORKFLOW_OPERATION_TIMEOUT_MS / 1000} seconds.`);
+    }
+    throw error;
+  }
   const payload = await parseGraphqlResponse(response);
   if (!response.ok) throw new Error(`GraphQL gateway returned ${response.status}`);
   if (!isRecord(payload)) throw new Error("GraphQL response is invalid");
@@ -1043,6 +1083,19 @@ async function runQueenMutation<T>(options: {
   }
   if (!isRecord(payload.data)) throw new Error("GraphQL response data is invalid");
   return payload.data as T;
+}
+
+export function createWorkflowOperationSignal(parentSignal: AbortSignal, timeoutMs = WORKFLOW_OPERATION_TIMEOUT_MS): AbortSignal {
+  return AbortSignal.any([parentSignal, AbortSignal.timeout(timeoutMs)]);
+}
+
+export function finalizeQueenWorkflowState(
+  current: QueenWorkflowState,
+  status: "succeeded" | "error" | "cancelled",
+  message: string,
+): QueenWorkflowState {
+  const { activeNodeId: _activeNodeId, ...rest } = current;
+  return { ...rest, status, log: [...current.log, message].slice(-10) };
 }
 
 async function runAgentRequest(options: {
