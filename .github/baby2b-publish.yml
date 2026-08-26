@@ -4,7 +4,7 @@ site-kind: project
 production-branch: main
 build-command: pnpm --filter @agent-market/web build
 output-directory: apps/web/dist
-pages-project: agent-market
+pages-project: agent-market-site
 production-url: https://agent-market.baby2b.online/
 evidence-url: https://agent-market.baby2b.online/evidence/
 backup-url: ""

@@ -1,0 +1,52 @@
+{
+  "schema": "tc-flow RunResult v1",
+  "runId": "d6738bc2-0d2d-4d69-b040-3b485ce61d93",
+  "feature": "agent-market-live-agent-closure",
+  "contractHash": "4f6145fcbd0a1ee2f9e11f9385a407375fe7c0455932964051d60513e4ada79e",
+  "status": "pass",
+  "currentNode": "N8",
+  "history": [
+    { "node": "N1", "status": "pass", "summary": "Contract and Chinese product boundaries frozen." },
+    { "node": "N2", "status": "pass", "summary": "Targeted local, Cloudflare, AWS, chain, and model context collected with private data excluded." },
+    { "node": "N3", "status": "pass", "summary": "GraphQL workflow, wallet, office, staking, arbitration, Evidence, i18n, and recording tasks assigned." },
+    { "node": "N4", "status": "pass", "summary": "Deterministic tests, builds, schemas, visual routes, assets, and public-content gates passed." },
+    { "node": "N5", "status": "pass", "summary": "Independent review findings repaired, including reverse Judge and Final Arbiter model-independence bypasses." },
+    { "node": "N6", "status": "pass", "summary": "Feature QA passed for 180 responsive bilingual route cases and the external full-screen workflow recording." },
+    { "node": "N7", "status": "pass", "summary": "Stop Hook and repository policy allowed delivery." },
+    { "node": "N8", "status": "pass", "summary": "Commit pushed, PR opened, GitHub checks passed, and Cloudflare Preview SSR plus real 404 readback verified." }
+  ],
+  "reviews": [
+    {
+      "type": "independent-code-review",
+      "status": "pass-after-repair",
+      "evidence": ".tc-flow/reviews/T8.live-agent-closure.result.json"
+    },
+    {
+      "type": "repository-policy",
+      "status": "pass-local-and-remote"
+    }
+  ],
+  "qa": {
+    "commit": "3e68caa815d46c7585f2aa235f7cb61ff36f275b",
+    "branch": "tc/live-agent-closure-a90e1f51",
+    "pullRequest": "https://github.com/Tiancheng-Xu/agent-market/pull/12",
+    "githubChecks": "pass",
+    "preview": "https://f73a98b6.agent-market-site.pages.dev",
+    "previewDeploymentId": "f73a98b6-788e-465c-8f4a-1ffb2a324471",
+    "edgeSsr": "pass",
+    "real404": "pass",
+    "visualRoutes": "180/180",
+    "production": "manual-pending",
+    "branchCleanup": "retained: PR open and not merged"
+  },
+  "interventions": [
+    {
+      "type": "human-authorization",
+      "summary": "External Chrome whole-screen recording and feature-branch push were authorized."
+    },
+    {
+      "type": "safety-boundary",
+      "summary": "No production release, AWS mutation, paid resource, destructive action, or new chain transaction was executed."
+    }
+  ]
+}

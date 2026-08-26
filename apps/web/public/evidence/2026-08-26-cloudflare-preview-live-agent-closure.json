@@ -1,0 +1,84 @@
+{
+  "schema": "agent-market-cloudflare-preview-evidence-v1",
+  "verifiedAt": "2026-08-26T09:28:09Z",
+  "environment": "preview",
+  "status": "verified-preview",
+  "project": "agent-market-site",
+  "deployment": {
+    "id": "f73a98b6-788e-465c-8f4a-1ffb2a324471",
+    "url": "https://f73a98b6.agent-market-site.pages.dev",
+    "branch": "tc/live-agent-closure-a90e1f51",
+    "commit": "3e68caa815d46c7585f2aa235f7cb61ff36f275b",
+    "trigger": "github:push",
+    "usesFunctions": true
+  },
+  "requestContract": {
+    "method": "GET",
+    "accept": "text/html,application/xhtml+xml",
+    "reason": "The SSR runtime intentionally distinguishes browser document requests from generic asset requests."
+  },
+  "routes": [
+    {
+      "path": "/evidence",
+      "status": 200,
+      "renderMode": "ssr",
+      "durationMs": 13
+    },
+    {
+      "path": "/office",
+      "status": 200,
+      "renderMode": "ssr",
+      "durationMs": 8
+    },
+    {
+      "path": "/agents/local",
+      "status": 200,
+      "renderMode": "ssr",
+      "durationMs": 15
+    },
+    {
+      "path": "/missing",
+      "status": 404,
+      "renderMode": "ssr",
+      "durationMs": 9
+    }
+  ],
+  "responseContract": {
+    "contentType": "text/html; charset=utf-8",
+    "renderHeader": "x-agent-market-render-mode: ssr",
+    "documentVary": "Accept",
+    "unknownRouteCacheControl": "private, no-store"
+  },
+  "assets": [
+    {
+      "path": "/evidence/agent-market-v3-full-workflow.mp4",
+      "status": 200,
+      "bytes": 2599046,
+      "sha256": "6b336d52c7228001543beb85aaa5e716ed7036bd8023092d8b1df5992f926170"
+    },
+    {
+      "path": "/evidence/2026-08-26-external-chrome-full-workflow-recording.json",
+      "status": 200,
+      "contentType": "application/json"
+    }
+  ],
+  "gates": {
+    "githubChecks": "pass",
+    "repositoryPolicy": "pass",
+    "edgeSsr": "pass",
+    "real404": "pass",
+    "recordingAsset": "pass",
+    "privatePathScan": "pass"
+  },
+  "diagnostic": {
+    "genericAcceptBehavior": "A generic */* request can receive the static SPA shell by design and is not the SSR acceptance request.",
+    "functionTail": "Cloudflare Function tail recorded render.complete for all four routes with status 200, 200, 200, and 404.",
+    "configurationMutation": false
+  },
+  "boundaries": {
+    "production": "manual-pending",
+    "merge": "manual-pending",
+    "awsV2": "pending-external",
+    "newChainTransactions": "not-executed"
+  }
+}

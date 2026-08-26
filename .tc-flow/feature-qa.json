@@ -38,5 +38,14 @@
     "pending": "Cloudflare Preview readback, remote PR checks, fresh AWS V2 production readback, and any newly authorized Sepolia transaction",
     "production": "manual-pending",
     "prohibitedClaims": "local or Preview evidence does not inherit AWS, Sepolia, or production status"
+  },
+  "updatedAt": "2026-08-26T09:28:09Z",
+  "preview": {
+    "status": "pass",
+    "deploymentId": "f73a98b6-788e-465c-8f4a-1ffb2a324471",
+    "url": "https://f73a98b6.agent-market-site.pages.dev",
+    "edgeSsr": true,
+    "real404": true,
+    "evidence": "docs/evidence/deployment/2026-08-26-cloudflare-preview-live-agent-closure.json"
   }
 }

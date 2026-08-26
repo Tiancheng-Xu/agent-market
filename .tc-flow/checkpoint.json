@@ -3,7 +3,7 @@
   "runId": "d6738bc2-0d2d-4d69-b040-3b485ce61d93",
   "feature": "agent-market-live-agent-closure",
   "contractHash": "4f6145fcbd0a1ee2f9e11f9385a407375fe7c0455932964051d60513e4ada79e",
-  "currentNode": "N7",
+  "currentNode": "N8",
   "completedTask": "T8",
   "nextTask": null,
   "changedFiles": [
@@ -41,6 +41,15 @@
     "N6 Feature QA passed; N7 Stop Hook repository policy passed"
   ],
   "createdAt": "2026-08-26T08:46:28.735Z",
-  "updatedAt": "2026-08-26T09:05:32.919Z",
-  "nextNode": "N7"
+  "updatedAt": "2026-08-26T09:28:09Z",
+  "nextNode": "N7",
+  "delivery": {
+    "commit": "3e68caa815d46c7585f2aa235f7cb61ff36f275b",
+    "pullRequest": "https://github.com/Tiancheng-Xu/agent-market/pull/12",
+    "previewDeploymentId": "f73a98b6-788e-465c-8f4a-1ffb2a324471",
+    "previewUrl": "https://f73a98b6.agent-market-site.pages.dev",
+    "edgeSsr": "verified-preview",
+    "real404": "verified-preview",
+    "production": "manual-pending"
+  }
 }
