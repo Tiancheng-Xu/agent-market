@@ -21,11 +21,33 @@ validate_change_set_scope() {
   jq -e '
     .Status == "CREATE_COMPLETE" and .ExecutionStatus == "AVAILABLE" and
     (.Changes | length) > 0 and
-    all(.Changes[];
+    any(.Changes[];
       .Type == "Resource" and
       .ResourceChange.LogicalResourceId == "PerformanceCluster" and
-      .ResourceChange.Action == "Modify")
-  ' "$1" >/dev/null || { echo "change set exceeds Retain-only PerformanceCluster scope" >&2; return 1; }
+      .ResourceChange.ResourceType == "AWS::ECS::Cluster" and
+      .ResourceChange.Action == "Modify") and
+    all(.Changes[];
+      .Type == "Resource" and
+      (
+        (
+          .ResourceChange.LogicalResourceId == "PerformanceCluster" and
+          .ResourceChange.ResourceType == "AWS::ECS::Cluster" and
+          .ResourceChange.Action == "Modify"
+        ) or
+        (
+          .ResourceChange.LogicalResourceId == "DispatcherFunction" and
+          .ResourceChange.ResourceType == "AWS::Lambda::Function" and
+          .ResourceChange.Action == "Modify" and
+          .ResourceChange.Replacement == "False" and
+          (.ResourceChange.Details | length) > 0 and
+          all(.ResourceChange.Details[];
+            .Evaluation == "Dynamic" and
+            .ChangeSource == "ResourceAttribute" and
+            .CausingEntity == "PerformanceCluster.Arn" and
+            .Target.RequiresRecreation == "Never")
+        )
+      ))
+  ' "$1" >/dev/null || { echo "change set exceeds Retain-only PerformanceCluster scope and its non-replacing DispatcherFunction ARN dependency" >&2; return 1; }
 }
 
 STACK_FILE="$ARTIFACT_DIR/stack.json"

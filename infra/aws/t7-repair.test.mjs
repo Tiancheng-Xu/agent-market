@@ -76,6 +76,11 @@ test("transition approval closes the change-set review TOCTOU window", () => {
   assert.match(prepare, /describe-change-set/);
   assert.match(prepare, /changeSetReviewSha256/);
   assert.match(prepare, /validate_change_set_scope/);
+  assert.match(prepare, /LogicalResourceId == "DispatcherFunction"/);
+  assert.match(prepare, /ResourceType == "AWS::Lambda::Function"/);
+  assert.match(prepare, /Replacement == "False"/);
+  assert.match(prepare, /CausingEntity == "PerformanceCluster\.Arn"/);
+  assert.match(prepare, /RequiresRecreation == "Never"/);
   assert.match(prepare, /approval_hash.*review_hash/s);
   assert.match(validator, /markerParameterName/);
 });
