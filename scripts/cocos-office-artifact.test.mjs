@@ -40,8 +40,8 @@ test("Cocos office artifact contains a real responsive runtime build", async () 
   assert.match(officeRuntime, /agent-market\.office\.snapshot\.v2/);
   assert.match(officeRuntime, /activityColumn/);
   assert.match(officeRuntime, /starbuddy-agent-atlas\.png/);
-  assert.match(officeRuntime, /setContentSize\(52, 52\)/);
-  assert.match(officeRuntime, /sprite\.sizeMode = cc\.Sprite\.SizeMode\.CUSTOM;\s*node\.getComponent\(cc\.UITransform\)\.setContentSize\(52, 52\)/);
+  assert.match(officeRuntime, /setContentSize\(76, 76\)/);
+  assert.match(officeRuntime, /sprite\.sizeMode = cc\.Sprite\.SizeMode\.CUSTOM;\s*node\.getComponent\(cc\.UITransform\)\.setContentSize\(76, 76\)/);
   assert.ok(background.size > 100_000);
   assert.ok(atlas.size > 100_000);
   assert.ok(atlasBytes[25] === 4 || atlasBytes[25] === 6, "StarBuddy atlas must contain a PNG alpha channel");
