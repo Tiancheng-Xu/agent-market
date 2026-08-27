@@ -1,5 +1,5 @@
 import type { ChainReader } from "./reconcile";
-import { BlockscoutMcpChainReader, JsonRpcChainReader } from "./readers";
+import { BlockscoutMcpChainReader, JsonRpcChainReader, JsonRpcVaultPositionReader, type VaultPositionReader } from "./readers";
 import { normalizeContractAllowlist, type ContractAllowlist } from "./policy";
 import { PostgresTransactionStore, type TransactionStore } from "./transaction-store";
 import { PostgresChainResourceRepository, type ChainResourceRepository } from "./resources";
@@ -10,6 +10,7 @@ export interface TransactionRuntime {
   rpc: ChainReader;
   blockscout: ChainReader;
   contracts: ContractAllowlist;
+  vaultReadback?: VaultPositionReader;
 }
 
 let testRuntime: TransactionRuntime | undefined;
@@ -28,6 +29,8 @@ export function getTransactionRuntime(): TransactionRuntime {
   const escrow = process.env.AGENT_MARKET_ESCROW_ADDRESS?.trim();
   const committee = process.env.AGENT_MARKET_COMMITTEE_ADDRESS?.trim();
   const vault = process.env.AGENT_MARKET_VAULT_ADDRESS?.trim();
+  const workflowEscrow = process.env.AGENT_MARKET_WORKFLOW_ESCROW_ADDRESS?.trim();
+  const platformArbiter = process.env.AGENT_MARKET_PLATFORM_ARBITER_WALLET?.trim();
   const committeeMembers = (process.env.AGENT_MARKET_COMMITTEE_MEMBER_WALLETS ?? "")
     .split(",").map((wallet) => wallet.trim()).filter((wallet) => wallet.length > 0);
   if (!databaseUrl || !rpcUrl || !/^https:\/\//u.test(rpcUrl) || !token || !escrow || !committee || !vault) {
@@ -35,10 +38,11 @@ export function getTransactionRuntime(): TransactionRuntime {
   }
   productionRuntime = {
     store: PostgresTransactionStore.connect(databaseUrl),
-    resources: PostgresChainResourceRepository.connect(databaseUrl, committeeMembers),
+    resources: PostgresChainResourceRepository.connect(databaseUrl, committeeMembers, platformArbiter),
     rpc: new JsonRpcChainReader(rpcUrl),
     blockscout: new BlockscoutMcpChainReader(),
-    contracts: normalizeContractAllowlist({ token, escrow, committee, vault }),
+    vaultReadback: new JsonRpcVaultPositionReader(rpcUrl, vault),
+    contracts: normalizeContractAllowlist({ token, escrow, committee, vault, ...(workflowEscrow ? { workflowEscrow } : {}) }),
   };
   return productionRuntime;
 }

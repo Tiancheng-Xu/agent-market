@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "runId": "0424cdbc-cf90-45fd-86a8-ca719680cbef",
-  "feature": "agent-market-phase2",
-  "contractHash": "1883dc4bac396a4cf030260908cbc333911ed70cee205f390e92dce45687558c",
-  "currentNode": "N7",
-  "currentTask": null,
+  "runId": "d6738bc2-0d2d-4d69-b040-3b485ce61d93",
+  "feature": "agent-market-live-agent-closure",
+  "contractHash": "4f6145fcbd0a1ee2f9e11f9385a407375fe7c0455932964051d60513e4ada79e",
+  "currentNode": "N8",
+  "currentTask": "T8",
   "difficulty": "extreme",
-  "strategy": "mainline-contract-with-max-two-disjoint-workers",
-  "baseCommit": "47a1a4071338b38e28fb75d54691f859e7864d65",
-  "status": "feature_qa_passed_waiting_policy",
+  "strategy": "mainline-contract-with-one-disjoint-worker",
+  "baseCommit": "fd5a231b05785e5225f698cfda6bd925af296d87",
+  "status": "completed",
   "tasks": {
     "T1": "completed",
     "T2": "completed",
@@ -17,7 +17,8 @@
     "T5": "completed",
     "T6": "completed",
     "T7": "completed",
-    "T8": "completed"
+    "T8": "completed",
+    "T9": "completed"
   },
   "taskStatus": {
     "T1": "completed",
@@ -27,8 +28,8 @@
     "T5": "completed",
     "T6": "completed",
     "T7": "completed",
-    "T8": "completed"
+    "T8": "completed",
+    "T9": "completed"
   },
-  "updatedAt": "2026-08-21T21:14:54.496Z",
-  "featureQa": ".tc-flow/feature-qa.json"
+  "updatedAt": "2026-08-26T09:28:09Z"
 }

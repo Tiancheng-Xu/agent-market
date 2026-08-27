@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "agent-market.owner-trained-runtime-smoke.v1",
+  "recordedAt": "2026-08-26T02:00:00Z",
+  "status": "verified-local",
+  "contractHash": "9fa2fa5a1bf2d6774b4fa07a21af114ef4dbb75f628907cfe1a52fc36de0e927",
+  "boundary": {
+    "transport": "Agent Market Local Stream Runtime with HMAC-SHA256",
+    "callerScope": "owner",
+    "ollamaOrigin": "loopback-only",
+    "publicContent": "No model output, prompt, secret, local path, Modelfile, weight path, or provider credential is included."
+  },
+  "models": [
+    {
+      "agentId": "personal-code-agent",
+      "modelTag": "personal-code-agent:v1",
+      "ollamaManifestDigest": "4b9c60671fff53a198630f9aaf6b76d7d46c356359f41030f52e61f77f7b83bb",
+      "requestId": "55e16673-9a0a-43ab-82f8-a5aa2154ace6",
+      "httpStatus": 200,
+      "terminalEvent": "done",
+      "structuredJsonValid": true,
+      "outputBytes": 39,
+      "outputSha256": "25877fe6cef6f212d01fa39c37d19de1d51aa3d6e35eeaa1c51689e892640e56",
+      "durationMs": 2738,
+      "incrementalInferenceCostUsd": 0
+    },
+    {
+      "agentId": "personal-image-agent",
+      "modelTag": "personal-image-agent:v1",
+      "ollamaManifestDigest": "2fa405e1244629244798cb4d7b8f4b3a5dd9e47aaf9ea7329e8dbe27bd32cffd",
+      "ggufSha256": "4bba2f8f38a08edb2ad74a9a7b1a8927d5df4c31e7ec6270a6bdb3309706bfba",
+      "requestId": "088c128c-d276-45bc-a28b-9b02aa860649",
+      "httpStatus": 200,
+      "terminalEvent": "done",
+      "structuredJsonValid": true,
+      "outputBytes": 39,
+      "outputSha256": "25877fe6cef6f212d01fa39c37d19de1d51aa3d6e35eeaa1c51689e892640e56",
+      "durationMs": 2722,
+      "incrementalInferenceCostUsd": 0
+    }
+  ],
+  "deterministicGates": {
+    "sharedContracts": "27/27 passed",
+    "runtime": "13/13 passed",
+    "runnerTypecheck": "passed",
+    "publicOwnerOnlySelection": "FORBIDDEN before model call",
+    "nonceReplay": "UNAUTHORIZED before second model call",
+    "providerFailure": "MODEL_UNAVAILABLE",
+    "runtimeTimeout": "UPSTREAM_TIMEOUT",
+    "userCancellation": "CANCELLED"
+  },
+  "correction": {
+    "historicalImageDigest": "59de6282...",
+    "status": "stale-or-misrecorded",
+    "reason": "No first-party Ollama manifest artifact supports the historical value. Current tag manifest SHA-256 and /api/tags agree on 2fa405e1..., while the model layer agrees with the accepted GGUF SHA-256."
+  },
+  "externalStatus": "not-production-proof"
+}

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "agent-market.aws-v2-performance-closure.v1",
+  "recordedAt": "2026-08-27T17:08:48Z",
+  "status": "verified-production",
+  "region": "us-east-1",
+  "stackName": "agent-market-performance",
+  "runtime": {
+    "platform": "AWS Fargate ARM64",
+    "imageDigest": "sha256:2e702a493a99dfa2fb8ea40cc777b9d3b72476cea8fc31739164dc74ec48340f",
+    "migration": "database/migrations/0010_performance_render_observability.sql"
+  },
+  "sample": {
+    "schemaVersion": 2,
+    "requestId": "01a04416-8dcd-7790-b69a-ca233f232044",
+    "route": "/evidence",
+    "buildVersion": "aws-closure-v2-arm64-2026-08-27",
+    "httpStatus": 202,
+    "metrics": {
+      "TTFB": 184.2,
+      "FCP": 412.7,
+      "LCP": 836.4,
+      "CLS": 0.01,
+      "INP": 58,
+      "FPS": 59.4,
+      "FRAME_TIME_P95": 18.2,
+      "DROPPED_FRAME_RATIO": 0.014,
+      "FRAME_SAMPLE_COUNT": 120,
+      "FRAME_WINDOW_DURATION": 2000,
+      "HYDRATION_DURATION": 96.3
+    },
+    "render": {
+      "mode": "hydrate",
+      "outcome": "hydrated",
+      "recoverableErrorCount": 0,
+      "fallbackCount": 0
+    }
+  },
+  "execution": {
+    "ecsTaskId": "2b0d3991e5c648e0a3d71d659f29187f",
+    "taskExitCode": 0,
+    "logEvent": "performance.aggregate.complete",
+    "runId": "565fa11a-e932-48be-b032-7baea23d4e14",
+    "aggregateWindowSampleCount": 10,
+    "p50LcpMs": 992.2,
+    "p75LcpMs": 1294,
+    "p95LcpMs": 2205.4,
+    "evidenceStatus": "verified"
+  },
+  "pipeline": [
+    "HMAC-authenticated HTTP API",
+    "SNS FIFO",
+    "SQS FIFO with DLQ",
+    "Lambda dispatcher",
+    "ECS Fargate ARM64 task",
+    "PostgreSQL persistence",
+    "independent ECS PostgreSQL readback"
+  ],
+  "finalState": {
+    "ingestionReservedConcurrency": 0,
+    "dispatcherReservedConcurrency": 0,
+    "consumerMappingState": "Disabled",
+    "ecsRunningTasks": 0,
+    "ecsPendingTasks": 0,
+    "workQueueVisible": 0,
+    "workQueueInFlight": 0,
+    "deadLetterQueueVisible": 0,
+    "deadLetterQueueInFlight": 0
+  },
+  "securityCleanup": {
+    "temporaryOperatorAccessKeyDeleted": true,
+    "temporaryManagedPoliciesDeleted": true,
+    "temporaryRoleInlinePolicyDeleted": true,
+    "temporaryIngestionSecretDeleted": true,
+    "ecrLoginRemoved": true,
+    "secretValuesPublished": false,
+    "accountPlanChanged": false,
+    "sharedFoundationDeleted": false
+  },
+  "boundary": "This proves one controlled AWS V2 delivery and reversible pause. It does not claim a continuous production SLO or an always-on consumer. The paused stack requires a newly authorized HMAC secret before a future resume."
+}

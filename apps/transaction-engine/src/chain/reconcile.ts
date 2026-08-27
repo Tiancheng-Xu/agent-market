@@ -149,14 +149,14 @@ function calldataError(intent: TransactionIntentV1, actualData: string): ErrorCo
   if (expected === actual) return null;
   if (expected.slice(0, 10) !== actual.slice(0, 10)) return "WRONG_SELECTOR";
 
-  const { contractInterface } = getTransactionMethodDefinition(
+  const { contractInterface, functionName } = getTransactionMethodDefinition(
     intent.method as TransactionMethod,
   );
   try {
-    const expectedArgs = contractInterface.decodeFunctionData(intent.method, expected);
-    const actualArgs = contractInterface.decodeFunctionData(intent.method, actual);
+    const expectedArgs = contractInterface.decodeFunctionData(functionName, expected);
+    const actualArgs = contractInterface.decodeFunctionData(functionName, actual);
     if (
-      intent.method === "createTask" &&
+      (intent.method === "createTask" || intent.method === "createWorkflowTask") &&
       normalizedArgument(expectedArgs[1]) !== normalizedArgument(actualArgs[1])
     ) {
       return "WRONG_REQUEST_REF";
@@ -168,7 +168,7 @@ function calldataError(intent: TransactionIntentV1, actualData: string): ErrorCo
         ? intent.method === "approve"
           ? 1
           : 0
-        : intent.method === "createTask"
+        : intent.method === "createTask" || intent.method === "createWorkflowTask"
           ? 2
           : null;
     if (
@@ -208,10 +208,10 @@ function eventError(
   args: readonly unknown[],
   expectation?: ChainTransactionExpectation,
 ): ErrorCode | null {
-  const { contractInterface } = getTransactionMethodDefinition(
+  const { contractInterface, functionName } = getTransactionMethodDefinition(
     intent.method as TransactionMethod,
   );
-  const callArgs = contractInterface.decodeFunctionData(intent.method, intent.data);
+  const callArgs = contractInterface.decodeFunctionData(functionName, intent.data);
   const eq = (left: unknown, right: unknown): boolean =>
     normalizedArgument(left) === normalizedArgument(right);
 
@@ -229,6 +229,12 @@ function eventError(
       if (!eq(args[0], callArgs[0]) || !eq(args[2], intent.from)) return "EVENT_MISMATCH";
       if (!eq(args[3], callArgs[2])) return "WRONG_AMOUNT";
       return eq(args[4], callArgs[3]) ? null : "EVENT_MISMATCH";
+    case "createWorkflowTask":
+      if (!eq(args[1], intent.requestRef)) return "WRONG_REQUEST_REF";
+      if (!eq(args[0], callArgs[0]) || !eq(args[2], intent.from)) return "EVENT_MISMATCH";
+      if (!eq(args[3], callArgs[2])) return "WRONG_AMOUNT";
+      if (expectation === undefined || !eq(args[4], expectation.bondAtomic)) return "WRONG_AMOUNT";
+      return eq(args[5], callArgs[3]) ? null : "EVENT_MISMATCH";
     case "assignAgent":
       if (!eq(args[1], intent.requestRef)) return "WRONG_REQUEST_REF";
       return eq(args[0], callArgs[0]) && eq(args[2], callArgs[1])
@@ -252,6 +258,9 @@ function eventError(
       return eq(args[0], callArgs[0]) && eq(args[1], intent.from) && eq(args[2], callArgs[1])
         ? null
         : "EVENT_MISMATCH";
+    case "resolveWorkflowTask":
+      if (!eq(args[0], callArgs[0]) || args[1] !== callArgs[1] || !eq(args[2], intent.from)) return "EVENT_MISMATCH";
+      return expectation !== undefined && eq(args[3], expectation.budgetAtomic) ? null : "WRONG_AMOUNT";
     case "stake":
     case "unstake":
       if (!eq(args[0], intent.from)) return "EVENT_MISMATCH";
@@ -262,7 +271,7 @@ function eventError(
 }
 
 function observedRequestRef(method: TransactionMethod, args: readonly unknown[]): string | undefined {
-  return ["createTask", "assignAgent", "acceptTask", "submitWork", "acceptWork", "timeoutTask", "openDispute"]
+  return ["createTask", "createWorkflowTask", "assignAgent", "acceptTask", "submitWork", "acceptWork", "timeoutTask", "openDispute"]
     .includes(method) && typeof args[1] === "string" ? lower(args[1]) : undefined;
 }
 

@@ -78,6 +78,7 @@ export function ollamaMetadataToManifest(
     model: {
       tag: tag.name,
       digest,
+      ...((ownerModel !== undefined && "artifactDigest" in ownerModel) ? { artifactDigest: ownerModel.artifactDigest } : {}),
       parentModel: ownerModel?.parentModel ?? readNonEmpty(details.parent_model) ?? readString(show.model_info, "general.basename"),
       ...(ownerModel?.revision === undefined ? {} : { revision: ownerModel.revision }),
       family: ownerModel?.family ?? details.family ?? readString(show.model_info, "general.architecture") ?? "pending metadata",

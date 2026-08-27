@@ -1,5 +1,6 @@
 import { cloneElement, createContext, isValidElement, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
 import { translate, translateVisibleText, type Locale, type TranslationKey } from "./translations";
+import { supplementalZhTranslations } from "./supplementalTranslations";
 
 export const LOCALE_STORAGE_KEY = "agent-market-locale";
 export interface LocaleStorage { getItem(key: string): string | null; setItem(key: string, value: string): void; }
@@ -28,8 +29,12 @@ export function LanguageProvider({ children, storage }: PropsWithChildren<{ stor
 export function useLanguage(): LanguageValue { return useContext(LanguageContext); }
 
 const stringProps = new Set(["alt", "aria-label", "description", "eyebrow", "label", "note", "placeholder", "title"]);
+export function translateLocalizedText(locale: Locale, text: string): string {
+  if (locale === "zh-CN" && supplementalZhTranslations[text]) return supplementalZhTranslations[text];
+  return translateVisibleText(locale, text);
+}
 function localizeNode(node: ReactNode, locale: Locale, path = "root"): ReactNode {
-  if (typeof node === "string") return translateVisibleText(locale, node);
+  if (typeof node === "string") return translateLocalizedText(locale, node);
   if (Array.isArray(node)) {
     return node.map((item, index) => {
       const localized = localizeNode(item, locale, `${path}.${index}`);
@@ -41,7 +46,7 @@ function localizeNode(node: ReactNode, locale: Locale, path = "root"): ReactNode
   if (!isValidElement(node)) return node;
   const element = node as ReactElement<Record<string, unknown>>;
   const nextProps: Record<string, unknown> = {};
-  for (const prop of stringProps) { const value = element.props[prop]; if (typeof value === "string") nextProps[prop] = translateVisibleText(locale, value); }
+  for (const prop of stringProps) { const value = element.props[prop]; if (typeof value === "string") nextProps[prop] = translateLocalizedText(locale, value); }
   if (typeof element.props.src === "string") nextProps.src = localizeAssetPath(element.props.src, locale);
   if ("children" in element.props) nextProps.children = localizeNode(element.props.children as ReactNode, locale, `${path}.children`);
   return cloneElement(element, nextProps);

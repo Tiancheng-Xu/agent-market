@@ -27,6 +27,12 @@ describe("virtual office access", () => {
     expect(JSON.stringify(visible)).not.toMatch(/private input|private output|private result/);
   });
 
+  it("treats an anonymous viewer as a visitor", () => {
+    const visible = visibleDeskForWallet(desk, null);
+    expect(visible.access).toBe("visitor");
+    expect(JSON.stringify(visible)).not.toMatch(/private input|private output|private result/);
+  });
+
   it("filters desks by public task status", () => {
     expect(filterOfficeDesks([desk], "completed")).toEqual([]);
     expect(filterOfficeDesks([desk], "all")).toHaveLength(1);

@@ -208,8 +208,8 @@
         "zh": "以受限权限运行 replay、HMAC 接入、DLQ 隔离与可逆暂停。"
       },
       "implementation": {
-        "en": "T7 passed 25 specialized tests, 8 repository-policy tests and the real PostgreSQL replay gate 3/3. Static AWS scanning is option-aware and fail-closed for unknown pre-action options; V2 AWS resources remain undeployed.",
-        "zh": "T7 已通过 25 项专项测试、8 项 repository policy 测试与真实 PostgreSQL replay Gate 3/3。AWS 静态扫描可识别 option，并对 action 前未知 option fail-closed；V2 AWS 资源仍未部署。"
+        "en": "A controlled HMAC-authenticated V2 sample completed API Gateway, SNS/SQS, ARM64 ECS Fargate and PostgreSQL readback. The exact request and run were verified, then both Lambdas, the event mapping and queues returned to a paused zero-work state.",
+        "zh": "一条受控 HMAC V2 样本已完成 API Gateway、SNS/SQS、ARM64 ECS Fargate 与 PostgreSQL 回读。精确 request 与 run 已核验，随后两个 Lambda、事件映射和队列均回到暂停且零工作的状态。"
       },
       "code": [
         "infra/aws/template.yaml",
@@ -217,6 +217,7 @@
         "apps/transaction-engine/src/recovery/replay.ts",
         "apps/transaction-engine/src/recovery/postgres-replay-ledger.ts",
         "database/migrations/0006_t7_recovery.sql",
+        "database/migrations/0010_performance_render_observability.sql",
         "scripts/aws/prepare-agent-market-cluster-transition.sh",
         "scripts/aws/validate-agent-market-cluster-transition.sh",
         "scripts/aws/deploy-agent-market.sh",
@@ -234,9 +235,10 @@
         "scripts/aws/deploy-agent-market.test.mjs",
         "scripts/aws/pause-agent-market.test.mjs",
         "scripts/validate-repository.test.mjs",
-        "docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+        "docs/evidence/testing/2026-08-21-phase2-local-gates.json",
+        "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json"
       ],
-      "status": "pending-external"
+      "status": "verified-production"
     },
     {
       "id": "V2-CLOUDFLARE-ACTIONS",

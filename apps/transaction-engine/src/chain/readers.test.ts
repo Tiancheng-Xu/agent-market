@@ -1,6 +1,7 @@
+import { Interface, Wallet } from "ethers";
 import { describe, expect, it } from "vitest";
 
-import { BlockscoutMcpChainReader } from "./readers";
+import { BlockscoutMcpChainReader, JsonRpcVaultPositionReader } from "./readers";
 
 describe("Blockscout MCP reader", () => {
   it("uses get_block_info as the independent canonical hash and unlocks first", async () => {
@@ -34,5 +35,39 @@ describe("Blockscout MCP reader", () => {
     expect(calls[0]).toMatch(/unlock_blockchain_analysis$/u);
     expect(observation?.transaction?.blockHash).toBe(transactionBlockHash);
     expect(observation?.canonicalBlockHash).toBe(canonicalBlockHash);
+  });
+});
+
+describe("Sepolia vault position reader", () => {
+  it("reads principal, accrued, earned, reserve and block without sending a transaction", async () => {
+    const contractInterface = new Interface([
+      "function positions(address account) view returns (uint256 principal,uint256 accrued,uint64 checkpointAt)",
+      "function earned(address account) view returns (uint256)",
+      "function rewardReserve() view returns (uint256)",
+    ]);
+    const wallet = Wallet.createRandom().address;
+    const vault = Wallet.createRandom().address;
+    const methods: string[] = [];
+    const fetcher = async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      const body = JSON.parse(String(init?.body)) as { method: string; params: Array<{ data?: string }> };
+      methods.push(body.method);
+      if (body.method === "eth_blockNumber") return Response.json({ result: "0x64" });
+      const data = body.params[0]?.data ?? "";
+      if (data.startsWith(contractInterface.getFunction("positions")!.selector)) {
+        return Response.json({ result: contractInterface.encodeFunctionResult("positions", [100n, 6n, 1_800_000_000]) });
+      }
+      if (data.startsWith(contractInterface.getFunction("earned")!.selector)) {
+        return Response.json({ result: contractInterface.encodeFunctionResult("earned", [9n]) });
+      }
+      return Response.json({ result: contractInterface.encodeFunctionResult("rewardReserve", [1_000n]) });
+    };
+    await expect(new JsonRpcVaultPositionReader(
+      "https://rpc.example", vault, fetcher, 8_000, () => new Date("2026-08-26T13:40:00.000Z"),
+    ).readPosition(wallet)).resolves.toEqual({
+      wallet: wallet.toLowerCase(), principalAtomic: "100", accruedAtomic: "6",
+      checkpointAt: "1800000000", earnedAtomic: "9", rewardReserveAtomic: "1000",
+      blockNumber: 100, checkedAt: "2026-08-26T13:40:00.000Z",
+    });
+    expect(methods).toEqual(["eth_call", "eth_call", "eth_call", "eth_blockNumber"]);
   });
 });

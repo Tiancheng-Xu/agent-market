@@ -5,6 +5,7 @@ export type OfficeAgentSeat = {
   displayName: string;
   role: string;
   score: number;
+  activity?: "idle" | "walking" | "thinking" | "working" | "reviewing" | "waiting" | "done" | "failed" | "offline";
 };
 
 export type OfficeTaskDesk = {

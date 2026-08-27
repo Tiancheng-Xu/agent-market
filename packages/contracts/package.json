@@ -8,6 +8,7 @@
     "test": "hardhat test",
     "typecheck": "hardhat compile && tsc -p tsconfig.json",
     "deploy:sepolia": "hardhat run scripts/deploy-sepolia.ts --network sepolia",
+    "deploy:workflow:sepolia": "hardhat run scripts/deploy-workflow-sepolia.ts --network sepolia",
     "close:sepolia": "hardhat run scripts/run-sepolia-closure.ts --network sepolia"
   },
   "dependencies": {

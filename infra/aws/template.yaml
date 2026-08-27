@@ -149,13 +149,19 @@ Resources:
                 aws:SourceArn: !Ref PerformanceTopic
               StringEquals:
                 aws:SourceAccount: !Ref AWS::AccountId
-          - Sid: DenyInsecureTransport
+          - Sid: DenyInsecureTransportWorkQueue
             Effect: Deny
             Principal: "*"
             Action: sqs:*
-            Resource:
-              - !GetAtt PerformanceWorkQueue.Arn
-              - !GetAtt PerformanceDeadLetterQueue.Arn
+            Resource: !GetAtt PerformanceWorkQueue.Arn
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+          - Sid: DenyInsecureTransportDeadLetterQueue
+            Effect: Deny
+            Principal: "*"
+            Action: sqs:*
+            Resource: !GetAtt PerformanceDeadLetterQueue.Arn
             Condition:
               Bool:
                 aws:SecureTransport: false
@@ -171,7 +177,7 @@ Resources:
           - Sid: DenyInsecureTransport
             Effect: Deny
             Principal: "*"
-            Action: sns:*
+            Action: sns:Publish
             Resource: !Ref PerformanceTopic
             Condition:
               Bool:
@@ -247,21 +253,33 @@ Resources:
           sns = boto3.client("sns")
           secrets = boto3.client("secretsmanager")
           auth_secret = None
-          KEYS = {"schemaVersion","requestId","route","version","observedAt","metrics"}
-          METRICS = {"TTFB","FCP","LCP","CLS","INP"}
+          KEYS_V1 = {"schemaVersion","requestId","route","version","observedAt","metrics"}
+          KEYS_V2 = KEYS_V1 | {"render"}
+          METRIC_BOUNDS = {"TTFB":300000,"FCP":300000,"LCP":300000,"CLS":100,"INP":300000,"FPS":240,"FRAME_TIME_P95":10000,"DROPPED_FRAME_RATIO":1,"FRAME_SAMPLE_COUNT":100000,"FRAME_WINDOW_DURATION":60000,"HYDRATION_DURATION":300000}
+          LEGACY_METRICS = {"TTFB","FCP","LCP","CLS","INP"}
+          RENDER_KEYS = {"mode","outcome","recoverableErrorCount","fallbackCount"}
           def response(status, payload):
               return {"statusCode":status,"headers":{"content-type":"application/json","access-control-allow-origin":os.environ["ALLOWED_ORIGIN"]},"body":json.dumps(payload,separators=(",",":"))}
           def valid(value):
               try:
-                  if not isinstance(value,dict) or set(value) != KEYS or value["schemaVersion"] != 1: return False
+                  if not isinstance(value,dict) or value["schemaVersion"] not in (1,2): return False
+                  if set(value) != (KEYS_V2 if value["schemaVersion"] == 2 else KEYS_V1): return False
                   if not isinstance(value["requestId"],str): return False
                   parsed=uuid.UUID(value["requestId"])
                   if parsed.version != 7 or str(parsed) != value["requestId"]: return False
                   if not isinstance(value["route"],str) or not value["route"].startswith("/") or len(value["route"]) > 256 or "?" in value["route"] or "#" in value["route"]: return False
                   if not isinstance(value["version"],str) or len(value["version"]) > 64: return False
                   metrics=value["metrics"]
-                  if not isinstance(metrics,dict) or not metrics or not set(metrics) <= METRICS: return False
-                  return all(isinstance(item,(int,float)) and not isinstance(item,bool) and math.isfinite(item) and item >= 0 for item in metrics.values())
+                  allowed=METRIC_BOUNDS if value["schemaVersion"] == 2 else LEGACY_METRICS
+                  if not isinstance(metrics,dict) or not metrics or not set(metrics) <= set(allowed): return False
+                  if not all(isinstance(item,(int,float)) and not isinstance(item,bool) and math.isfinite(item) and 0 <= item <= METRIC_BOUNDS[key] and (key != "FRAME_SAMPLE_COUNT" or isinstance(item,int)) for key,item in metrics.items()): return False
+                  if value["schemaVersion"] == 2:
+                      render=value["render"]
+                      if not isinstance(render,dict) or set(render) != RENDER_KEYS: return False
+                      if render["mode"] not in ("hydrate","csr","unknown") or render["outcome"] not in ("hydrated","csr","csr-fallback","not-observed"): return False
+                      if not isinstance(render["recoverableErrorCount"],int) or isinstance(render["recoverableErrorCount"],bool) or not 0 <= render["recoverableErrorCount"] <= 100: return False
+                      if not isinstance(render["fallbackCount"],int) or isinstance(render["fallbackCount"],bool) or not 0 <= render["fallbackCount"] <= 1: return False
+                  return True
               except (KeyError,TypeError,ValueError): return False
           def get_auth_secret():
               global auth_secret
@@ -306,6 +324,15 @@ Resources:
       Tags:
         Project: !Ref ProjectName
 
+  PerformanceApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${ProjectName}-performance
+      RetentionInDays: 7
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
   PerformanceIntegration:
     Type: AWS::ApiGatewayV2::Integration
     Properties:
@@ -328,6 +355,9 @@ Resources:
       ApiId: !Ref PerformanceApi
       StageName: $default
       AutoDeploy: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt PerformanceApiAccessLogGroup.Arn
+        Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","responseLatency":"$context.responseLatency","integrationLatency":"$context.integrationLatency"}'
       DefaultRouteSettings:
         ThrottlingBurstLimit: 5
         ThrottlingRateLimit: 2
@@ -419,13 +449,22 @@ Resources:
       RuntimePlatform:
         CpuArchitecture: ARM64
         OperatingSystemFamily: LINUX
+      Volumes:
+        - Name: tmp
       ContainerDefinitions:
         - Name: performance-aggregator
           Image: !Sub ${AggregatorRepository.RepositoryUri}@${AggregatorImageDigest}
           Essential: true
+          ReadonlyRootFilesystem: true
+          MountPoints:
+            - SourceVolume: tmp
+              ContainerPath: /tmp
+              ReadOnly: false
           Environment:
             - Name: DATABASE_SECRET_ARN
               Value: !Ref SharedDatabaseSecretArn
+            - Name: PYTHONDONTWRITEBYTECODE
+              Value: "1"
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -538,7 +577,6 @@ Resources:
       Role: !GetAtt DispatcherRole.Arn
       Timeout: 900
       MemorySize: 256
-      ReservedConcurrentExecutions: 1
       Environment:
         Variables:
           CLUSTER_ARN: !Ref SharedEcsClusterArn
@@ -655,8 +693,8 @@ Resources:
       FunctionResponseTypes:
         - ReportBatchItemFailures
       ScalingConfig:
-        # AWS requires at least 2 here; ReservedConcurrentExecutions=1 above
-        # is the enforceable one-worker boundary.
+        # AWS requires at least 2 here. The fixed FIFO MessageGroupId above
+        # serializes delivery to one in-flight batch without reserved concurrency.
         MaximumConcurrency: 2
 
 Outputs:

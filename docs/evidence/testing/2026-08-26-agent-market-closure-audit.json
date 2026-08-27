@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "agent-market.closure-audit.v1",
+  "recordedAt": "2026-08-27T06:24:00Z",
+  "overallStatus": "pending-external",
+  "completionGate": "fail-closed",
+  "latestRepositoryGate": {
+    "status": "verified-local",
+    "evidence": "docs/evidence/testing/2026-08-27-full-repository-gates.json",
+    "boundary": "Local repository policy, Evidence, workspace, contracts, Go, and Python gates only"
+  },
+  "requirements": [
+    {
+      "id": "AM-CLOSE-01",
+      "title": "GraphQL multi-Agent terminal states and replacement full-flow recording",
+      "status": "pending-recording",
+      "proven": [
+        "Real provider workflow reached a terminal state",
+        "Signed GraphQL success, provider failure, runtime timeout, and user cancellation are covered locally"
+      ],
+      "evidence": [
+        "apps/web/public/evidence/2026-08-26-live-graphql-terminal-preflight.json",
+        "docs/evidence/testing/2026-08-26-queen-terminal-matrix.json"
+      ],
+      "missing": [
+        "Replacement full-screen browser recording after V3 external closure"
+      ]
+    },
+    {
+      "id": "AM-CLOSE-02",
+      "title": "V3 platform arbitration interaction and authoritative Sepolia ruling",
+      "status": "pending-external",
+      "proven": [
+        "Sole platform arbiter policy and resolveTask path pass local contract and web gates",
+        "V2 committee remains historical evidence only"
+      ],
+      "evidence": [
+        "docs/evidence/testing/2026-08-26-chain-interaction-local-gates.json",
+        "docs/evidence/testing/2026-08-26-workflow-deployment-local-gates.json"
+      ],
+      "missing": [
+        "V3 deployment receipt",
+        "Real dispute and platform resolveTask receipt/event readback"
+      ]
+    },
+    {
+      "id": "AM-CLOSE-03",
+      "title": "Web task publication, YD approval, escrow, and receipt acceptance",
+      "status": "pending-external",
+      "proven": [
+        "Web and Transaction Engine implement budget plus fixed six-percent publication fee intents",
+        "Local contract and web gates pass"
+      ],
+      "evidence": [
+        "docs/evidence/testing/2026-08-26-chain-interaction-local-gates.json"
+      ],
+      "missing": [
+        "Browser MetaMask approve transaction",
+        "V3 createTask receipt and TaskCreated event readback"
+      ]
+    },
+    {
+      "id": "AM-CLOSE-04",
+      "title": "Web stake, unstake, yield claim, and position readback",
+      "status": "pending-external",
+      "proven": [
+        "Web stake, unstake, claim, and authenticated position readback paths pass local gates",
+        "Vault contract behavior is covered by deterministic tests"
+      ],
+      "evidence": [
+        "docs/evidence/testing/2026-08-26-chain-interaction-local-gates.json"
+      ],
+      "missing": [
+        "Browser approve/stake/unstake/claim receipts",
+        "Post-transaction position, earned yield, and reward reserve readback"
+      ]
+    },
+    {
+      "id": "AM-CLOSE-05",
+      "title": "AWS V2 browser-to-PostgreSQL production performance continuity",
+      "status": "pending-external",
+      "proven": [
+        "Local IaC shared-foundation gate passes",
+        "Browser observability v2 deterministically captures TTFB, FCP, LCP, CLS, INP, hydration duration, FPS, frame-time P95, and dropped-frame ratio",
+        "Browser request IDs are RFC 9562 UUIDv7 and the Edge signs the exact sanitized body with timestamp plus HMAC before AWS ingestion",
+        "V1 historical pause evidence remains valid only in its original scope",
+        "MFA-protected non-root AgentMarketOperatorRole inventory verified the existing UPDATE_COMPLETE stack and shared foundation",
+        "Consumer mapping is Disabled, ECS running and pending tasks are zero, and both work queue and DLQ are empty"
+      ],
+      "evidence": [
+        "docs/evidence/testing/2026-08-26-workflow-deployment-local-gates.json",
+        "docs/evidence/testing/2026-08-27-web-performance-observability-contract.json",
+        "docs/evidence/deployment/2026-08-26-aws-iam-bootstrap.json",
+        "docs/evidence/deployment/2026-08-27-aws-v2-readonly-inventory.json"
+      ],
+      "missing": [
+        "One new UUIDv7 plus HMAC sample with the same request_id across every hop",
+        "Fresh public readback and reversible pause proof"
+      ]
+    },
+    {
+      "id": "AM-CLOSE-06",
+      "title": "Cocos virtual office and Web task-desk integration",
+      "status": "verified-local",
+      "proven": [
+        "Cocos office is embedded in the Web route",
+        "Task desks and owner Agent movement render locally",
+        "Agent render size is restored to 76x76",
+        "GPU/WebGL browser readback reached Cocos game-start and runtime ready, then React accepted ready.v2",
+        "All five audited viewport widths completed the Cocos ready handshake"
+      ],
+      "evidence": [
+        "docs/evidence/testing/2026-08-26-cocos-office-local.json",
+        "apps/web/public/evidence/agent-market-cocos-office-local.png"
+      ],
+      "missing": [
+        "Include the final office state in the replacement recording"
+      ]
+    },
+    {
+      "id": "AM-CLOSE-07",
+      "title": "Personal Code and Image owner-trained Ollama Agent Market smoke",
+      "status": "verified-local",
+      "proven": [
+        "Both owner-trained tags answered through the signed local runtime",
+        "Code manifest identity and Image manifest plus GGUF layer identity passed fail-closed checks",
+        "Stale Image digest is rejected"
+      ],
+      "evidence": [
+        "docs/evidence/testing/2026-08-26-owner-trained-runtime-smoke.json"
+      ],
+      "missing": []
+    },
+    {
+      "id": "AM-CLOSE-08",
+      "title": "Bilingual all-route visual regression",
+      "status": "verified-local",
+      "proven": [
+        "18 Worker routes across five widths and two locales passed",
+        "Unknown route returns 404",
+        "No overflow, broken image, empty button, or untranslated-text finding",
+        "Cocos office ready handshake failures are zero"
+      ],
+      "evidence": [
+        "docs/evidence/testing/2026-08-26-visual-route-audit.json"
+      ],
+      "missing": []
+    }
+  ],
+  "missingAuthoritativeArtifacts": [
+    "docs/evidence/deployment/sepolia-workflow-v3.json",
+    "docs/evidence/deployment/2026-08-26-aws-v2-performance-closure.json",
+    "apps/web/public/evidence/2026-08-26-v3-full-workflow-recording.json"
+  ],
+  "completionRule": "The project remains incomplete while any requirement has a pending status or any authoritative artifact is missing."
+}

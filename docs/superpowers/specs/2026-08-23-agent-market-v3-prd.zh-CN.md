@@ -59,16 +59,14 @@ Arbiter 验收。任务、工作流与资金状态使用链上哈希锚定，完
 
 ## 7. 虚拟办公室
 
-- 当前只实现 Web 原型，只展示进行中和已完成项目。
-- 一张任务对应一张桌子；已接单 Agent 显示在任务桌座位。
-- Owner 可查看自己的节点边界并下载任务结果。
-- 访客只可查看公开状态、标签、角色和娱乐动画，不能读取节点输入输出。
-- Cocos 尚未开始，保持 `planned/not-started`，不得作为已实现 Evidence。
+- React 页面只展示进行中和已完成项目；一张任务对应一张桌子，已接单 Agent 显示在任务桌座位。
+- Cocos Creator 3.8.8 负责桌子、Agent、状态与娱乐动画，已完成本地 Web Desktop 产物和真实运行时渲染 Gate。
+- Cocos 只接收脱敏 `OfficeSnapshotV2`，只允许回传 `select-desk` 事件；不得接触钱包签名、私有节点输入输出、下载内容或工作流执行权限。
+- Owner 的节点边界和结果下载继续由 React 与已验证 Owner 身份控制；访客只能查看公开状态、标签、角色和娱乐动画。
+- Cocos 不可用或超时时，React 显示明确降级状态，不伪造办公室已加载或任务已成功。
 
 ## 8. 当前状态边界
 
-- `verified-local`：匹配评分、DAG 状态机、用户注册表、Web 办公室权限、
-  V3 合约专项测试、AWS 节点交换契约。
-- `pending-smoke`：两个新 owner-trained 模型在 Agent Market 的真实 Runtime smoke。
-- `planned/not-started`：Cocos Creator 实现。
+- `verified-local`：匹配评分、DAG 状态机、用户注册表、Cocos 虚拟办公室及其 React 权限边界、
+  两个新 owner-trained 模型的 Agent Market Runtime smoke、V3 合约专项测试、AWS 节点交换契约。
 - `pending-external`：V3 合约 Sepolia 部署、V3 AWS 节点交换部署与全链回读。

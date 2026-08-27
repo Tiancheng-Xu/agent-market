@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "agent-market.evidence.v2",
+  "recordedAt": "2026-08-26T09:22:00-04:00",
+  "status": "verified-local",
+  "subject": "Agent Market StarBuddy state-driven Cocos virtual office",
+  "implementation": {
+    "engine": "Cocos Creator 3.8.8",
+    "target": "Web Desktop embedded by React",
+    "scene": "AgentMarketOffice",
+    "rendering": "programmatic Cocos scene with generated 2.5D office and transparent StarBuddy sprite atlas",
+    "characterStyle": "BabySteps StarBuddy-derived roles with WorkBuddy-style lifecycle states",
+    "responsiveHost": true
+  },
+  "stateContract": {
+    "input": "agent-market.office.snapshot.v2",
+    "outputs": [
+      "agent-market.office.ready.v2",
+      "agent-market.office.select-desk.v2"
+    ],
+    "activities": [
+      "idle",
+      "walking",
+      "thinking",
+      "working",
+      "reviewing",
+      "waiting",
+      "done",
+      "failed",
+      "offline"
+    ],
+    "authority": "presentation-only; animation never changes task, workflow, wallet, chain, or runtime truth"
+  },
+  "visualReadback": {
+    "browser": "isolated external Google Chrome against 127.0.0.1:4173/office",
+    "viewport": "1440x900",
+    "taskDesksVisible": 4,
+    "agentRenderSize": "38x38 Cocos units",
+    "transparentAtlas": true,
+    "screenshotSha256": "056707adae863ab7a90ea216b0902ba0ae7e52124ea711b34a6f5939bfe81acf",
+    "screenshot": "apps/web/public/evidence/agent-market-cocos-office-local.png"
+  },
+  "assetIdentity": {
+    "agentAtlasSha256": "04afee4293869bc1ac0573afb9a3d51265cc914976dc5d46c160ed2eea0e557c",
+    "officeBackgroundSha256": "972c4b5494db9737cab486a39a3cf161bb4bd4e0f78f1584bac824c9c79f2a1e",
+    "runtimeSha256": "be024705ce43ca50081f31e835a29ace4621b1ea98c7339c396f6afd17f6e4af"
+  },
+  "deterministicGates": {
+    "artifactTests": "1/1 passed",
+    "alphaChannelGate": "passed",
+    "postSpriteFrameSizeGate": "passed",
+    "contractAndWebRegression": "pending-current-run"
+  },
+  "securityBoundary": {
+    "input": "sanitized OfficeSnapshotV2 only",
+    "output": "ready and select-desk UI events only",
+    "forbidden": [
+      "wallet signing",
+      "private node input or output",
+      "result download payload",
+      "workflow mutation",
+      "agent execution",
+      "API keys",
+      "local model endpoints"
+    ],
+    "authoritativeLayer": "React owner boundary and private AWS control plane"
+  },
+  "externalStatus": "not-production-proof"
+}

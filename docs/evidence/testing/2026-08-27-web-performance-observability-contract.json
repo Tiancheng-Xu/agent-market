@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "evidenceId": "agent-market-web-performance-observability-v2",
+  "observedAt": "2026-08-27T17:08:48Z",
+  "status": "verified-production",
+  "scope": "deterministic contract, focused local gates, and one controlled AWS V2 production closure",
+  "metrics": [
+    "TTFB", "FCP", "LCP", "CLS", "INP", "HYDRATION_DURATION", "FPS",
+    "FRAME_TIME_P95", "DROPPED_FRAME_RATIO", "FRAME_SAMPLE_COUNT", "FRAME_WINDOW_DURATION"
+  ],
+  "render": ["mode", "outcome", "recoverableErrorCount", "fallbackCount"],
+  "privacy": {
+    "allowed": ["uuidv7 requestId", "sanitized pathname", "build version", "timestamp", "bounded numeric metrics", "bounded render state"],
+    "forbidden": ["query", "fragment", "wallet", "cookie", "authorization", "user agent", "IP address", "user content"]
+  },
+  "productionBoundary": "verified-production for request 01a04416-8dcd-7790-b69a-ca233f232044: the HMAC-authenticated sample was accepted, drained through SNS/SQS and ECS, read back from PostgreSQL, and the workload was paused again; this is delivery evidence, not a continuous SLO",
+  "evidence": [
+    "apps/web/src/performance/collector.test.ts",
+    "apps/web/src/performance-proxy.test.ts",
+    "apps/transaction-engine/src/performance/ingest.test.ts",
+    "apps/transaction-engine/src/persistence/performance-schema.test.ts",
+    "services/performance-aggregator/test_worker.py",
+    "infra/aws/performance-v2.test.mjs",
+    "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json"
+  ]
+}

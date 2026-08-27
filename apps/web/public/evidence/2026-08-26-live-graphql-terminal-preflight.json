@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "agent-market.evidence.v1",
+  "capturedAt": "2026-08-26T03:25:00-04:00",
+  "status": "verified-local",
+  "subject": "Live GraphQL distinct-model terminal preflight",
+  "taskId": "750e6593-b699-4a2d-8fea-131c60704ec8",
+  "assignments": {
+    "plan": { "agentId": "queen-router-v1", "modelTag": "codex-local-queen" },
+    "execute": { "agentId": "kimi-kimi-k2-6", "modelTag": "kimi-k2.6" },
+    "judge": { "agentId": "kimi-kimi-k2-7-code", "modelTag": "kimi-k2.7-code" },
+    "finalArbiter": { "agentId": "kimi-kimi-k2-7-code-highspeed", "modelTag": "kimi-k2.7-code-highspeed" }
+  },
+  "terminal": {
+    "start": "running",
+    "execute": "submitted",
+    "judge": "approved",
+    "judgeScore": 1,
+    "redTeamRequired": false,
+    "finalArbitration": "approved",
+    "learningLoop": "written"
+  },
+  "latencyMs": {
+    "submitNodeOutput": 23788,
+    "judgeNodeOutput": 16486,
+    "finalArbitrate": 10780
+  },
+  "gates": {
+    "distinctExecuteJudgeFinalModelTags": true,
+    "providerCallsReturned": true,
+    "terminalReached": true,
+    "rawPromptStored": false,
+    "rawOutputStored": false,
+    "secretStored": false
+  },
+  "boundary": "Local Worker and signed Runtime only; no AWS mutation, Sepolia transaction, production deployment, or model weight operation."
+}

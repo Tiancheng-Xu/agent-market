@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "agent-market.workflow-deployment-local-gates.v1",
+  "recordedAt": "2026-08-26T14:05:54.711Z",
+  "status": "verified-local",
+  "scope": "V3 Sepolia incremental deployment preparation only",
+  "externalBoundary": {
+    "deployed": false,
+    "transactionsSent": false,
+    "awsResourcesModified": false,
+    "productionVerified": false
+  },
+  "invariants": [
+    "Reuse the existing Sepolia YDToken",
+    "Verify existing YDToken bytecode and totalSupply ABI before any deployment",
+    "Deploy only TaskStakeReceipt and AgentMarketWorkflowEscrow",
+    "Configure the receipt escrow exactly once",
+    "Use one configured platform final arbiter for V3",
+    "Never serialize RPC URLs, private keys, mnemonics, or secret values"
+  ],
+  "gates": [
+    {
+      "name": "workflow-deployment-focused-test",
+      "command": "pnpm --dir packages/contracts exec hardhat test test/WorkflowDeployment.test.ts",
+      "result": "pass",
+      "summary": "2 passing"
+    },
+    {
+      "name": "contracts-full-test",
+      "command": "pnpm --dir packages/contracts test",
+      "result": "pass",
+      "summary": "21 passing"
+    },
+    {
+      "name": "contracts-typecheck",
+      "command": "pnpm --dir packages/contracts typecheck",
+      "result": "pass",
+      "summary": "Hardhat compile and TypeScript check passed"
+    },
+    {
+      "name": "aws-shared-foundation-gate",
+      "command": "python3 ~/.codex/skills/aws-budget-guard/scripts/check_iac_shared_resource_gate.py infra/aws/template.yaml",
+      "result": "pass",
+      "summary": "No unapproved shared-foundation creation detected; ECR and project log groups remain review candidates"
+    }
+  ],
+  "implementation": [
+    "packages/contracts/scripts/deploy-workflow-sepolia.ts",
+    "packages/contracts/test/WorkflowDeployment.test.ts",
+    "packages/contracts/package.json",
+    "docs/delivery/2026-08-26-external-closure-authorization-matrix.zh-CN.md"
+  ],
+  "nextGate": "Authenticated non-root AWS read-only inventory and explicit external action authorization"
+}

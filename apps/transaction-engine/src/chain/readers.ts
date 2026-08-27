@@ -1,4 +1,5 @@
 import type { ChainObservation, ChainReader } from "./reconcile";
+import { getAddress, Interface } from "ethers";
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -6,6 +7,27 @@ interface RpcEnvelope {
   result?: unknown;
   error?: unknown;
 }
+
+export interface VaultPositionSnapshot {
+  wallet: string;
+  principalAtomic: string;
+  accruedAtomic: string;
+  checkpointAt: string;
+  earnedAtomic: string;
+  rewardReserveAtomic: string;
+  blockNumber: number;
+  checkedAt: string;
+}
+
+export interface VaultPositionReader {
+  readPosition(walletAddress: string): Promise<VaultPositionSnapshot>;
+}
+
+const VAULT_READ_ABI = [
+  "function positions(address account) view returns (uint256 principal,uint256 accrued,uint64 checkpointAt)",
+  "function earned(address account) view returns (uint256)",
+  "function rewardReserve() view returns (uint256)",
+] as const;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -105,6 +127,58 @@ export class JsonRpcChainReader implements ChainReader {
       },
       latestBlockNumber,
       canonicalBlockHash: typeof canonical.hash === "string" ? canonical.hash.toLowerCase() : null,
+    };
+  }
+}
+
+export class JsonRpcVaultPositionReader implements VaultPositionReader {
+  private requestId = 0;
+  private readonly contractInterface = new Interface(VAULT_READ_ABI);
+
+  constructor(
+    private readonly rpcUrl: string,
+    private readonly vaultAddress: string,
+    private readonly fetcher: FetchLike = fetch,
+    private readonly timeoutMs = 8_000,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
+
+  private async call(method: string, params: readonly unknown[]): Promise<unknown> {
+    const response = await this.fetcher(this.rpcUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: ++this.requestId, method, params }),
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+    if (!response.ok) throw new Error("RPC_UNAVAILABLE");
+    const payload = await response.json() as RpcEnvelope;
+    if (payload.error || typeof payload.result !== "string") throw new Error("RPC_ERROR");
+    return payload.result;
+  }
+
+  async readPosition(walletAddress: string): Promise<VaultPositionSnapshot> {
+    const wallet = getAddress(walletAddress).toLowerCase();
+    const to = getAddress(this.vaultAddress).toLowerCase();
+    const read = (name: "positions" | "earned" | "rewardReserve", args: readonly unknown[]) =>
+      this.call("eth_call", [{ to, data: this.contractInterface.encodeFunctionData(name, args) }, "latest"]);
+    const [positionData, earnedData, reserveData, blockData] = await Promise.all([
+      read("positions", [wallet]), read("earned", [wallet]), read("rewardReserve", []),
+      this.call("eth_blockNumber", []),
+    ]);
+    const position = this.contractInterface.decodeFunctionResult("positions", String(positionData));
+    const earned = this.contractInterface.decodeFunctionResult("earned", String(earnedData));
+    const reserve = this.contractInterface.decodeFunctionResult("rewardReserve", String(reserveData));
+    const blockNumber = hexNumber(blockData);
+    if (blockNumber === null) throw new Error("RPC_BLOCK_INVALID");
+    return {
+      wallet,
+      principalAtomic: String(position[0]),
+      accruedAtomic: String(position[1]),
+      checkpointAt: String(position[2]),
+      earnedAtomic: String(earned[0]),
+      rewardReserveAtomic: String(reserve[0]),
+      blockNumber,
+      checkedAt: this.now().toISOString(),
     };
   }
 }

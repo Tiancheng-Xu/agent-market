@@ -120,6 +120,7 @@ describe("Ollama model registry", () => {
         model: {
           tag: ownerModel.tag,
           digest: ownerModel.digest,
+          ...("artifactDigest" in ownerModel ? { artifactDigest: ownerModel.artifactDigest } : {}),
           revision: ownerModel.revision,
           quantization: "Q4_K_M",
           contextLength: 8192,

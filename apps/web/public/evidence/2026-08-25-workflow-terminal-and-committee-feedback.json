@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "verifiedOn": "2026-08-25",
+  "status": "verified-local",
+  "trigger": "External Chrome recording preserved a non-terminal Queen workflow and a committee button without visible feedback.",
+  "fixes": [
+    {
+      "surface": "/agents/local",
+      "behavior": "Queen workflow now exposes running, succeeded, error, and cancelled states, the active node, a user cancellation action, and a 45-second deadline for each GraphQL operation."
+    },
+    {
+      "surface": "/committee",
+      "behavior": "Declare no conflict now changes to an acknowledged local-only state and explicitly says that no vote or blockchain transaction was submitted."
+    }
+  ],
+  "verification": {
+    "command": "pnpm --dir apps/web exec vitest run src/pages/LocalAgentsPage.test.tsx src/pages/ControlPages.test.tsx",
+    "testFilesPassed": 2,
+    "testsPassed": 8,
+    "testsFailed": 0
+  },
+  "truthBoundary": [
+    "The original recording remains unchanged evidence of the pre-fix observation.",
+    "A timeout or cancellation is an explicit terminal UI state, not a successful Agent result.",
+    "The committee acknowledgement is browser-local demo feedback and is not an on-chain vote or ruling."
+  ]
+}

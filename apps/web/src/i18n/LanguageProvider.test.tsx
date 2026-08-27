@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { LanguageProvider, LOCALE_STORAGE_KEY, localizeAssetPath, normalizeLocale, readStoredLocale, useLanguage, writeDocumentLocale, writeStoredLocale } from "./LanguageProvider";
+import { LanguageProvider, LOCALE_STORAGE_KEY, localizeAssetPath, normalizeLocale, readStoredLocale, translateLocalizedText, useLanguage, writeDocumentLocale, writeStoredLocale } from "./LanguageProvider";
 import { translateVisibleText } from "./translations";
 
 function Probe() { const { locale, t } = useLanguage(); return <span>{locale}:{t("Market")}</span>; }
@@ -11,6 +11,11 @@ describe("bilingual interface", () => {
   it("synchronizes the document language for assistive technology", () => { const root = { lang: "en" }; writeDocumentLocale(root, "zh-CN"); expect(root.lang).toBe("zh-CN"); });
   it("switches only architecture SVGs to localized assets", () => { expect(localizeAssetPath("/architecture/system-context.svg", "zh-CN")).toBe("/architecture/system-context.zh-CN.svg"); expect(localizeAssetPath("/architecture/system-context.zh-CN.svg", "zh-CN")).toBe("/architecture/system-context.zh-CN.svg"); expect(localizeAssetPath("/evidence/aws.png", "zh-CN")).toBe("/evidence/aws.png"); expect(localizeAssetPath("/architecture/system-context.svg", "en")).toBe("/architecture/system-context.svg"); });
   it("translates exact and count-bearing copy", () => { expect(translateVisibleText("zh-CN", "Market")).toBe("市场"); expect(translateVisibleText("zh-CN", "3 RESULTS")).toBe("3 条结果"); });
+  it("translates long page descriptions without changing identifiers", () => {
+    expect(translateLocalizedText("zh-CN", "Build a source-backed AI market brief")).toBe("编写有来源支撑的 AI 市场简报");
+    expect(translateLocalizedText("zh-CN", "No Sepolia transaction, AWS mutation, or production configuration was executed by this implementation task.")).toBe("本次实现未执行 Sepolia 交易、AWS 变更或生产配置。");
+    expect(translateLocalizedText("zh-CN", "personal-code-agent:v1")).toBe("personal-code-agent:v1");
+  });
   it.each([
     ["LIVE AGENT PLAYGROUND", "真实 Agent 试验台"],
     ["Talk to real agents", "与真实 Agent 对话"],

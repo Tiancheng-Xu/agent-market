@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "feature": "agent-market-live-agent-closure",
+  "contractHash": "9fa2fa5a1bf2d6774b4fa07a21af114ef4dbb75f628907cfe1a52fc36de0e927",
+  "status": "verified-local",
+  "checks": {
+    "ownerTrainedRuntime": {
+      "personal-code-agent:v1": "done-valid-json",
+      "personal-image-agent:v1": "done-valid-json"
+    },
+    "identity": {
+      "personal-code-agent:v1": "manifest-digest-exact",
+      "personal-image-agent:v1": "manifest-digest-2fa405e1-and-model-layer-4bba2f8f"
+    },
+    "security": {
+      "publicOwnerOnlySelection": "forbidden-before-model-call",
+      "nonceReplay": "rejected-before-second-model-call",
+      "secretsOrRawOutputsPublished": false
+    },
+    "terminalStates": ["succeeded", "provider-failure", "timeout", "cancelled"],
+    "orchestration": {
+      "judgeIndependentByAgentAndModel": true,
+      "finalArbiterIndependentByAgentAndModel": true,
+      "repeatSubmissionIdempotent": true,
+      "webAutoAndManualAssignmentUseModelIdentity": true
+    }
+  },
+  "evidence": [
+    "docs/evidence/testing/2026-08-26-owner-trained-runtime-smoke.json",
+    "docs/evidence/testing/2026-08-26-queen-terminal-matrix.json"
+  ],
+  "boundary": "Local deterministic and runtime evidence only. This is not Cloudflare production, AWS V2, or Sepolia transaction proof."
+}

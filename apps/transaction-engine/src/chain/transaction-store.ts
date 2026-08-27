@@ -38,7 +38,7 @@ interface StoredTransaction {
 }
 
 const REQUEST_REF_EVENT_METHODS = new Set<TransactionIntentV1["method"]>([
-  "createTask", "assignAgent", "acceptTask", "submitWork", "acceptWork", "timeoutTask", "openDispute",
+  "createTask", "createWorkflowTask", "assignAgent", "acceptTask", "submitWork", "acceptWork", "timeoutTask", "openDispute",
 ]);
 
 function sameIntentPayload(left: TransactionIntentV1, right: TransactionIntentV1): boolean {
@@ -50,6 +50,7 @@ function sameIntentPayload(left: TransactionIntentV1, right: TransactionIntentV1
 
 function sameExpectation(left: ChainTransactionExpectation, right: ChainTransactionExpectation): boolean {
   return left.resourceId === right.resourceId
+    && (left.resourceKind ?? "task") === (right.resourceKind ?? "task")
     && left.budgetAtomic === right.budgetAtomic
     && left.bondAtomic === right.bondAtomic
     && left.agentWins === right.agentWins;
@@ -161,6 +162,7 @@ interface ChainTransactionRow {
   expected_budget_atomic: string | null;
   expected_bond_atomic: string | null;
   expected_agent_wins: boolean | null;
+  resource_kind: "task" | "account";
 }
 
 export class PostgresTransactionStore implements TransactionStore {
@@ -179,13 +181,13 @@ export class PostgresTransactionStore implements TransactionStore {
       INSERT INTO agent_market.chain_transactions (
         id, intent_id, request_id, request_ref, chain_id, actor_wallet,
         contract_address, method, call_data, expected_value_atomic,
-        resource_id, expected_budget_atomic, expected_bond_atomic, expected_agent_wins,
+        resource_id, resource_kind, expected_budget_atomic, expected_bond_atomic, expected_agent_wins,
         status, created_at, expires_at
       ) VALUES (
         ${intent.intentId}, ${intent.intentId}, ${intent.requestId},
         decode(${intent.requestRef.slice(2)}, 'hex'), ${intent.chainId}, ${intent.from},
         ${intent.to}, ${intent.method}, ${intent.data.toLowerCase()}, ${intent.valueAtomic},
-        ${expectation.resourceId}, ${expectation.budgetAtomic}, ${expectation.bondAtomic}, ${expectation.agentWins},
+        ${expectation.resourceId}, ${expectation.resourceKind ?? "task"}, ${expectation.budgetAtomic}, ${expectation.bondAtomic}, ${expectation.agentWins},
         'created', ${intent.createdAt}, ${intent.expiresAt}
       )
       ON CONFLICT (intent_id) DO NOTHING
@@ -200,7 +202,7 @@ export class PostgresTransactionStore implements TransactionStore {
 
   async findExpectation(intentId: string): Promise<ChainTransactionExpectation | null> {
     const rows = await this.sql<ChainTransactionRow[]>`
-      SELECT resource_id::text, expected_budget_atomic::text, expected_bond_atomic::text,
+      SELECT resource_id::text, resource_kind, expected_budget_atomic::text, expected_bond_atomic::text,
         expected_agent_wins
       FROM agent_market.chain_transactions WHERE intent_id = ${intentId} LIMIT 1
     `;
@@ -208,6 +210,7 @@ export class PostgresTransactionStore implements TransactionStore {
     if (!row?.resource_id || row.expected_budget_atomic === null || row.expected_bond_atomic === null) return null;
     return {
       resourceId: row.resource_id,
+      resourceKind: row.resource_kind,
       budgetAtomic: row.expected_budget_atomic,
       bondAtomic: row.expected_bond_atomic,
       agentWins: row.expected_agent_wins,

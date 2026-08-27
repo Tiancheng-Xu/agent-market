@@ -48,7 +48,7 @@ test("pause owns, deduplicates, stops, and drains PENDING plus RUNNING tasks", (
 test("resume completes strict preflight before any mutation", () => {
   assert.match(pause, /validate_lifecycle_state/);
   assert.match(pause, /snapshotHash/);
-  assert.match(pause, /priorDispatcherConcurrency \| type == "number".*priorDispatcherConcurrency == 1/s);
+  assert.match(pause, /priorDispatcherConcurrency == "unreserved".*priorDispatcherConcurrency \| type == "number".*== 1/s);
   assert.match(pause, /queue_has_messages_without_metric/);
   const resume = pause.slice(pause.indexOf('[[ -n "$state" ]] || { echo "pause state missing"'));
   const validate = resume.indexOf('validate_lifecycle_state "$state"');
@@ -76,8 +76,23 @@ test("transition approval closes the change-set review TOCTOU window", () => {
   assert.match(prepare, /describe-change-set/);
   assert.match(prepare, /changeSetReviewSha256/);
   assert.match(prepare, /validate_change_set_scope/);
+  assert.match(prepare, /LogicalResourceId == "DispatcherFunction"/);
+  assert.match(prepare, /ResourceType == "AWS::Lambda::Function"/);
+  assert.match(prepare, /Replacement == "False"/);
+  assert.match(prepare, /CausingEntity == "PerformanceCluster\.Arn"/);
+  assert.match(prepare, /RequiresRecreation == "Never"/);
   assert.match(prepare, /approval_hash.*review_hash/s);
+  assert.match(prepare, /prepare-final.*approve-final/s);
+  assert.match(prepare, /validate_retained_cluster_state/);
+  assert.match(prepare, /priorMarkerSha256/);
+  assert.match(prepare, /finalReviewSha256/);
+  assert.match(prepare, /explicit final approval token mismatch/);
   assert.match(validator, /markerParameterName/);
+});
+
+test("SNS transport policy only denies the supported publish data-plane action", () => {
+  assert.match(template, /PerformanceTopicPolicy:[\s\S]*Action: sns:Publish[\s\S]*aws:SecureTransport: false/);
+  assert.doesNotMatch(template, /Action: sns:\*/);
 });
 
 test("the only supported final deploy path validates and compares marker hashes", () => {
@@ -88,18 +103,21 @@ test("the only supported final deploy path validates and compares marker hashes"
   assert.match(deploy, /markerSha256/);
   assert.match(deploy, /ClusterTransitionMarkerSha256=/);
   assert.match(deploy, /approved_final_template_sha256/);
+  assert.match(deploy, /INGESTION_AUTH_SECRET_ARN/);
+  assert.match(deploy, /secret:agent-market\/performance\/ingestion-hmac-/);
+  assert.match(deploy, /IngestionAuthSecretArn="\$INGESTION_AUTH_SECRET_ARN"/);
   assert.match(deploy, /mktemp -d.*agent-market-template/s);
   assert.doesNotMatch(deploy, /"\$@"/);
   assert.match(repositoryPolicy, /AWS_DEPLOY_GATES/);
   assert.match(repositoryPolicy, /create-change-set/);
   assert.match(repositoryPolicy, /commandMatches/);
-  assert.match(workflow, /node scripts\/validate-repository\.mjs/);
+  assert.match(workflow, /uses:\s*Tiancheng-Xu\/\.github\/\.github\/workflows\/verify-repository-policy\.yml@main/);
 });
 
 test("T7 evidence records real PostgreSQL verification without claiming AWS", () => {
   assert.equal(evidence.externalActions.aws, false);
   assert.equal(evidence.externalActions.deploy, false);
-  assert.ok(evidence.verifiedLocal.some(({ summary }) => /T7 PostgreSQL.*2\/2/.test(summary ?? "")));
+  assert.ok(evidence.verifiedLocal.some(({ summary }) => /T7 PostgreSQL.*3\/3/.test(summary ?? "")));
   assert.ok(evidence.verifiedLocal.some(({ summary }) => /Auth.*1\/1.*Chain.*1\/1.*matcher pgvector.*pass/i.test(summary ?? "")));
   assert.ok(evidence.notVerified.some((claim) => /No AWS API was called/.test(claim)));
 });

@@ -12,12 +12,23 @@ const root = document.getElementById("root");
 if (!root) throw new Error("Root element is missing.");
 
 const buildVersion = import.meta.env.VITE_APP_VERSION ?? "unknown";
+const performanceCollection = import.meta.env.PROD
+  ? startPerformanceCollection({
+      route: globalThis.location.pathname,
+      version: buildVersion,
+    })
+  : undefined;
+let interactionRecorded = false;
 
 function ClientApplication({ initialInteractive }: { initialInteractive: boolean }) {
   const [interactive, setInteractive] = useState(initialInteractive);
 
   useEffect(() => {
     setInteractive(true);
+    if (!interactionRecorded) {
+      interactionRecorded = true;
+      performanceCollection?.markInteractive();
+    }
   }, []);
 
   return (
@@ -37,7 +48,7 @@ function ClientApplication({ initialInteractive }: { initialInteractive: boolean
 
 const renderState = readRenderStateFromDocument();
 
-bootstrapClient({
+const bootstrapResult = bootstrapClient({
   root,
   ...(renderState ? { state: renderState } : {}),
   currentPathname: globalThis.location.pathname,
@@ -46,15 +57,10 @@ bootstrapClient({
     <ClientApplication initialInteractive={interactive} />
   ),
   record(event) {
+    performanceCollection?.recordRenderEvent(event);
     globalThis.dispatchEvent(new CustomEvent("agent-market:render", {
       detail: { event },
     }));
   },
 });
-
-if (import.meta.env.PROD) {
-  startPerformanceCollection({
-    route: globalThis.location.pathname,
-    version: buildVersion,
-  });
-}
+performanceCollection?.recordBootstrapMode(bootstrapResult.mode);

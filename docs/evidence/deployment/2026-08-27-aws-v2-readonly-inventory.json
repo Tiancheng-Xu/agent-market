@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "agent-market.aws-v2-readonly-inventory.v1",
+  "recordedAt": "2026-08-27T03:36:11Z",
+  "status": "verified-external-readonly-inventory",
+  "region": "us-east-1",
+  "identityBoundary": {
+    "principal": "assumed-role/AgentMarketOperatorRole",
+    "mfaRequired": true,
+    "sessionMaxSeconds": 3600,
+    "rootUsedForInventory": false,
+    "accessKeysUsed": false
+  },
+  "stack": {
+    "name": "agent-market-performance",
+    "status": "UPDATE_COMPLETE",
+    "driftStatus": "NOT_CHECKED",
+    "terminationProtection": false
+  },
+  "runtimeState": {
+    "ecsClusterStatus": "ACTIVE",
+    "ecsRunningTasks": 0,
+    "ecsPendingTasks": 0,
+    "ecsActiveServices": 0,
+    "consumerMappingState": "Disabled",
+    "workQueueVisible": 0,
+    "workQueueInFlight": 0,
+    "deadLetterQueueVisible": 0
+  },
+  "sharedFoundation": {
+    "vpcState": "available",
+    "privateSubnetCount": 2,
+    "availabilityZoneCount": 2,
+    "publicIpOnLaunchSubnetCount": 0,
+    "availableNatGatewayCount": 1,
+    "availableVpcEndpointCount": 0,
+    "database": {
+      "engine": "postgres",
+      "status": "available",
+      "class": "db.t4g.micro",
+      "storageEncrypted": true,
+      "multiAZ": false,
+      "backupRetentionDays": 1,
+      "deletionProtection": true,
+      "publiclyAccessible": false
+    }
+  },
+  "projectResources": {
+    "httpApiCount": 1,
+    "lambdaCount": 2,
+    "snsTopicCount": 1,
+    "sqsQueueCount": 2,
+    "ecsClusterCount": 1,
+    "ecrRepositoryCount": 1,
+    "cloudWatchLogGroupCount": 4,
+    "ecrScanOnPush": true,
+    "sqsManagedSse": true,
+    "containerInsights": true
+  },
+  "verifiedGaps": [
+    "The deployed HTTP API route uses authorization type NONE; application-level HMAC is not present in the deployed Lambda environment.",
+    "All four discovered CloudWatch log groups currently have no retention period.",
+    "API access logging is disabled and Lambda tracing is PassThrough.",
+    "The active ECS task definition does not use a read-only root filesystem.",
+    "CloudFormation drift has not been checked and termination protection is disabled.",
+    "The shared private network has one existing NAT gateway and no VPC endpoints; no second NAT or duplicate foundation may be created."
+  ],
+  "reuseDecision": {
+    "vpcAndSubnets": "reuse-existing",
+    "natGateway": "reuse-existing-no-new-nat",
+    "postgres": "reuse-existing-project-isolation",
+    "ecsCluster": "reuse-existing-project-cluster",
+    "apiLambdaSnsSqs": "update-in-place-only-after-explicit-write-authorization",
+    "ecr": "reuse-existing-repository",
+    "cloudWatch": "reuse-and-apply-bounded-retention-after-authorization"
+  },
+  "safety": {
+    "messagesRead": false,
+    "secretValuesRead": false,
+    "resourceIdentifiersPublished": false,
+    "resourcesCreated": false,
+    "resourcesModified": false,
+    "resourcesDeleted": false,
+    "accountPlanChanged": false
+  },
+  "boundary": "This proves authenticated non-root read-only inventory and the paused baseline only. It is not AWS V2 deployment, browser-to-PostgreSQL continuity, public readback, or reversible-resume evidence."
+}

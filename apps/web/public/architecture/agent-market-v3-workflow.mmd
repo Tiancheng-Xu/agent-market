@@ -1,0 +1,27 @@
+flowchart LR
+  U[Publisher / Wallet] -->|task + budget + 6% fee| CF[Cloudflare Edge]
+  CF -->|signed command| AWS[AWS private control plane]
+  AWS -->|task/node metadata| LG[LangGraph workflow state]
+  LG -->|category + tags + hard gates| M[Matcher + score window]
+  M -->|4 distinct candidates -> 3| A[Local / Provider Agents]
+  A -->|node input/output only| X[AWS node exchange boundary]
+  X -->|HMAC + replay + PII gates| LG
+  LG -->|taskId + workflowId + dagHash + nodeId| S[Sepolia V3 contracts]
+  S -->|stake receipt + ruling state| U
+  AWS -->|sanitized OfficeSnapshotV1| O[Cocos office presentation]
+  O -->|select-desk event only| U
+
+  subgraph Private_Data[Private AWS data]
+    AWS
+    LG
+    M
+    X
+  end
+
+  subgraph Public_Chain[Public chain authority]
+    S
+  end
+
+  subgraph Presentation[Presentation only]
+    O
+  end

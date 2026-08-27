@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 2,
+  "recordedAt": "2026-08-26T09:42:00-04:00",
+  "feature": "wallet-authenticated-v2-v3-chain-interaction-adapter",
+  "status": "implemented-local-external-pending",
+  "implemented": {
+    "v3TaskPublishing": [
+      "wallet challenge and HttpOnly session",
+      "server-owned task resource",
+      "workflowEscrow allowlist isolated from legacy V2 escrow",
+      "YD approval bound to budget plus floor-rounded fixed 6% publication fee",
+      "createWorkflowTask intent encoded as createTask on AgentMarketWorkflowEscrow",
+      "exact TaskCreated requestRef, publisher, budget, publicationFee and deadline verification"
+    ],
+    "v3FinalArbitration": [
+      "single configured platform arbiter wallet",
+      "resolveWorkflowTask intent encoded as resolveTask",
+      "publisher and legacy committee members cannot self-grant the V3 arbiter role",
+      "exact TaskResolved task, outcome, arbiter and budget verification"
+    ],
+    "v2Compatibility": [
+      "legacy createTask and castVote methods remain isolated to their original contract allowlist entries",
+      "legacy V2 committee voting cannot resolve a V3 workflow task"
+    ],
+    "staking": [
+      "wallet account resource",
+      "vault approve",
+      "stake",
+      "unstake",
+      "claimYield",
+      "receipt and event verification",
+      "authenticated owner-only POST /api/chain/position readback",
+      "Sepolia JSON-RPC positions, earned, rewardReserve and block-number reads",
+      "principal, checkpointed yield, current earned yield and reserve rendered without sending a transaction"
+    ],
+    "edge": [
+      "same-origin allowlist",
+      "32KB payload limit",
+      "authorization stripping",
+      "fail-closed offline state"
+    ]
+  },
+  "configurationBoundary": {
+    "workflowEscrowAddress": "AGENT_MARKET_WORKFLOW_ESCROW_ADDRESS",
+    "platformArbiterWallet": "AGENT_MARKET_PLATFORM_ARBITER_WALLET",
+    "missingConfiguration": "CHAIN_WORKFLOW_ESCROW_UNAVAILABLE or CHAIN_RESOURCE_FORBIDDEN",
+    "browserSecrets": "none"
+  },
+  "deterministicGates": {
+    "transactionEngineTests": "98 passed, 5 skipped external PostgreSQL integration tests",
+    "webTests": "92 passed",
+    "transactionEngineTypecheck": "passed",
+    "webTypecheck": "passed",
+    "cloudflareEdgeBuild": "passed",
+    "v3DualSourceReconciliation": "TaskCreated and TaskResolved passed",
+    "stakingPositionReadback": "JSON-RPC ABI decoding, owner authorization and YD formatting passed"
+  },
+  "notExecuted": [
+    "No Sepolia transaction was submitted.",
+    "No V3 contract address was configured in production.",
+    "No AWS resource was created, resumed, or modified.",
+    "No Cloudflare production configuration was changed."
+  ],
+  "externalStatus": "pending-explicit-action-approval-deployment-and-readback"
+}

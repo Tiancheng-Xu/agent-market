@@ -20,6 +20,8 @@ type QueenTaskRecord = {
   graph: TaskGraph;
   assignments: Map<string, NodeAssignment>;
   outputs: Map<string, { executorAgentId: string; output: string; outputId: string }>;
+  judgments: Map<string, { nodeId: string; judgeAgentId: string; verdict: string; score: number; redTeamRequired: boolean; status: string }>;
+  finalArbitration: { taskId: string; finalArbiterAgentId: string; verdict: string; finalOutput: string } | undefined;
   learningRecords: Array<{ memoryRecordId: string; summary: string }>;
   systemNodeIds: Map<string, string>;
   graphConfirmedRevision: number | undefined;
@@ -153,6 +155,8 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       graph,
       assignments: new Map(),
       outputs: new Map(),
+      judgments: new Map(),
+      finalArbitration: undefined,
       learningRecords: [],
       systemNodeIds: new Map(),
       graphConfirmedRevision: undefined,
@@ -321,6 +325,14 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const nodeId = stringInput(input, "nodeId");
     const executorAgentId = stringInput(input, "executorAgentId");
     assertSelectableAgent(executorAgentId);
+    const node = nodeFor(task, nodeId);
+    if (node.type !== "execute") throw new Error("SubmitNodeOutput requires an execute node");
+    assertAcceptedAssignment(task, nodeId, executorAgentId);
+    const existing = task.outputs.get(nodeId);
+    if (existing !== undefined) {
+      if (existing.executorAgentId !== executorAgentId) throw new Error("Node output executor cannot change after submission");
+      return { nodeId, ...existing, status: "submitted" };
+    }
     const output = optionalStringInput(input, "output") ?? await executeAgentText({
       taskId: task.taskId,
       nodeId,
@@ -341,8 +353,15 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     assertSelectableAgent(judgeAgentId);
     const output = task.outputs.get(nodeId);
     if (output === undefined) return graphqlError("NODE_OUTPUT_NOT_FOUND", "Node output must be submitted before judging");
-    if (judgeAgentId === task.queenAgentId || judgeAgentId === output.executorAgentId) {
+    if (!isIndependentAgent(judgeAgentId, [task.queenAgentId, output.executorAgentId])) {
       return graphqlError("JUDGE_NOT_INDEPENDENT", "Judge must be independent from Queen and executor");
+    }
+    const judgeNode = task.graph.nodes.find((node) => node.type === "judge" && node.judgesNodeId === nodeId);
+    if (judgeNode !== undefined) assertAcceptedAssignment(task, judgeNode.nodeId, judgeAgentId);
+    const existing = task.judgments.get(nodeId);
+    if (existing !== undefined) {
+      if (existing.judgeAgentId !== judgeAgentId) return graphqlError("JUDGE_NOT_INDEPENDENT", "Judge cannot change after judgment");
+      return data("judgeNodeOutput", existing);
     }
     const judgeText = input["score"] === undefined || input["verdict"] === undefined
       ? await executeAgentText({
@@ -357,14 +376,16 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const score = typeof input["score"] === "number" ? numberInput(input, "score") : parsedJudge?.score ?? 1;
     const verdict = optionalStringInput(input, "verdict") ?? parsedJudge?.verdict ?? "approved";
     const redTeamRequired = score < 0.65 || verdict !== "approved";
-    return data("judgeNodeOutput", {
+    const judgment = {
       nodeId,
       judgeAgentId,
       verdict,
       score,
       redTeamRequired,
       status: redTeamRequired ? "needs_revision" : "approved",
-    });
+    };
+    task.judgments.set(nodeId, judgment);
+    return data("judgeNodeOutput", judgment);
   }
 
   async function requestAdversarialReview(input: Record<string, unknown>) {
@@ -415,8 +436,19 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     assertRunStarted(task);
     const finalArbiterAgentId = stringInput(input, "finalArbiterAgentId");
     assertSelectableAgent(finalArbiterAgentId);
-    if (finalArbiterAgentId === task.queenAgentId) {
-      return graphqlError("FINAL_ARBITER_NOT_INDEPENDENT", "Final Arbiter must be independent from Queen");
+    const reviewedAgentIds = [
+      task.queenAgentId,
+      ...[...task.outputs.values()].map((output) => output.executorAgentId),
+      ...[...task.judgments.values()].map((judgment) => judgment.judgeAgentId),
+    ];
+    if (!isIndependentAgent(finalArbiterAgentId, reviewedAgentIds)) {
+      return graphqlError("FINAL_ARBITER_NOT_INDEPENDENT", "Final Arbiter must be independent from Queen, executors, and judges");
+    }
+    const finalNode = task.graph.nodes.find((node) => node.type === "synthesize");
+    if (finalNode !== undefined) assertAcceptedAssignment(task, finalNode.nodeId, finalArbiterAgentId);
+    if (task.finalArbitration !== undefined) {
+      if (task.finalArbitration.finalArbiterAgentId !== finalArbiterAgentId) return graphqlError("FINAL_ARBITER_NOT_INDEPENDENT", "Final Arbiter cannot change after arbitration");
+      return data("finalArbitrate", task.finalArbitration);
     }
     const finalOutput = optionalStringInput(input, "finalOutput") ?? await executeAgentText({
       taskId: task.taskId,
@@ -424,12 +456,14 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       role: "final_arbiter",
       messages: [{ role: "user", content: buildFinalArbiterPrompt(task) }],
     });
-    return data("finalArbitrate", {
+    const arbitration = {
       taskId: task.taskId,
       finalArbiterAgentId,
       verdict: optionalStringInput(input, "verdict") ?? "approved",
       finalOutput,
-    });
+    };
+    task.finalArbitration = arbitration;
+    return data("finalArbitrate", arbitration);
   }
 
   function writeLearningLoop(input: Record<string, unknown>) {
@@ -466,6 +500,23 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
 
   function assertRunStarted(task: QueenTaskRecord): void {
     if (task.runId === undefined) throw new Error(`Task ${task.taskId} must be started before node execution`);
+  }
+
+  function assertAcceptedAssignment(task: QueenTaskRecord, nodeId: string, agentId: string): void {
+    const assignment = task.assignments.get(nodeId);
+    if (assignment?.status !== "accepted" || assignment.selectedAgentId !== agentId) {
+      throw new Error(`Agent ${agentId} is not the accepted assignment for node ${nodeId}`);
+    }
+  }
+
+  function isIndependentAgent(agentId: string, blockedAgentIds: string[]): boolean {
+    const candidate = options.agents.find((agent) => agent.agentId === agentId);
+    if (candidate === undefined) return false;
+    const blockedModelTags = new Set(blockedAgentIds.flatMap((blockedId) => {
+      const blocked = options.agents.find((agent) => agent.agentId === blockedId);
+      return blocked === undefined ? [] : [blocked.modelTag];
+    }));
+    return !blockedAgentIds.includes(agentId) && !blockedModelTags.has(candidate.modelTag);
   }
 
   function appendSystemNode(

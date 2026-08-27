@@ -8,7 +8,7 @@ import test from "node:test";
 const sourceScript = new URL("./pause-agent-market.sh", import.meta.url);
 const fakeAws = new URL("./test-fixtures/fake-pause-aws.cjs", import.meta.url);
 const initialState = () => ({
-  mapping: "Enabled", ingestionConcurrency: 3, dispatcherConcurrency: 1,
+  mapping: "Enabled", ingestionConcurrency: 3, dispatcherConcurrency: "unreserved",
   parameter: null, version: 0, mutations: [], failKey: null, failed: false,
 });
 
@@ -51,7 +51,7 @@ test("continues idempotently after one injected failure at every AWS mutation", 
     try {
       const isResume = failKey.includes("resuming") || failKey.includes("resumed")
         || failKey === "lambda:concurrency:ingestion:3"
-        || failKey === "lambda:concurrency:dispatcher:1"
+        || failKey === "lambda:concurrency:dispatcher:unreserved"
         || failKey === "lambda:mapping:true";
       if (isResume) assert.equal(run(current.root, current.statePath, "pause").status, 0, failKey);
       const action = isResume ? "resume" : "pause";
@@ -61,7 +61,7 @@ test("continues idempotently after one injected failure at every AWS mutation", 
       const state = readState(current.statePath);
       assert.equal(state.mapping, "Enabled", failKey);
       assert.equal(state.ingestionConcurrency, 3, failKey);
-      assert.equal(state.dispatcherConcurrency, 1, failKey);
+      assert.equal(state.dispatcherConcurrency, "unreserved", failKey);
       assert.equal(JSON.parse(state.parameter).state, "resumed", failKey);
     } finally { rmSync(current.root, { recursive: true, force: true }); }
   }
@@ -80,13 +80,13 @@ test("detects an SSM version race and continues from the written idempotent step
     const state = readState(current.statePath);
     assert.equal(state.mapping, "Enabled");
     assert.equal(state.ingestionConcurrency, 3);
-    assert.equal(state.dispatcherConcurrency, 1);
+    assert.equal(state.dispatcherConcurrency, "unreserved");
     assert.equal(JSON.parse(state.parameter).state, "resumed");
   } finally { rmSync(current.root, { recursive: true, force: true }); }
 });
 
-test("rejects every dispatcher snapshot except integer one before any mutation", () => {
-  for (const dispatcherConcurrency of ["unreserved", 0, 2]) {
+test("rejects unsafe dispatcher snapshots before any mutation", () => {
+  for (const dispatcherConcurrency of [0, 2]) {
     const current = fixture({ ...initialState(), dispatcherConcurrency });
     try {
       const result = run(current.root, current.statePath, "pause");

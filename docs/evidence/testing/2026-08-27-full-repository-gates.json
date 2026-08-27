@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "agent-market.repository-gates.v1",
+  "recordedAt": "2026-08-27T06:35:42.286Z",
+  "status": "verified-local",
+  "command": "pnpm verify",
+  "exitCode": 0,
+  "gates": {
+    "repositoryPolicy": "passed",
+    "evidenceValidation": "passed",
+    "workspaceTestsTypecheckBuild": "passed",
+    "contracts": "21/21 passed",
+    "go": "vet and all tests passed",
+    "pythonTrainer": "33/33 passed"
+  },
+  "performanceDebt": {
+    "webClientMainChunkBytes": 525130,
+    "webClientMainChunkGzipBytes": 167360,
+    "status": "warning-not-release-blocker",
+    "recommendation": "split heavy route modules before performance target tightening"
+  },
+  "boundary": "Local deterministic repository evidence only. This is not AWS, Cloudflare production, Sepolia, wallet, or recording proof."
+}

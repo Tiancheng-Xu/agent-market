@@ -77,6 +77,10 @@ const requiredBundleFiles = [
   "apps/web/public/architecture/full-delivery-chain.zh-CN.svg",
   "apps/web/public/architecture/agent-market-v3-workflow.svg",
   "apps/web/public/architecture/agent-market-v3-workflow.zh-CN.svg",
+  "docs/evidence/testing/2026-08-26-visual-route-audit.json",
+  "docs/evidence/testing/2026-08-26-cocos-office-local.json",
+  "apps/web/public/evidence/2026-08-26-visual-route-audit.json",
+  "apps/web/public/evidence/2026-08-26-cocos-office-local.json",
   "apps/web/public/evidence/real-proof.png",
 ];
 
@@ -116,6 +120,10 @@ function writeFixture(overrides = {}) {
       const name = path.split("/").at(-1).replace(".zh-CN", "").replace(".svg", "");
       const spec = diagramSpecs[name];
       writeFileSync(absolute, `<svg width="${spec.width}" height="${spec.height}" viewBox="0 0 ${spec.width} ${spec.height}" data-actors="${spec.actors}" data-lanes="${spec.lanes}"><title>fixture</title></svg>`);
+    } else if (path.endsWith("2026-08-26-visual-route-audit.json")) {
+      writeFileSync(absolute, JSON.stringify({ summary: { routeCount: 18, checked: 180, locales: ["zh-CN", "en"], httpReadback: Array.from({ length: 18 }, () => ({ status: 200, expected: 200 })), overflow: [], brokenImages: [], emptyButtons: [], cocosReadyFailures: [], untranslated: [], untranslatedEnglish: [] } }));
+    } else if (path.endsWith("2026-08-26-cocos-office-local.json")) {
+      writeFileSync(absolute, JSON.stringify({ deterministicGates: { routeViewportChecks: "180/180 passed" } }));
     } else if (path.endsWith("EvidencePage.tsx")) {
       writeFileSync(absolute, Object.entries(diagramSpecs).map(([file, spec]) => `{ file: "${file}", width: ${spec.width}, height: ${spec.height} }`).join("\n"));
     } else writeFileSync(absolute, path.endsWith(".png") ? VALID_PNG : "fixture\n");
@@ -131,6 +139,16 @@ test("validates the complete bilingual public Evidence bundle", (t) => {
   const { root } = writeFixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));
   assert.deepEqual(evidenceValidator.validateEvidenceRepository(root), []);
+});
+
+test("rejects private GitHub Evidence links and stale closure matrices", (t) => {
+  const { root } = writeFixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(join(root, "apps/web/src/pages/EvidencePage.tsx"), "https://github.com/Tiancheng-Xu/agent-market/blob/main/private");
+  writeFileSync(join(root, "docs/evidence/testing/2026-08-26-visual-route-audit.json"), JSON.stringify({ summary: { routeCount: 15, checked: 75 } }));
+  const violations = evidenceValidator.validateEvidenceRepository(root);
+  assert.ok(violations.includes("private-github-evidence-link"));
+  assert.ok(violations.includes("visual-route-audit-incomplete"));
 });
 
 test("rejects missing bilingual diagrams and referenced screenshots", (t) => {

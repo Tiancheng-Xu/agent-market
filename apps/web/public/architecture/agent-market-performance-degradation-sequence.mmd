@@ -1,0 +1,29 @@
+sequenceDiagram
+  autonumber
+  participant B as Browser
+  participant E as Cloudflare Edge
+  participant A as React App
+  participant H as Health/API
+  participant R as Local Runtime or Provider
+  participant V as Evidence
+
+  B->>E: GET route
+  E-->>B: SSR HTML + render-mode header
+  B->>A: Hydrate exact route
+  A->>A: Measure paint, hydration, network hints
+  alt Healthy
+    A->>H: Fetch agent health or task data
+    H->>R: Signed request when runtime is online
+    R-->>H: Result stream or status
+    H-->>A: online response
+    A-->>B: Full UI with lazy Evidence assets
+  else Weak network or slow device
+    A->>A: Enter degraded mode
+    A-->>B: Disable non-critical motion and defer heavy media
+    A->>V: Record sanitized degradation evidence
+  else Runtime/API timeout
+    A->>H: Request with timeout and retry budget
+    H-->>A: offline / degraded / timeout code
+    A-->>B: Local fallback card, no fake success
+    A->>V: Record reason code and boundary
+  end

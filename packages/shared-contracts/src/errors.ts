@@ -8,6 +8,7 @@ export const AppErrorCodeSchema = z.enum([
   "RATE_LIMITED",
   "TURNSTILE_FAILED",
   "REQUEST_TOO_LARGE",
+  "CANCELLED",
   "UPSTREAM_TIMEOUT",
   "RUNTIME_OFFLINE",
   "MODEL_UNAVAILABLE",

@@ -27,6 +27,27 @@ function stream(markup: string): ReadableStream<Uint8Array> {
 }
 
 describe("Cloudflare Pages edge renderer", () => {
+  it("serves the Cocos document from static assets instead of SSR", async () => {
+    let renderCalls = 0;
+    const handler = createPagesHandler({
+      version: "test",
+      async render() {
+        renderCalls += 1;
+        return stream("must-not-render");
+      },
+      logger: { info() {}, error() {} },
+    });
+    const response = await handler.fetch(new Request("https://market.example/office-cocos/index.html", {
+      headers: { accept: "text/html" },
+    }), {
+      ASSETS: { async fetch() { return new Response("cocos-index"); } },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("cocos-index");
+    expect(renderCalls).toBe(0);
+  });
+
   it("renders known routes and preserves a real 404 status", async () => {
     const handler = createPagesHandler({
       version: "test",
@@ -35,6 +56,12 @@ describe("Cloudflare Pages edge renderer", () => {
       },
       logger: { info() {}, error() {} },
     });
+
+    const office = await handler.fetch(new Request("https://market.example/office", {
+      headers: { accept: "text/html" },
+    }), environment());
+    expect(office.status).toBe(200);
+    expect(await office.text()).toContain("/office");
 
     const evidence = await handler.fetch(
       new Request("https://agent-market.test/evidence", {
@@ -87,6 +114,40 @@ describe("Cloudflare Pages edge renderer", () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ status: "offline", reasonCode: "RUNTIME_OFFLINE" });
     expect(JSON.stringify(body)).not.toContain("11434");
+  });
+
+  it("proxies allowlisted same-origin transaction requests and preserves secure cookies", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        const request = new Request(input, init);
+        calls.push(request);
+        return Response.json({ task: { resourceId: "task" } }, { status: 201, headers: { "set-cookie": "__Host-agent_market_session=opaque; Secure; HttpOnly" } });
+      },
+    });
+    const response = await handler.fetch(new Request("https://agent-market.test/api/tasks", {
+      method: "POST",
+      headers: { origin: "https://agent-market.test", "content-type": "application/json" },
+      body: "{}",
+    }), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(201);
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+    expect(calls[0]?.url).toBe("https://transaction.internal/api/tasks");
+    expect(calls[0]?.headers.get("x-forwarded-host")).toBe("agent-market.test");
+    expect(calls[0]?.headers.get("authorization")).toBeNull();
+  });
+
+  it("fails closed when the transaction engine is not configured", async () => {
+    const handler = createPagesHandler({ logger: { info() {}, error() {} } });
+    const response = await handler.fetch(new Request("https://agent-market.test/api/tasks", {
+      method: "POST",
+      headers: { origin: "https://agent-market.test", "content-type": "application/json" },
+      body: "{}",
+    }), environment());
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ error: "TRANSACTION_ENGINE_OFFLINE" });
   });
 
   it("serves a public-safe agent catalog contract", async () => {

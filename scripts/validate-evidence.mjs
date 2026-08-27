@@ -27,6 +27,7 @@ export const PUBLIC_EVIDENCE_STATUSES = new Set(["verified-local", "verified-pro
 const V2_PRODUCTION_RECORDS = new Map([
   ["V2-CLOUDFLARE-ACTIONS", "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json"],
   ["V2-SEPOLIA-READBACK", "docs/evidence/deployment/2026-08-21-sepolia-public-readback.json"],
+  ["V2-PERFORMANCE-OPS", "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json"],
 ]);
 const REQUIRED_PUBLIC_ARTIFACTS = [
   "README.md", "docs/evidence/phase2-local-validation.json", "docs/architecture/adr/0001-defer-the-graph.md", "apps/web/src/pages/EvidencePage.tsx",
@@ -34,6 +35,10 @@ const REQUIRED_PUBLIC_ARTIFACTS = [
   "apps/web/public/architecture/request-sequence.svg", "apps/web/public/architecture/request-sequence.zh-CN.svg",
   "apps/web/public/architecture/full-delivery-chain.svg", "apps/web/public/architecture/full-delivery-chain.zh-CN.svg",
   "apps/web/public/architecture/agent-market-v3-workflow.svg", "apps/web/public/architecture/agent-market-v3-workflow.zh-CN.svg",
+  "docs/evidence/testing/2026-08-26-visual-route-audit.json",
+  "docs/evidence/testing/2026-08-26-cocos-office-local.json",
+  "apps/web/public/evidence/2026-08-26-visual-route-audit.json",
+  "apps/web/public/evidence/2026-08-26-cocos-office-local.json",
 ];
 const PRIVATE_OR_SECRET = /(?:\/Users\/|\/home\/[^/\s]+\/|[A-Za-z]:\\Users\\|file:\/\/|\b\d{12}\b|(?:secret|password|private[_-]?key|api[_-]?key|token)\s*[:=]\s*["']?[A-Za-z0-9_\-./+]{8,})/i;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -200,6 +205,42 @@ function validateV2ProductionRecord(root, item, violations) {
   } else if (item.id === "V2-SEPOLIA-READBACK") {
     const transactions = [record.transactions?.normal, record.transactions?.dispute];
     valid = record.project === "agent-market" && record.status === "verified-production" && record.network === "sepolia" && record.chainId === 11155111 && record.source === "tenderly-rpc-and-etherscan-public-html" && record.secondaryRpc?.checkedChainId === 11155111 && record.blockscout?.status === "pending-pro-api-key" && transactions.every((transaction) => /^0x[0-9a-f]{64}$/i.test(transaction?.transactionHash ?? "") && Number.isSafeInteger(transaction?.blockNumber) && transaction.status === 1 && transaction.matchingEventCount === 1 && transaction.etherscan?.statusMarker === "Success" && transaction.etherscan?.url === `https://sepolia.etherscan.io/tx/${transaction.transactionHash}` && /^[0-9a-f]{64}$/.test(transaction.etherscan?.pageSha256 ?? ""));
+  } else if (item.id === "V2-PERFORMANCE-OPS") {
+    const sample = record.sample ?? {};
+    const execution = record.execution ?? {};
+    const finalState = record.finalState ?? {};
+    const cleanup = record.securityCleanup ?? {};
+    valid = record.status === "verified-production"
+      && record.region === "us-east-1"
+      && record.stackName === "agent-market-performance"
+      && record.runtime?.platform === "AWS Fargate ARM64"
+      && /^sha256:[0-9a-f]{64}$/.test(record.runtime?.imageDigest ?? "")
+      && sample.schemaVersion === 2
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(sample.requestId ?? "")
+      && sample.httpStatus === 202
+      && sample.metrics?.FPS >= 0
+      && sample.metrics?.HYDRATION_DURATION >= 0
+      && sample.render?.outcome === "hydrated"
+      && execution.taskExitCode === 0
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(execution.runId ?? "")
+      && execution.evidenceStatus === "verified"
+      && finalState.ingestionReservedConcurrency === 0
+      && finalState.dispatcherReservedConcurrency === 0
+      && finalState.consumerMappingState === "Disabled"
+      && finalState.ecsRunningTasks === 0
+      && finalState.ecsPendingTasks === 0
+      && finalState.workQueueVisible === 0
+      && finalState.workQueueInFlight === 0
+      && finalState.deadLetterQueueVisible === 0
+      && finalState.deadLetterQueueInFlight === 0
+      && cleanup.temporaryOperatorAccessKeyDeleted === true
+      && cleanup.temporaryManagedPoliciesDeleted === true
+      && cleanup.temporaryRoleInlinePolicyDeleted === true
+      && cleanup.temporaryIngestionSecretDeleted === true
+      && cleanup.ecrLoginRemoved === true
+      && cleanup.secretValuesPublished === false
+      && cleanup.accountPlanChanged === false
+      && cleanup.sharedFoundationDeleted === false;
   }
   if (!valid) {
     violations.push(`phase2-production-record-invalid:${item.id}`);
@@ -207,7 +248,7 @@ function validateV2ProductionRecord(root, item, violations) {
   for (const [location, value] of stringsIn(record)) if (PRIVATE_OR_SECRET.test(value)) violations.push(`unsafe-production-record:${item.id}:${location}`);
 }
 
-export function validateEvidenceRepository(root = process.cwd()) {
+export function validateEvidenceRepository(root = process.cwd(), { includeClosureGates = true } = {}) {
   const violations = [];
   for (const path of REQUIRED_PUBLIC_ARTIFACTS) if (!existsSync(resolve(root, path))) violations.push(`required-artifact-missing:${path}`);
   const phase2Path = resolve(root, "docs/evidence/phase2-local-validation.json");
@@ -235,6 +276,22 @@ export function validateEvidenceRepository(root = process.cwd()) {
   const diagrams = document.assets?.diagrams;
   const evidencePagePath = resolve(root, "apps/web/src/pages/EvidencePage.tsx");
   const evidencePage = existsSync(evidencePagePath) ? readFileSync(evidencePagePath, "utf8") : "";
+  if (evidencePage.includes("https://github.com/Tiancheng-Xu/agent-market/blob/main/")) violations.push("private-github-evidence-link");
+  const visualAuditPath = resolve(root, "docs/evidence/testing/2026-08-26-visual-route-audit.json");
+  if (includeClosureGates && existsSync(visualAuditPath)) {
+    try {
+      const audit = JSON.parse(readFileSync(visualAuditPath, "utf8"));
+      const summary = audit.summary;
+      if (summary?.routeCount !== 18 || summary?.checked !== 180 || JSON.stringify(summary?.locales) !== JSON.stringify(["zh-CN", "en"]) || summary?.httpReadback?.length !== 18 || ["overflow", "brokenImages", "emptyButtons", "cocosReadyFailures", "untranslated", "untranslatedEnglish"].some((key) => !Array.isArray(summary?.[key]) || summary[key].length !== 0)) violations.push("visual-route-audit-incomplete");
+    } catch { violations.push("visual-route-audit-invalid"); }
+  }
+  const cocosLedgerPath = resolve(root, "docs/evidence/testing/2026-08-26-cocos-office-local.json");
+  if (includeClosureGates && existsSync(cocosLedgerPath)) {
+    try {
+      const ledger = JSON.parse(readFileSync(cocosLedgerPath, "utf8"));
+      if (ledger?.deterministicGates?.routeViewportChecks !== "180/180 passed") violations.push("cocos-route-gate-stale");
+    } catch { violations.push("cocos-ledger-invalid"); }
+  }
   if (!Array.isArray(diagrams) || diagrams.length < 3) violations.push("bilingual-diagrams-missing");
   else for (const pair of diagrams) {
     if (!pair?.en || !pair?.zh || pair.en === pair.zh) violations.push("bilingual-diagram-pair-invalid");
@@ -262,8 +319,9 @@ export function validateEvidenceRepository(root = process.cwd()) {
     if (pngError !== null) violations.push(`invalid-png:${path}:${pngError}`);
   }
   for (const [location, value] of stringsIn(document)) if (PRIVATE_OR_SECRET.test(value)) violations.push(`unsafe-public-content:${location}`);
-  for (const path of ["README.md", "docs/architecture/adr/0001-defer-the-graph.md", "apps/web/src/pages/EvidencePage.tsx", ...REQUIRED_PUBLIC_ARTIFACTS.filter((path) => path.endsWith(".svg"))]) {
+  for (const path of ["README.md", "docs/architecture/adr/0001-defer-the-graph.md", "apps/web/src/pages/EvidencePage.tsx", "docs/evidence/testing/2026-08-22-live-agent-chat-smoke.json", ...REQUIRED_PUBLIC_ARTIFACTS.filter((path) => path.endsWith(".svg") || path.endsWith(".json"))]) {
     const absolute = resolve(root, path); if (existsSync(absolute) && PRIVATE_OR_SECRET.test(readFileSync(absolute, "utf8"))) violations.push(`unsafe-public-file:${path}`);
+    if (existsSync(absolute) && readFileSync(absolute, "utf8").includes("11434")) violations.push(`local-model-port-published:${path}`);
   }
   return [...new Set(violations)];
 }
