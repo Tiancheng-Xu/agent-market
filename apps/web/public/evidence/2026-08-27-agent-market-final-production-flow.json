@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "1.0",
+  "capturedAtUtc": "2026-08-27T18:10:13Z",
+  "status": "verified-production-ui",
+  "artifact": {
+    "publicPath": "/evidence/2026-08-27-agent-market-final-production-flow.mp4",
+    "sourceCapture": "external Chrome screen capture cropped to the browser window",
+    "productionUrl": "https://agent-market.baby2b.online/",
+    "durationSeconds": 129.900001,
+    "width": 1860,
+    "height": 952,
+    "codec": "h264",
+    "pixelFormat": "yuv420p",
+    "audio": false,
+    "sizeBytes": 13713797,
+    "sha256": "5575581e5c98da9291e369ec536a968f6782212f7236358496ad2ce8a1783d93",
+    "posterPublicPath": "/evidence/2026-08-27-agent-market-final-production-flow-poster.png",
+    "posterSha256": "48ccdab2216a185c54a2791e31e446099d4cc47610c5191bed0a806f9fffa12d",
+    "privacyCrop": {
+      "sourceWidth": 1920,
+      "sourceHeight": 1080,
+      "crop": "1860:953:30:30",
+      "encodedHeight": 952,
+      "reason": "retain the maximized external Chrome window while excluding surrounding desktop content"
+    }
+  },
+  "recordedFlow": [
+    "production homepage with a connected, shortened MetaMask account label",
+    "verified owner-trained model catalog and wallet-scoped user Agent registry",
+    "free HTTPS Agent maintenance record admitted to the browser market catalog",
+    "task draft validation and unsigned transaction-path preview",
+    "LangGraph workflow UI with an honest offline runtime boundary",
+    "task workbench and explicit lifecycle states",
+    "6 percent linear test-YD staking UI and transaction boundary",
+    "sole platform arbiter UI and local evidence-review control",
+    "read-only operations and Evidence pages",
+    "animated task-desk office with sanitized public task state"
+  ],
+  "deterministicObservations": {
+    "productionDomainVisible": true,
+    "walletConnectedLabelVisible": true,
+    "userAgentRegistryVisible": true,
+    "taskDraftValidated": true,
+    "taskTransactionPreviewVisible": true,
+    "taskTransactionSent": false,
+    "stakingTransactionSent": false,
+    "arbitrationTransactionSent": false,
+    "offlineRuntimePresentedAsSuccess": false,
+    "secretValuesVisible": false,
+    "desktopOutsideBrowserVisible": false
+  },
+  "truthBoundary": [
+    "This recording verifies the production UI served from the recorded domain; it does not replace scoped AWS, Cloudflare, Sepolia, or model-runtime ledgers.",
+    "Task publication stopped after deterministic validation and unsigned transaction preview; no wallet transaction was submitted.",
+    "The Live page preserves its offline Runtime boundary and was not presented as a successful Agent execution.",
+    "Staking and arbitration remain explicitly testnet, preview, local-review, or receipt-gated where applicable.",
+    "The wallet address is shortened and no password, token, cookie, provider key, model weight, private prompt, or private path is visible."
+  ],
+  "captureNotes": [
+    "The macOS single-window AVFoundation writer failed with error -16122 during long captures.",
+    "The accepted recording used the stable system display stream and encoded only the browser-window crop.",
+    "The final MP4 was probed successfully and sampled at multiple timestamps, including the task preview, staking, arbitration, Evidence, and office terminal frame."
+  ]
+}
