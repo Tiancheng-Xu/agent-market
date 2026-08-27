@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 1,
   "profile": "compact",
-  "status": "verified-production",
+  "status": "verified",
   "summary": "Agent Market now has a fresh controlled V2 sample across HMAC API ingestion, SNS/SQS, ARM64 ECS Fargate, PostgreSQL persistence and independent readback; the workload was paused and all queues were drained afterward.",
   "evidenceUrl": "https://agent-market.baby2b.online/evidence",
   "dataMode": "live",
