@@ -4,11 +4,15 @@ STACK_NAME="${1:-}"
 SHARED_CLUSTER_ARN="${2:-}"
 AGGREGATOR_IMAGE_DIGEST="${3:-}"
 REGION="${4:-${AWS_REGION:-us-east-1}}"
+INGESTION_AUTH_SECRET_ARN="${INGESTION_AUTH_SECRET_ARN:-}"
 [[ $# -eq 3 || $# -eq 4 ]] || {
   echo "usage: $0 STACK_NAME SHARED_CLUSTER_ARN sha256:DIGEST [REGION]" >&2; exit 64;
 }
 [[ -n "$STACK_NAME" && -n "$SHARED_CLUSTER_ARN" && "$AGGREGATOR_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || {
   echo "usage: $0 STACK_NAME SHARED_CLUSTER_ARN sha256:DIGEST [REGION]" >&2; exit 64;
+}
+[[ "$INGESTION_AUTH_SECRET_ARN" =~ ^arn:aws:secretsmanager:${REGION}:782086108248:secret:agent-market/performance/ingestion-hmac-[A-Za-z0-9/_+=.@-]+$ ]] || {
+  echo "INGESTION_AUTH_SECRET_ARN must identify the scoped Agent Market ingestion HMAC secret" >&2; exit 64;
 }
 validation="$(scripts/aws/validate-agent-market-cluster-transition.sh "$STACK_NAME" "$SHARED_CLUSTER_ARN")"
 marker_parameter="$(jq -er '.markerParameterName' <<<"$validation")"
@@ -36,4 +40,5 @@ aws --region "$REGION" --no-cli-pager cloudformation deploy \
   --stack-name "$STACK_NAME" --template-file "$frozen_template" \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides SharedEcsClusterArn="$SHARED_CLUSTER_ARN" \
-    ClusterTransitionMarkerSha256="$marker_parameter" AggregatorImageDigest="$AGGREGATOR_IMAGE_DIGEST"
+    ClusterTransitionMarkerSha256="$marker_parameter" AggregatorImageDigest="$AGGREGATOR_IMAGE_DIGEST" \
+    IngestionAuthSecretArn="$INGESTION_AUTH_SECRET_ARN"

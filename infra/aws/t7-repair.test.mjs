@@ -93,18 +93,21 @@ test("the only supported final deploy path validates and compares marker hashes"
   assert.match(deploy, /markerSha256/);
   assert.match(deploy, /ClusterTransitionMarkerSha256=/);
   assert.match(deploy, /approved_final_template_sha256/);
+  assert.match(deploy, /INGESTION_AUTH_SECRET_ARN/);
+  assert.match(deploy, /secret:agent-market\/performance\/ingestion-hmac-/);
+  assert.match(deploy, /IngestionAuthSecretArn="\$INGESTION_AUTH_SECRET_ARN"/);
   assert.match(deploy, /mktemp -d.*agent-market-template/s);
   assert.doesNotMatch(deploy, /"\$@"/);
   assert.match(repositoryPolicy, /AWS_DEPLOY_GATES/);
   assert.match(repositoryPolicy, /create-change-set/);
   assert.match(repositoryPolicy, /commandMatches/);
-  assert.match(workflow, /node scripts\/validate-repository\.mjs/);
+  assert.match(workflow, /uses:\s*Tiancheng-Xu\/\.github\/\.github\/workflows\/verify-repository-policy\.yml@main/);
 });
 
 test("T7 evidence records real PostgreSQL verification without claiming AWS", () => {
   assert.equal(evidence.externalActions.aws, false);
   assert.equal(evidence.externalActions.deploy, false);
-  assert.ok(evidence.verifiedLocal.some(({ summary }) => /T7 PostgreSQL.*2\/2/.test(summary ?? "")));
+  assert.ok(evidence.verifiedLocal.some(({ summary }) => /T7 PostgreSQL.*3\/3/.test(summary ?? "")));
   assert.ok(evidence.verifiedLocal.some(({ summary }) => /Auth.*1\/1.*Chain.*1\/1.*matcher pgvector.*pass/i.test(summary ?? "")));
   assert.ok(evidence.notVerified.some((claim) => /No AWS API was called/.test(claim)));
 });
