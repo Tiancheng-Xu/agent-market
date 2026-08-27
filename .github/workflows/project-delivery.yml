@@ -11,4 +11,9 @@ jobs:
   verify-project:
     uses: Tiancheng-Xu/.github/.github/workflows/verify-project.yml@main
     with:
+      install-command: pnpm install --frozen-lockfile
+      check-command: pnpm check
+      test-command: pnpm test
+      typecheck-command: pnpm typecheck
+      build-command: pnpm build
       publish-config-path: .github/baby2b-publish.yml
