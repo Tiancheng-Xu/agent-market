@@ -171,7 +171,7 @@ Resources:
           - Sid: DenyInsecureTransport
             Effect: Deny
             Principal: "*"
-            Action: sns:*
+            Action: sns:Publish
             Resource: !Ref PerformanceTopic
             Condition:
               Bool:

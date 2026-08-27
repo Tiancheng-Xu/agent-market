@@ -8,8 +8,8 @@ REGION="${4:-${AWS_REGION:-us-east-1}}"
 ARTIFACT_DIR="${T7_TRANSITION_DIR:-.tc-flow/runtime/t7-cluster-transition/${STACK_NAME}}"
 FINAL_TEMPLATE="infra/aws/template.yaml"
 MARKER_PARAMETER_NAME="/agent-market/${STACK_NAME}/cluster-transition-marker"
-[[ "$ACTION" == "prepare" || "$ACTION" == "approve" ]] && [[ -n "$STACK_NAME" && -n "$SHARED_CLUSTER_ARN" ]] || {
-  echo "usage: $0 prepare|approve STACK_NAME SHARED_CLUSTER_ARN [REGION]" >&2; exit 64;
+[[ "$ACTION" == "prepare" || "$ACTION" == "approve" || "$ACTION" == "prepare-final" || "$ACTION" == "approve-final" ]] && [[ -n "$STACK_NAME" && -n "$SHARED_CLUSTER_ARN" ]] || {
+  echo "usage: $0 prepare|approve|prepare-final|approve-final STACK_NAME SHARED_CLUSTER_ARN [REGION]" >&2; exit 64;
 }
 mkdir -p "$ARTIFACT_DIR"
 aws_cli() { aws --region "$REGION" --no-cli-pager "$@"; }
@@ -58,6 +58,66 @@ CHANGE_SET_FILE="$ARTIFACT_DIR/phase1-change-set.json"
 REVIEW_FILE="$ARTIFACT_DIR/phase1-review.json"
 APPROVAL_CHANGE_SET_FILE="$ARTIFACT_DIR/approval-change-set.json"
 MARKER_FILE="$ARTIFACT_DIR/transition-marker.json"
+FINAL_REVIEW_FILE="$ARTIFACT_DIR/final-template-review.json"
+
+validate_retained_cluster_state() {
+  local retained_template="$ARTIFACT_DIR/current-retained-template.yaml"
+  aws_cli cloudformation get-template --stack-name "$STACK_NAME" --template-stage Original \
+    --query TemplateBody --output text > "$retained_template"
+  local cluster_block
+  cluster_block="$(awk '
+    /^  PerformanceCluster:$/ { capture=1; count+=1 }
+    capture && /^  [A-Za-z][A-Za-z0-9]+:$/ && $0 != "  PerformanceCluster:" { capture=0 }
+    capture { print }
+    END { if (count != 1) exit 2 }
+  ' "$retained_template")" || { echo "retained PerformanceCluster block is missing or ambiguous" >&2; return 1; }
+  grep -Fxq "    DeletionPolicy: Retain" <<<"$cluster_block" || { echo "retained cluster DeletionPolicy is not Retain" >&2; return 1; }
+  grep -Fxq "    UpdateReplacePolicy: Retain" <<<"$cluster_block" || { echo "retained cluster UpdateReplacePolicy is not Retain" >&2; return 1; }
+  local cluster_physical_id
+  cluster_physical_id="$(aws_cli cloudformation describe-stack-resource --stack-name "$STACK_NAME" \
+    --logical-resource-id PerformanceCluster --query 'StackResourceDetail.PhysicalResourceId' --output text)"
+  [[ "$SHARED_CLUSTER_ARN" == */"$cluster_physical_id" ]] || { echo "retained cluster physical ID mismatch" >&2; return 1; }
+}
+
+if [[ "$ACTION" == "prepare-final" || "$ACTION" == "approve-final" ]]; then
+  [[ -f "$MARKER_FILE" && -f "$REVIEW_FILE" && -f "$PHASE1_TEMPLATE_FILE" ]] || { echo "approved transition artifacts missing" >&2; exit 1; }
+  validate_retained_cluster_state
+  prior_marker_sha256="$(sha256_file "$MARKER_FILE")"
+  resolved_marker="$(aws_cli ssm get-parameter --name "$MARKER_PARAMETER_NAME" --query 'Parameter.Value' --output text)"
+  [[ "$resolved_marker" == "$prior_marker_sha256" ]] || { echo "current transition marker is not bound to local approval" >&2; exit 1; }
+  final_template_sha256="$(sha256_file "$FINAL_TEMPLATE")"
+  final_review_sha256="$(jq -cnS --arg stackName "$STACK_NAME" --arg sharedClusterArn "$SHARED_CLUSTER_ARN" \
+    --arg priorMarkerSha256 "$prior_marker_sha256" --arg finalTemplateSha256 "$final_template_sha256" \
+    '{stackName:$stackName,sharedClusterArn:$sharedClusterArn,priorMarkerSha256:$priorMarkerSha256,finalTemplateSha256:$finalTemplateSha256}' \
+    | shasum -a 256 | awk '{print $1}')"
+  if [[ "$ACTION" == "prepare-final" ]]; then
+    jq -cn --arg stackName "$STACK_NAME" --arg region "$REGION" --arg sharedClusterArn "$SHARED_CLUSTER_ARN" \
+      --arg priorMarkerSha256 "$prior_marker_sha256" --arg finalTemplateSha256 "$final_template_sha256" \
+      --arg finalReviewSha256 "$final_review_sha256" --arg approvalToken "approve-final-${final_review_sha256:0:16}" \
+      '{schemaVersion:1,stackName:$stackName,region:$region,sharedClusterArn:$sharedClusterArn,
+        priorMarkerSha256:$priorMarkerSha256,finalTemplateSha256:$finalTemplateSha256,
+        finalReviewSha256:$finalReviewSha256,approvalToken:$approvalToken}' > "$FINAL_REVIEW_FILE"
+    echo "Review $FINAL_TEMPLATE and $FINAL_REVIEW_FILE; then rerun approve-final with APPROVE_TOKEN from the review file." >&2
+    exit 0
+  fi
+  jq -e --arg stack "$STACK_NAME" --arg region "$REGION" --arg cluster "$SHARED_CLUSTER_ARN" \
+    --arg prior "$prior_marker_sha256" --arg final "$final_template_sha256" --arg review "$final_review_sha256" \
+    '.schemaVersion == 1 and .stackName == $stack and .region == $region and .sharedClusterArn == $cluster and
+      .priorMarkerSha256 == $prior and .finalTemplateSha256 == $final and .finalReviewSha256 == $review' \
+    "$FINAL_REVIEW_FILE" >/dev/null || { echo "final template review is stale or invalid" >&2; exit 1; }
+  [[ "${APPROVE_TOKEN:-}" == "$(jq -r '.approvalToken' "$FINAL_REVIEW_FILE")" ]] || { echo "explicit final approval token mismatch" >&2; exit 1; }
+  jq --arg finalTemplateSha256 "$final_template_sha256" --arg finalReviewSha256 "$final_review_sha256" \
+    --arg finalReapprovedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '.finalTemplateSha256=$finalTemplateSha256 | .finalReviewSha256=$finalReviewSha256 | .finalReapprovedAt=$finalReapprovedAt' \
+    "$MARKER_FILE" > "$MARKER_FILE.next"
+  mv "$MARKER_FILE.next" "$MARKER_FILE"
+  marker_sha256="$(sha256_file "$MARKER_FILE")"
+  aws_cli ssm put-parameter --name "$MARKER_PARAMETER_NAME" --type String --tier Standard \
+    --overwrite --value "$marker_sha256" >/dev/null
+  printf '{"markerParameterName":"%s","markerSha256":"%s","finalReviewSha256":"%s"}\n' \
+    "$MARKER_PARAMETER_NAME" "$marker_sha256" "$final_review_sha256"
+  exit 0
+fi
 
 if [[ "$ACTION" == "prepare" ]]; then
   aws_cli cloudformation describe-stacks --stack-name "$STACK_NAME" > "$STACK_FILE"

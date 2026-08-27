@@ -82,7 +82,17 @@ test("transition approval closes the change-set review TOCTOU window", () => {
   assert.match(prepare, /CausingEntity == "PerformanceCluster\.Arn"/);
   assert.match(prepare, /RequiresRecreation == "Never"/);
   assert.match(prepare, /approval_hash.*review_hash/s);
+  assert.match(prepare, /prepare-final.*approve-final/s);
+  assert.match(prepare, /validate_retained_cluster_state/);
+  assert.match(prepare, /priorMarkerSha256/);
+  assert.match(prepare, /finalReviewSha256/);
+  assert.match(prepare, /explicit final approval token mismatch/);
   assert.match(validator, /markerParameterName/);
+});
+
+test("SNS transport policy only denies the supported publish data-plane action", () => {
+  assert.match(template, /PerformanceTopicPolicy:[\s\S]*Action: sns:Publish[\s\S]*aws:SecureTransport: false/);
+  assert.doesNotMatch(template, /Action: sns:\*/);
 });
 
 test("the only supported final deploy path validates and compares marker hashes", () => {
