@@ -7,18 +7,18 @@ describe("office Cocos bridge", () => {
     const calls: unknown[][] = [];
     const frame = { postMessage: (...args: unknown[]) => calls.push(args) } as unknown as Window;
     postOfficeSnapshot(frame, "https://market.example", {
-      version: 1,
+      version: 2,
       generatedAt: "2026-08-26T12:00:00.000Z",
       statusFilter: "all",
       desks: [],
     });
-    expect(calls).toEqual([[expect.objectContaining({ type: "agent-market.office.snapshot.v1" }), "https://market.example"]]);
+    expect(calls).toEqual([[expect.objectContaining({ type: "agent-market.office.snapshot.v2" }), "https://market.example"]]);
   });
 
   it("rejects foreign origins and unknown commands", () => {
     const source = {} as Window;
     expect(parseOfficeCocosMessage({
-      data: { type: "agent-market.office.ready.v1" },
+      data: { type: "agent-market.office.ready.v2" },
       origin: "https://evil.example",
       source,
     }, { expectedOrigin: "https://market.example", expectedSource: source })).toBeNull();
@@ -32,11 +32,11 @@ describe("office Cocos bridge", () => {
   it("accepts a same-origin desk selection from the expected iframe", () => {
     const source = {} as Window;
     expect(parseOfficeCocosMessage({
-      data: { type: "agent-market.office.select-desk.v1", taskId: "task-1" },
+      data: { type: "agent-market.office.select-desk.v2", taskId: "task-1" },
       origin: "https://market.example",
       source,
     }, { expectedOrigin: "https://market.example", expectedSource: source })).toEqual({
-      type: "agent-market.office.select-desk.v1",
+      type: "agent-market.office.select-desk.v2",
       taskId: "task-1",
     });
   });

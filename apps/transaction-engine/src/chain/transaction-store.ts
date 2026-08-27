@@ -38,7 +38,7 @@ interface StoredTransaction {
 }
 
 const REQUEST_REF_EVENT_METHODS = new Set<TransactionIntentV1["method"]>([
-  "createTask", "assignAgent", "acceptTask", "submitWork", "acceptWork", "timeoutTask", "openDispute",
+  "createTask", "createWorkflowTask", "assignAgent", "acceptTask", "submitWork", "acceptWork", "timeoutTask", "openDispute",
 ]);
 
 function sameIntentPayload(left: TransactionIntentV1, right: TransactionIntentV1): boolean {

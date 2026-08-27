@@ -13,39 +13,39 @@ export function CommitteePage({ initialConflictStatus = "pending", walletAddress
   const [conflictStatus, setConflictStatus] = useState(initialConflictStatus);
   const [resourceId, setResourceId] = useState("");
   const [agentWins, setAgentWins] = useState(true);
-  const [message, setMessage] = useState("No externally verified case is loaded.");
+  const [message, setMessage] = useState("No externally verified V3 dispute is loaded.");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<null | { intent: TransactionIntentV1; txHash: string }>(null);
   const declared = conflictStatus === "declared";
 
-  async function castVote() {
-    if (!declared) { setMessage("Declare conflicts before voting."); return; }
-    if (!walletAddress) { setMessage("Connect the committee wallet first."); return; }
+  async function resolveTask() {
+    if (!declared) { setMessage("Complete the platform conflict review before final arbitration."); return; }
+    if (!walletAddress) { setMessage("Connect the configured platform arbiter wallet first."); return; }
     if (!/^[0-9a-fA-F-]{36}$/u.test(resourceId)) { setMessage("Enter a valid task resource UUID."); return; }
-    if (!window.confirm("Sepolia test vote: this is immutable after confirmation and may spend test gas. Committee membership and task state are checked by the server. Continue?")) return;
+    if (!window.confirm("Sepolia V3 final arbitration: this resolution is immutable after confirmation and may transfer test YD or forfeit Agent stake. Only the configured platform arbiter wallet is authorized. Continue?")) return;
     setBusy(true);
     try {
       await authenticateWalletSession(walletAddress);
-      const intent = await createTransactionIntent(resourceId, "castVote", { agentWins });
+      const intent = await createTransactionIntent(resourceId, "resolveWorkflowTask", { agentsWin: agentWins });
       const txHash = await sendTransactionIntent(intent, walletAddress);
       setPending({ intent, txHash });
-      setMessage("Vote submitted. No ruling is claimed until RPC receipt and VoteCast event verification.");
+      setMessage("Final resolution submitted. No ruling is claimed until RPC receipt and TaskResolved event verification.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "COMMITTEE_VOTE_FAILED");
+      setMessage(error instanceof Error ? error.message : "PLATFORM_ARBITRATION_FAILED");
     } finally {
       setBusy(false);
     }
   }
 
-  async function recheckVote() {
+  async function recheckResolution() {
     if (!pending) return;
     setBusy(true);
     try {
       const checked = await verifyTransactionIntent(pending.intent.intentId, pending.txHash);
       if (checked.verification.status === "confirmed") {
-        setMessage("VoteCast receipt and event verified. The contract determines whether the 2-of-3 ruling threshold is reached.");
+        setMessage("TaskResolved receipt and event verified. The V3 Workflow Escrow result is now externally verified.");
         setPending(null);
-      } else setMessage("Vote verification status: " + checked.verification.status + ". No ruling has been claimed.");
+      } else setMessage("Resolution verification status: " + checked.verification.status + ". No ruling has been claimed.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CHAIN_VERIFY_FAILED");
     } finally {
@@ -53,7 +53,7 @@ export function CommitteePage({ initialConflictStatus = "pending", walletAddress
     }
   }
 
-  return <Localized><><PageHeader eyebrow="ARBITRATION COMMITTEE" title="Conflict-aware case queue" description="Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary." /><DemoNotice /><div className="committee-grid"><Panel className="seat-card"><Badge tone={declared ? "cyan" : "amber"}>{declared ? "DECLARATION RECORDED" : "ACTION REQUIRED"}</Badge><h2>Conflict declaration</h2><p role="status" aria-live="polite">{declared ? "Conflict declaration recorded locally. No vote or blockchain transaction was submitted." : "Review relationships before opening the evidence packet."}</p><button type="button" className="button button-primary" disabled={declared} onClick={() => setConflictStatus("declared")}>{declared ? "No conflict declared" : "Declare no conflict"}</button></Panel><Panel className="seat-card"><Badge tone="amber">ROLE GATED</Badge><h2>Cast an immutable vote</h2><label>Task resource ID<input value={resourceId} onChange={(event) => setResourceId(event.target.value)} placeholder="UUID from the verified task" /></label><label>Outcome<select value={agentWins ? "agent" : "publisher"} onChange={(event) => setAgentWins(event.target.value === "agent")}><option value="agent">Agent wins</option><option value="publisher">Publisher wins</option></select></label><button type="button" className="button button-warning" disabled={busy || !declared || !walletAddress} onClick={() => void castVote()}>Cast Sepolia vote</button><button type="button" className="button button-ghost" disabled={busy || !pending} onClick={() => void recheckVote()}>Recheck RPC receipt</button><small>Committee membership is checked server-side; the browser cannot grant this role.</small></Panel><Panel className="seat-card"><Badge tone="cyan">RULE</Badge><h2>2 of 3</h2><p>A ruling forms only when the contract reaches two valid aligned votes.</p><div className="inline-state" role="status" aria-live="polite">{message}</div></Panel></div></></Localized>;
+  return <Localized><><PageHeader eyebrow="PLATFORM FINAL ARBITRATION" title="One accountable final ruling" description="V3 uses one configured platform arbiter wallet. The browser cannot grant the role, and only a verified TaskResolved receipt advances the case." /><div className="committee-grid"><Panel className="seat-card"><Badge tone={declared ? "cyan" : "amber"}>{declared ? "REVIEW RECORDED" : "ACTION REQUIRED"}</Badge><h2>Conflict and evidence review</h2><p role="status" aria-live="polite">{declared ? "Platform review recorded locally. No resolution or blockchain transaction was submitted." : "Review the case evidence, relationships, and deterministic Gates before enabling final arbitration."}</p><button type="button" className="button button-primary" disabled={declared} onClick={() => setConflictStatus("declared")}>{declared ? "Review complete" : "Complete review"}</button></Panel><Panel className="seat-card"><Badge tone="amber">SOLE ROLE GATE</Badge><h2>Resolve the V3 task</h2><label>Task resource ID<input value={resourceId} onChange={(event) => setResourceId(event.target.value)} placeholder="UUID from the verified V3 task" /></label><label>Outcome<select value={agentWins ? "agent" : "publisher"} onChange={(event) => setAgentWins(event.target.value === "agent")}><option value="agent">Agents win</option><option value="publisher">Publisher wins</option></select></label><button type="button" className="button button-warning" disabled={busy || !declared || !walletAddress} onClick={() => void resolveTask()}>Resolve on Sepolia</button><button type="button" className="button button-ghost" disabled={busy || !pending} onClick={() => void recheckResolution()}>Recheck RPC receipt</button><small>The server requires the configured platform arbiter wallet and the V3 Workflow Escrow address.</small></Panel><Panel className="seat-card"><Badge tone="cyan">V3 RULE</Badge><h2>Single final arbiter</h2><p>The final ruling is not a model vote or majority poll. Legacy V2 committee voting remains historical and cannot resolve a V3 task.</p><div className="inline-state" role="status" aria-live="polite">{message}</div></Panel></div></></Localized>;
 }
 
 export function OpsPage() {

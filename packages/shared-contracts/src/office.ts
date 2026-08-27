@@ -2,12 +2,24 @@ import { z } from "zod";
 
 const officeStatusSchema = z.enum(["in_progress", "completed"]);
 const officeFilterSchema = z.enum(["all", "in_progress", "completed"]);
+export const officeActivitySchema = z.enum([
+  "idle",
+  "walking",
+  "thinking",
+  "working",
+  "reviewing",
+  "waiting",
+  "done",
+  "failed",
+  "offline",
+]);
 
 export const officeAgentSeatSchema = z.object({
   agentId: z.string().min(1).max(128),
   displayName: z.string().min(1).max(120),
   role: z.string().min(1).max(80),
   score: z.number().finite().min(0).max(100),
+  activity: officeActivitySchema,
 }).strict();
 
 export const publicOfficeDeskSchema = z.object({
@@ -21,7 +33,7 @@ export const publicOfficeDeskSchema = z.object({
 }).strict();
 
 export const officeSnapshotSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   generatedAt: z.string().datetime(),
   locale: z.enum(["zh-CN", "en"]).optional(),
   statusFilter: officeFilterSchema,
@@ -29,22 +41,27 @@ export const officeSnapshotSchema = z.object({
 }).strict();
 
 export const officeHostMessageSchema = z.object({
-  type: z.literal("agent-market.office.snapshot.v1"),
+  type: z.literal("agent-market.office.snapshot.v2"),
   payload: officeSnapshotSchema,
 }).strict();
 
 export const officeCocosMessageSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("agent-market.office.ready.v1") }).strict(),
+  z.object({ type: z.literal("agent-market.office.ready.v2") }).strict(),
   z.object({
-    type: z.literal("agent-market.office.select-desk.v1"),
+    type: z.literal("agent-market.office.select-desk.v2"),
     taskId: z.string().min(1).max(128),
   }).strict(),
 ]);
 
-export type OfficeSnapshotV1 = z.infer<typeof officeSnapshotSchema>;
+export type OfficeSnapshotV2 = z.infer<typeof officeSnapshotSchema>;
 export type OfficeCocosMessage = z.infer<typeof officeCocosMessageSchema>;
 
-type PrivateOfficeDesk = Omit<z.infer<typeof publicOfficeDeskSchema>, "isOwner"> & {
+type PrivateAgentSeat = Omit<z.infer<typeof officeAgentSeatSchema>, "activity"> & {
+  activity?: z.infer<typeof officeActivitySchema>;
+};
+
+type PrivateOfficeDesk = Omit<z.infer<typeof publicOfficeDeskSchema>, "isOwner" | "agents"> & {
+  agents: PrivateAgentSeat[];
   ownerWallet?: string;
   ownerLabel?: string;
   nodeInput?: string;
@@ -58,10 +75,10 @@ export function toPublicOfficeSnapshot(input: {
   statusFilter: z.infer<typeof officeFilterSchema>;
   desks: PrivateOfficeDesk[];
   viewerWallet?: string | null;
-}): OfficeSnapshotV1 {
+}): OfficeSnapshotV2 {
   const viewerWallet = input.viewerWallet?.toLowerCase();
   return officeSnapshotSchema.parse({
-    version: 1,
+    version: 2,
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     locale: input.locale ?? "zh-CN",
     statusFilter: input.statusFilter,
@@ -73,7 +90,14 @@ export function toPublicOfficeSnapshot(input: {
         category: desk.category,
         tags: desk.tags,
         status: desk.status,
-        agents: desk.agents,
+        agents: desk.agents.map((agent) => ({
+          ...agent,
+          activity: agent.activity ?? (desk.status === "completed"
+            ? "done"
+            : /judge|review|arbiter/i.test(agent.role)
+              ? "reviewing"
+              : "working"),
+        })),
         isOwner: Boolean(viewerWallet && desk.ownerWallet?.toLowerCase() === viewerWallet),
       })),
   });

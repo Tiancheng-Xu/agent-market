@@ -61,7 +61,7 @@ Arbiter 验收。任务、工作流与资金状态使用链上哈希锚定，完
 
 - React 页面只展示进行中和已完成项目；一张任务对应一张桌子，已接单 Agent 显示在任务桌座位。
 - Cocos Creator 3.8.8 负责桌子、Agent、状态与娱乐动画，已完成本地 Web Desktop 产物和真实运行时渲染 Gate。
-- Cocos 只接收脱敏 `OfficeSnapshotV1`，只允许回传 `select-desk` 事件；不得接触钱包签名、私有节点输入输出、下载内容或工作流执行权限。
+- Cocos 只接收脱敏 `OfficeSnapshotV2`，只允许回传 `select-desk` 事件；不得接触钱包签名、私有节点输入输出、下载内容或工作流执行权限。
 - Owner 的节点边界和结果下载继续由 React 与已验证 Owner 身份控制；访客只能查看公开状态、标签、角色和娱乐动画。
 - Cocos 不可用或超时时，React 显示明确降级状态，不伪造办公室已加载或任务已成功。
 

@@ -22,6 +22,17 @@ export interface TransactionCheck {
   requestId: string;
 }
 
+export interface VaultPositionSnapshot {
+  wallet: string;
+  principalAtomic: string;
+  accruedAtomic: string;
+  checkpointAt: string;
+  earnedAtomic: string;
+  rewardReserveAtomic: string;
+  blockNumber: number;
+  checkedAt: string;
+}
+
 async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(path, {
     method: "POST",
@@ -42,6 +53,18 @@ function provider(): EthereumProvider {
 export function ydIntegerToAtomic(value: string): string {
   if (!/^[1-9][0-9]*$/u.test(value.trim())) throw new Error("YD_AMOUNT_INVALID");
   return (BigInt(value.trim()) * (10n ** YD_DECIMALS)).toString();
+}
+
+export function formatYdAtomic(value: string, precision = 4): string {
+  if (!/^(0|[1-9][0-9]*)$/u.test(value) || !Number.isInteger(precision) || precision < 0 || precision > 18) {
+    throw new Error("YD_ATOMIC_INVALID");
+  }
+  const atomic = BigInt(value);
+  const base = 10n ** YD_DECIMALS;
+  const whole = atomic / base;
+  if (precision === 0) return whole.toString();
+  const fraction = (atomic % base).toString().padStart(18, "0").slice(0, precision).replace(/0+$/u, "");
+  return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
 export function walletTransactionFromIntent(intent: TransactionIntentV1, walletAddress: string, now = Date.now()) {
@@ -73,6 +96,11 @@ export async function createTaskDraft(input: {
 export async function createChainAccountResource(): Promise<{ resourceId: string; status: string }> {
   const response = await postJson<{ account: { resourceId: string; status: string } }>("/api/chain/account", {});
   return response.account;
+}
+
+export async function readVaultPosition(resourceId: string): Promise<VaultPositionSnapshot> {
+  const response = await postJson<{ position: VaultPositionSnapshot }>("/api/chain/position", { resourceId });
+  return response.position;
 }
 
 export async function createTransactionIntent(resourceId: string, method: TransactionIntentV1["method"], args: Record<string, unknown>): Promise<TransactionIntentV1> {

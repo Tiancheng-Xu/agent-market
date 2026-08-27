@@ -245,7 +245,7 @@ export function validateEvidenceRepository(root = process.cwd(), { includeClosur
     try {
       const audit = JSON.parse(readFileSync(visualAuditPath, "utf8"));
       const summary = audit.summary;
-      if (summary?.routeCount !== 18 || summary?.checked !== 180 || JSON.stringify(summary?.locales) !== JSON.stringify(["zh-CN", "en"]) || summary?.httpReadback?.length !== 18 || ["overflow", "brokenImages", "emptyButtons", "untranslated", "untranslatedEnglish"].some((key) => !Array.isArray(summary?.[key]) || summary[key].length !== 0)) violations.push("visual-route-audit-incomplete");
+      if (summary?.routeCount !== 18 || summary?.checked !== 180 || JSON.stringify(summary?.locales) !== JSON.stringify(["zh-CN", "en"]) || summary?.httpReadback?.length !== 18 || ["overflow", "brokenImages", "emptyButtons", "cocosReadyFailures", "untranslated", "untranslatedEnglish"].some((key) => !Array.isArray(summary?.[key]) || summary[key].length !== 0)) violations.push("visual-route-audit-incomplete");
     } catch { violations.push("visual-route-audit-invalid"); }
   }
   const cocosLedgerPath = resolve(root, "docs/evidence/testing/2026-08-26-cocos-office-local.json");

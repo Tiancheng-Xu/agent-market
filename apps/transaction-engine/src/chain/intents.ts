@@ -19,6 +19,10 @@ const METHOD_ABI = {
     "function createTask(bytes32 taskId,bytes32 requestRef,uint256 budget,uint64 deadline)",
     "event TaskCreated(bytes32 indexed taskId,bytes32 indexed requestRef,address indexed publisher,uint256 budget,uint64 deadline)",
   ],
+  createWorkflowTask: [
+    "function createTask(bytes32 taskId,bytes32 requestRef,uint256 budget,uint64 deadline)",
+    "event TaskCreated(bytes32 indexed taskId,bytes32 indexed requestRef,address indexed publisher,uint256 budget,uint256 publicationFee,uint64 deadline)",
+  ],
   assignAgent: [
     "function assignAgent(bytes32 taskId,address agent)",
     "event AgentAssigned(bytes32 indexed taskId,bytes32 indexed requestRef,address indexed agent)",
@@ -47,6 +51,10 @@ const METHOD_ABI = {
     "function castVote(bytes32 taskId,bool agentWins)",
     "event VoteCast(bytes32 indexed taskId,address indexed voter,bool agentWins)",
   ],
+  resolveWorkflowTask: [
+    "function resolveTask(bytes32 taskId,bool agentsWin)",
+    "event TaskResolved(bytes32 indexed taskId,bool agentsWin,address indexed arbiter,uint256 budget)",
+  ],
   stake: [
     "function stake(uint256 amount)",
     "event Staked(address indexed account,uint256 amount)",
@@ -67,6 +75,7 @@ const EVENT_BY_METHOD: Record<TransactionMethod, string> = {
   faucet: "Transfer",
   approve: "Approval",
   createTask: "TaskCreated",
+  createWorkflowTask: "TaskCreated",
   assignAgent: "AgentAssigned",
   acceptTask: "TaskAccepted",
   submitWork: "WorkSubmitted",
@@ -74,6 +83,7 @@ const EVENT_BY_METHOD: Record<TransactionMethod, string> = {
   timeoutTask: "TaskSettled",
   openDispute: "DisputeOpened",
   castVote: "VoteCast",
+  resolveWorkflowTask: "TaskResolved",
   stake: "Staked",
   unstake: "Unstaked",
   claimYield: "YieldClaimed",
@@ -87,6 +97,7 @@ export type IntentArguments = {
   faucet: Record<string, never>;
   approve: { spender: string; amountAtomic: string };
   createTask: { taskId: string; budgetAtomic: string; deadline: number | bigint };
+  createWorkflowTask: { taskId: string; budgetAtomic: string; deadline: number | bigint };
   assignAgent: { taskId: string; agent: string };
   acceptTask: { taskId: string };
   submitWork: { taskId: string };
@@ -94,6 +105,7 @@ export type IntentArguments = {
   timeoutTask: { taskId: string };
   openDispute: { taskId: string };
   castVote: { taskId: string; agentWins: boolean };
+  resolveWorkflowTask: { taskId: string; agentsWin: boolean };
   stake: { amountAtomic: string };
   unstake: { amountAtomic: string };
   claimYield: Record<string, never>;
@@ -120,10 +132,13 @@ export type BuildIntentInput = {
 export function getTransactionMethodDefinition(method: TransactionMethod): {
   contractInterface: Interface;
   eventName: string;
+  functionName: string;
 } {
   return {
     contractInterface: INTERFACES[method],
     eventName: EVENT_BY_METHOD[method],
+    functionName: method === "createWorkflowTask" ? "createTask"
+      : method === "resolveWorkflowTask" ? "resolveTask" : method,
   };
 }
 
@@ -135,6 +150,7 @@ function encodeArguments(input: BuildIntentInput): readonly unknown[] {
     case "approve":
       return [input.args.spender, input.args.amountAtomic];
     case "createTask":
+    case "createWorkflowTask":
       return [
         input.args.taskId,
         input.requestRef,
@@ -151,6 +167,8 @@ function encodeArguments(input: BuildIntentInput): readonly unknown[] {
       return [input.args.taskId];
     case "castVote":
       return [input.args.taskId, input.args.agentWins];
+    case "resolveWorkflowTask":
+      return [input.args.taskId, input.args.agentsWin];
     case "stake":
     case "unstake":
       return [input.args.amountAtomic];
@@ -178,7 +196,7 @@ export function buildTransactionIntent(input: BuildIntentInput): TransactionInte
 
   const definition = getTransactionMethodDefinition(input.method);
   const data = definition.contractInterface
-    .encodeFunctionData(input.method, encodeArguments(input))
+    .encodeFunctionData(definition.functionName, encodeArguments(input))
     .toLowerCase();
 
   return TransactionIntentV1Schema.parse({

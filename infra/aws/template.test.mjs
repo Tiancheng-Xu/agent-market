@@ -147,8 +147,15 @@ test("keeps shared foundations absent and workload cost bounded", () => {
   assert.match(template, /MessageRetentionPeriod: 1209600/u);
   assert.match(template, /maxReceiveCount: 2/u);
   assert.match(template, /RetentionInDays: 7/u);
+  assert.match(template, /PerformanceApiAccessLogGroup:[\s\S]*LogGroupName: !Sub \/aws\/apigateway\/\$\{ProjectName\}-performance[\s\S]*RetentionInDays: 7/u);
+  assert.match(template, /AccessLogSettings:[\s\S]*DestinationArn: !GetAtt PerformanceApiAccessLogGroup\.Arn[\s\S]*"requestId"[\s\S]*"status"/u);
+  assert.doesNotMatch(template, /AccessLogSettings:[\s\S]{0,500}(sourceIp|userAgent|requestBody)/u);
   assert.match(template, /Cpu: "256"/u);
   assert.match(template, /Memory: "512"/u);
+  assert.match(template, /Volumes:\s*\n\s*- Name: tmp/u);
+  assert.match(template, /ReadonlyRootFilesystem: true/u);
+  assert.match(template, /MountPoints:[\s\S]*SourceVolume: tmp[\s\S]*ContainerPath: \/tmp[\s\S]*ReadOnly: false/u);
+  assert.match(template, /Name: PYTHONDONTWRITEBYTECODE\s*\n\s*Value: "1"/u);
   assert.match(template, /assignPublicIp"?\s*:\s*"DISABLED"/u);
   assert.match(template, /DenyInsecureTransport[\s\S]*aws:SecureTransport: false/u);
   assert.match(template, /RedriveAllowPolicy:[\s\S]*redrivePermission: byQueue/u);

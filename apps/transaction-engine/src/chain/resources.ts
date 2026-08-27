@@ -72,6 +72,7 @@ const METHOD_STATUSES: Record<TransactionMethod, readonly TaskResourceStatus[]> 
   faucet: ACTIVE_STATUSES,
   approve: ACTIVE_STATUSES,
   createTask: ["open", "funding_pending"],
+  createWorkflowTask: ["open", "funding_pending"],
   assignAgent: ["matching", "assigned"],
   acceptTask: ["assigned"],
   submitWork: ["in_progress"],
@@ -79,13 +80,14 @@ const METHOD_STATUSES: Record<TransactionMethod, readonly TaskResourceStatus[]> 
   timeoutTask: ["in_progress"],
   openDispute: ["in_progress", "submitted", "disputed"],
   castVote: ["disputed"],
+  resolveWorkflowTask: ["in_progress", "disputed"],
   stake: ACTIVE_STATUSES,
   unstake: ACTIVE_STATUSES,
   claimYield: ACTIVE_STATUSES,
 };
 
 const PUBLISHER_METHODS = new Set<TransactionMethod>([
-  "faucet", "approve", "createTask", "assignAgent", "acceptWork", "timeoutTask",
+  "faucet", "approve", "createTask", "createWorkflowTask", "assignAgent", "acceptWork", "timeoutTask",
   "stake", "unstake", "claimYield",
 ]);
 const AGENT_METHODS = new Set<TransactionMethod>(["acceptTask", "submitWork"]);
@@ -116,6 +118,7 @@ function authorize(
   actorWallet: string,
   method: TransactionMethod,
   committeeMembers: ReadonlySet<string>,
+  platformArbiter: string | null,
 ): ChainResourceRecord {
   const resourceKind = resource.kind ?? "task";
   if (resourceKind === "account" && !ACCOUNT_METHODS.has(method)) {
@@ -132,6 +135,8 @@ function authorize(
   const agent = resource.agentWallet === null ? null : getAddress(resource.agentWallet);
   if (method === "castVote") {
     if (!committeeMembers.has(actor)) throw new ChainResourceError("CHAIN_RESOURCE_FORBIDDEN", 403);
+  } else if (method === "resolveWorkflowTask") {
+    if (platformArbiter === null || actor !== platformArbiter) throw new ChainResourceError("CHAIN_RESOURCE_FORBIDDEN", 403);
   } else if (method === "openDispute") {
     if (actor !== publisher && actor !== agent) throw new ChainResourceError("CHAIN_RESOURCE_FORBIDDEN", 403);
   } else if (PUBLISHER_METHODS.has(method)) {
@@ -148,13 +153,15 @@ function authorize(
 export class MemoryChainResourceRepository implements ChainResourceRepository {
   private readonly resources = new Map<string, ChainResourceRecord>();
   private readonly committeeMembers: ReadonlySet<string>;
+  private readonly platformArbiter: string | null;
 
-  constructor(resources: readonly ChainResourceRecord[], committeeMembers: readonly string[] = []) {
+  constructor(resources: readonly ChainResourceRecord[], committeeMembers: readonly string[] = [], platformArbiter?: string) {
     for (const resource of resources) {
       const resourceId = normalizeResourceId(resource.resourceId);
       this.resources.set(resourceId, { ...resource, resourceId });
     }
     this.committeeMembers = new Set(committeeMembers.map((wallet) => getAddress(wallet)));
+    this.platformArbiter = platformArbiter ? getAddress(platformArbiter) : null;
   }
 
   async createTaskDraft(input: TaskDraftRecord): Promise<ChainResourceRecord> {
@@ -199,7 +206,7 @@ export class MemoryChainResourceRepository implements ChainResourceRepository {
     const normalized = normalizeResourceId(resourceId);
     const resource = this.resources.get(normalized);
     if (resource === undefined) throw new ChainResourceError("CHAIN_RESOURCE_NOT_FOUND", 404);
-    return authorize(resource, actorWallet, method, this.committeeMembers);
+    return authorize(resource, actorWallet, method, this.committeeMembers, this.platformArbiter);
   }
 }
 
@@ -214,13 +221,15 @@ interface ResourceRow {
 
 export class PostgresChainResourceRepository implements ChainResourceRepository {
   private readonly committeeMembers: ReadonlySet<string>;
+  private readonly platformArbiter: string | null;
 
-  private constructor(private readonly sql: Sql, committeeMembers: readonly string[]) {
+  private constructor(private readonly sql: Sql, committeeMembers: readonly string[], platformArbiter?: string) {
     this.committeeMembers = new Set(committeeMembers.map((wallet) => getAddress(wallet)));
+    this.platformArbiter = platformArbiter ? getAddress(platformArbiter) : null;
   }
 
-  static connect(databaseUrl: string, committeeMembers: readonly string[] = []): PostgresChainResourceRepository {
-    return new PostgresChainResourceRepository(postgres(databaseUrl, { max: 5, prepare: false }), committeeMembers);
+  static connect(databaseUrl: string, committeeMembers: readonly string[] = [], platformArbiter?: string): PostgresChainResourceRepository {
+    return new PostgresChainResourceRepository(postgres(databaseUrl, { max: 5, prepare: false }), committeeMembers, platformArbiter);
   }
 
   async createTaskDraft(input: TaskDraftRecord): Promise<ChainResourceRecord> {
@@ -313,6 +322,6 @@ export class PostgresChainResourceRepository implements ChainResourceRepository 
       agentWallet: row.agent_wallet,
       budgetAtomic: row.budget_atomic,
       status: row.status,
-    }, actorWallet, method, this.committeeMembers);
+    }, actorWallet, method, this.committeeMembers, this.platformArbiter);
   }
 }

@@ -8,7 +8,7 @@ flowchart LR
   X -->|HMAC + replay + PII gates| LG
   LG -->|taskId + workflowId + dagHash + nodeId| S[Sepolia V3 contracts]
   S -->|stake receipt + ruling state| U
-  AWS -->|sanitized OfficeSnapshotV1| O[Cocos office presentation]
+  AWS -->|sanitized OfficeSnapshotV2| O[Cocos office presentation]
   O -->|select-desk event only| U
 
   subgraph Private_Data[Private AWS data]

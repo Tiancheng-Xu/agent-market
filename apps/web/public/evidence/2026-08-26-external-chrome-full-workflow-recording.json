@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "capturedAtUtc": "2026-08-26T08:27:56Z",
-  "status": "verified-local",
+  "status": "superseded-local",
   "artifact": {
     "publicPath": "/evidence/agent-market-v3-full-workflow.mp4",
     "sourceCapture": "external Chrome full-screen display capture",
@@ -52,5 +52,6 @@
     "Staking and committee pages preserve their explicit simulated, disabled, or readback-only boundaries.",
     "Provider responses are shown only as sanitized status lines; prompts, full outputs, credentials, model weights, and private paths are excluded.",
     "AWS V2 production readback, fresh Sepolia mutations, and production release remain separate approval-gated work."
-  ]
+  ],
+  "supersededReason": "The recording predates the V3 sole-platform-arbiter UI and the final 76x76 Cocos character sizing. It remains historical local evidence and must not be presented as the final workflow recording."
 }

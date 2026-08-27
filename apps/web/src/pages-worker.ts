@@ -15,6 +15,7 @@ import { routeForPath } from "./ssr/routeDefinitions";
 export interface PagesEnvironment {
   ASSETS: { fetch(request: Request): Promise<Response> };
   API_ORIGIN?: string;
+  PERFORMANCE_HMAC_SECRET?: string;
   TRANSACTION_ENGINE_ORIGIN?: string;
   AGENT_ALLOWED_ORIGINS?: string;
   AGENT_CHAT_MAX_BYTES?: string;
@@ -102,6 +103,21 @@ const signedHeaderNames = {
   bodySha256: "x-agent-body-sha256",
   signature: "x-agent-signature",
 } as const;
+
+async function performanceHmacSha256Hex(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return [...new Uint8Array(signature)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 function isDocumentRequest(request: Request): boolean {
   if (request.method !== "GET" && request.method !== "HEAD") return false;
@@ -200,16 +216,35 @@ export function createPagesHandler(options: HandlerOptions = {}) {
             status: 503,
           });
         }
+        if (
+          !environment.PERFORMANCE_HMAC_SECRET
+          || environment.PERFORMANCE_HMAC_SECRET.length < 32
+        ) {
+          return Response.json({ error: "PERFORMANCE_AUTH_UNAVAILABLE" }, {
+            status: 503,
+          });
+        }
 
         const origin = environment.API_ORIGIN.endsWith("/")
           ? environment.API_ORIGIN
           : `${environment.API_ORIGIN}/`;
-        const upstreamRequest = new Request(
-          new URL("performance", origin),
-          request,
+        const body = await request.text();
+        const timestamp = Math.floor(now() / 1_000).toString();
+        const signature = await performanceHmacSha256Hex(
+          environment.PERFORMANCE_HMAC_SECRET,
+          `${timestamp}.${body}`,
         );
-        upstreamRequest.headers.delete("authorization");
-        upstreamRequest.headers.delete("cookie");
+        const headers = new Headers(request.headers);
+        headers.delete("authorization");
+        headers.delete("cookie");
+        headers.set("x-agent-market-timestamp", timestamp);
+        headers.set("x-agent-market-signature", signature);
+        const upstreamRequest = new Request(new URL("performance", origin), {
+          method: "POST",
+          headers,
+          body,
+          redirect: "manual",
+        });
         return upstreamFetch(upstreamRequest);
       }
 

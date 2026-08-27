@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "evidenceId": "agent-market-web-performance-observability-v2",
+  "observedAt": "2026-08-27T00:00:00Z",
+  "status": "verified-local",
+  "scope": "deterministic contract and focused local gates only",
+  "metrics": [
+    "TTFB", "FCP", "LCP", "CLS", "INP", "HYDRATION_DURATION", "FPS",
+    "FRAME_TIME_P95", "DROPPED_FRAME_RATIO", "FRAME_SAMPLE_COUNT", "FRAME_WINDOW_DURATION"
+  ],
+  "render": ["mode", "outcome", "recoverableErrorCount", "fallbackCount"],
+  "privacy": {
+    "allowed": ["uuidv7 requestId", "sanitized pathname", "build version", "timestamp", "bounded numeric metrics", "bounded render state"],
+    "forbidden": ["query", "fragment", "wallet", "cookie", "authorization", "user agent", "IP address", "user content"]
+  },
+  "productionBoundary": "pending-external: no production metric values are claimed until an approved AWS sample is read back through PostgreSQL and the stack is paused again",
+  "evidence": [
+    "apps/web/src/performance/collector.test.ts",
+    "apps/web/src/performance-proxy.test.ts",
+    "apps/transaction-engine/src/performance/ingest.test.ts",
+    "apps/transaction-engine/src/persistence/performance-schema.test.ts",
+    "services/performance-aggregator/test_worker.py",
+    "infra/aws/performance-v2.test.mjs"
+  ]
+}

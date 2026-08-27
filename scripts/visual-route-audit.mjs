@@ -104,6 +104,9 @@ for (const width of widths) {
   for (const route of routes) {
     await send("Page.navigate", { url: `${baseUrl}${route}` });
     await sleep(600);
+    if (route === "/office") {
+      await waitFor('document.querySelector(".cocos-office-host")?.classList.contains("cocos-office-ready")');
+    }
     for (const locale of locales) {
       const label = locale === "zh-CN" ? "中文" : "EN";
       await waitFor(`document.documentElement.lang === ${JSON.stringify(locale)} || [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === ${JSON.stringify(label)})`);
@@ -130,6 +133,8 @@ for (const width of widths) {
           .map((image) => image.src),
         emptyButtons: [...document.querySelectorAll("button")]
           .filter((button) => !button.getAttribute("aria-label") && !button.innerText.trim()).length,
+        cocosOfficeReady: ${JSON.stringify(route)} !== "/office"
+          || document.querySelector(".cocos-office-host")?.classList.contains("cocos-office-ready") === true,
         english: [...new Set(english)].slice(0, 50),
         chinese: [...new Set(chinese)].slice(0, 50),
       };
@@ -181,11 +186,12 @@ const summary = {
   overflow: results.filter((result) => result.overflow),
   brokenImages: results.filter((result) => result.brokenImages.length > 0),
   emptyButtons: results.filter((result) => result.emptyButtons > 0),
+  cocosReadyFailures: results.filter((result) => result.route === "/office" && !result.cocosOfficeReady),
   untranslated,
   untranslatedEnglish,
 };
 await writeFile(`${outputDirectory}/result.json`, `${JSON.stringify({ summary, results }, null, 2)}\n`);
 process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-if (summary.httpReadback.some((entry) => entry.status !== entry.expected) || summary.overflow.length || summary.brokenImages.length || summary.emptyButtons.length || summary.untranslated.length || summary.untranslatedEnglish.length) {
+if (summary.httpReadback.some((entry) => entry.status !== entry.expected) || summary.overflow.length || summary.brokenImages.length || summary.emptyButtons.length || summary.cocosReadyFailures.length || summary.untranslated.length || summary.untranslatedEnglish.length) {
   process.exitCode = 1;
 }

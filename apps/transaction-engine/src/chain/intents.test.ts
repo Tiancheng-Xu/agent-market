@@ -57,6 +57,7 @@ describe("unsigned transaction intents", () => {
       { ...base, method: "faucet", args: {} },
       { ...base, method: "approve", args: { spender: base.to, amountAtomic: "9" } },
       { ...base, method: "createTask", args: { taskId, budgetAtomic: "9", deadline: 1_800_000_000 } },
+      { ...base, method: "createWorkflowTask", args: { taskId, budgetAtomic: "9", deadline: 1_800_000_000 } },
       { ...base, method: "assignAgent", args: { taskId, agent: base.from } },
       { ...base, method: "acceptTask", args: { taskId } },
       { ...base, method: "submitWork", args: { taskId } },
@@ -64,6 +65,7 @@ describe("unsigned transaction intents", () => {
       { ...base, method: "timeoutTask", args: { taskId } },
       { ...base, method: "openDispute", args: { taskId } },
       { ...base, method: "castVote", args: { taskId, agentWins: true } },
+      { ...base, method: "resolveWorkflowTask", args: { taskId, agentsWin: true } },
       { ...base, method: "stake", args: { amountAtomic: "9" } },
       { ...base, method: "unstake", args: { amountAtomic: "9" } },
       { ...base, method: "claimYield", args: {} },
@@ -72,6 +74,23 @@ describe("unsigned transaction intents", () => {
     expect(cases.map((entry) => buildTransactionIntent(entry).method)).toEqual(
       cases.map((entry) => entry.method),
     );
+  });
+
+  it("encodes V3 workflow methods against their Solidity function names", () => {
+    const taskId = `0x${"44".repeat(32)}`;
+    const created = buildTransactionIntent({
+      ...base, method: "createWorkflowTask",
+      args: { taskId, budgetAtomic: "106", deadline: 1_800_000_000 },
+    });
+    const resolved = buildTransactionIntent({
+      ...base, method: "resolveWorkflowTask", args: { taskId, agentsWin: false },
+    });
+    expect(getTransactionMethodDefinition("createWorkflowTask").contractInterface
+      .decodeFunctionData("createTask", created.data).map(String)).toEqual([
+        taskId, base.requestRef.toLowerCase(), "106", "1800000000",
+      ]);
+    expect(getTransactionMethodDefinition("resolveWorkflowTask").contractInterface
+      .decodeFunctionData("resolveTask", resolved.data).map(String)).toEqual([taskId, "false"]);
   });
 
   it("rejects an expired intent instead of producing ambiguous signing data", () => {

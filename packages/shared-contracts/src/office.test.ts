@@ -6,7 +6,7 @@ import {
   toPublicOfficeSnapshot,
 } from "./office";
 
-describe("OfficeSnapshotV1", () => {
+describe("OfficeSnapshotV2", () => {
   it("removes owner identity and node payloads before Cocos", () => {
     const snapshot = toPublicOfficeSnapshot({
       statusFilter: "all",
@@ -29,7 +29,11 @@ describe("OfficeSnapshotV1", () => {
       viewerWallet: "0x1234",
     });
 
-    expect(snapshot.desks[0]).toMatchObject({ taskId: "task-1", isOwner: true });
+    expect(snapshot.desks[0]).toMatchObject({
+      taskId: "task-1",
+      isOwner: true,
+      agents: [expect.objectContaining({ activity: "working" })],
+    });
     expect(JSON.stringify(snapshot)).not.toContain("0x1234");
     expect(JSON.stringify(snapshot)).not.toContain("private input");
     expect(JSON.stringify(snapshot)).not.toContain("private output");
@@ -40,7 +44,7 @@ describe("OfficeSnapshotV1", () => {
   it("rejects undeclared private fields", () => {
     expect(() =>
       officeSnapshotSchema.parse({
-        version: 1,
+        version: 2,
         generatedAt: "2026-08-26T12:00:00.000Z",
         statusFilter: "all",
         desks: [{
@@ -63,7 +67,7 @@ describe("OfficeSnapshotV1", () => {
       generatedAt: "2026-08-26T12:00:00.000Z",
       desks: [],
     });
-    expect(officeHostMessageSchema.parse({ type: "agent-market.office.snapshot.v1", payload: snapshot })).toBeTruthy();
+    expect(officeHostMessageSchema.parse({ type: "agent-market.office.snapshot.v2", payload: snapshot })).toBeTruthy();
     expect(() => officeHostMessageSchema.parse({ type: "wallet.sign", payload: {} })).toThrow();
   });
 });

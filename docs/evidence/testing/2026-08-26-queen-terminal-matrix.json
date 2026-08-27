@@ -1,34 +1,61 @@
 {
-  "schemaVersion": "agent-market.queen-terminal-matrix.v1",
-  "recordedAt": "2026-08-26T02:10:00Z",
+  "schemaVersion": "agent-market.queen-terminal-matrix.v2",
+  "recordedAt": "2026-08-27T06:08:31.831Z",
   "status": "verified-local",
-  "entrypoint": "/agent/graphql",
+  "entrypoint": "/agent/graphql -> signed local /graphql handler",
   "frameworkBoundary": "LangGraph state machine; no Mastra runtime",
-  "terminalStates": [
-    { "path": "success", "expected": "succeeded", "gate": "signed orchestration response plus deterministic node contracts", "status": "passed" },
-    { "path": "provider failure", "expected": "MODEL_UNAVAILABLE", "gate": "no fake fallback success", "status": "passed" },
-    { "path": "runtime timeout", "expected": "UPSTREAM_TIMEOUT", "gate": "AbortSignal reaches model request", "status": "passed" },
-    { "path": "user cancellation", "expected": "CANCELLED", "gate": "later nodes do not execute", "status": "passed" }
+  "realProviderSuccessPreflight": {
+    "evidence": "apps/web/public/evidence/2026-08-26-live-graphql-terminal-preflight.json",
+    "providerCallsReturned": true,
+    "terminalReached": true,
+    "distinctExecuteJudgeFinalModelTags": true
+  },
+  "signedHandlerMatrix": [
+    {
+      "path": "success",
+      "requestId": "00000000-0000-4000-8000-000000000001",
+      "httpStatus": 200,
+      "terminal": "succeeded",
+      "dataIsNull": false,
+      "rawPromptStored": false,
+      "rawOutputStored": false
+    },
+    {
+      "path": "provider-failure",
+      "requestId": "00000000-0000-4000-8000-000000000002",
+      "httpStatus": 200,
+      "terminal": "MODEL_UNAVAILABLE",
+      "dataIsNull": true,
+      "rawPromptStored": false,
+      "rawOutputStored": false
+    },
+    {
+      "path": "runtime-timeout",
+      "requestId": "00000000-0000-4000-8000-000000000003",
+      "httpStatus": 200,
+      "terminal": "UPSTREAM_TIMEOUT",
+      "dataIsNull": true,
+      "rawPromptStored": false,
+      "rawOutputStored": false
+    },
+    {
+      "path": "user-cancellation",
+      "requestId": "00000000-0000-4000-8000-000000000004",
+      "httpStatus": 200,
+      "terminal": "CANCELLED",
+      "dataIsNull": true,
+      "rawPromptStored": false,
+      "rawOutputStored": false
+    }
   ],
-  "roleGates": {
-    "acceptedAssignmentRequired": true,
-    "judgeIndependentFromQueenAndExecutor": true,
-    "finalArbiterIndependentFromQueenExecutorsAndJudges": true,
-    "sameModelAliasRejected": true,
-    "distinctnessKey": "modelTag",
-    "contexts": "isolated execution hook per role"
+  "deterministicGates": {
+    "hmacVerifiedBeforeHandler": true,
+    "failureDoesNotBecomeSuccess": true,
+    "timeoutSignalReachesModelClient": true,
+    "cancellationSignalStopsTheRequest": true,
+    "rawPromptStored": false,
+    "rawOutputStored": false,
+    "secretStored": false
   },
-  "idempotency": {
-    "startTaskRun": "same runId on repeat",
-    "submitNodeOutput": "same outputId and no second model call",
-    "judgeNodeOutput": "same judgment and no second model call",
-    "finalArbitrate": "same arbitration and no second model call",
-    "repairAndRedTeam": "versioned system node key"
-  },
-  "gates": {
-    "queenOrchestrator": "14/14 passed",
-    "streamRuntime": "13/13 passed",
-    "runnerTypecheck": "passed"
-  },
-  "publicBoundary": "This is local deterministic verification, not production workflow proof."
+  "boundary": "The success preflight used configured provider adapters. Failure, timeout, and cancellation use controlled clients against the real signed GraphQL handler. This is local integration evidence, not Cloudflare production, AWS, or Sepolia proof."
 }

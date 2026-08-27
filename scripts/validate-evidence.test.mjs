@@ -121,7 +121,7 @@ function writeFixture(overrides = {}) {
       const spec = diagramSpecs[name];
       writeFileSync(absolute, `<svg width="${spec.width}" height="${spec.height}" viewBox="0 0 ${spec.width} ${spec.height}" data-actors="${spec.actors}" data-lanes="${spec.lanes}"><title>fixture</title></svg>`);
     } else if (path.endsWith("2026-08-26-visual-route-audit.json")) {
-      writeFileSync(absolute, JSON.stringify({ summary: { routeCount: 18, checked: 180, locales: ["zh-CN", "en"], httpReadback: Array.from({ length: 18 }, () => ({ status: 200, expected: 200 })), overflow: [], brokenImages: [], emptyButtons: [], untranslated: [], untranslatedEnglish: [] } }));
+      writeFileSync(absolute, JSON.stringify({ summary: { routeCount: 18, checked: 180, locales: ["zh-CN", "en"], httpReadback: Array.from({ length: 18 }, () => ({ status: 200, expected: 200 })), overflow: [], brokenImages: [], emptyButtons: [], cocosReadyFailures: [], untranslated: [], untranslatedEnglish: [] } }));
     } else if (path.endsWith("2026-08-26-cocos-office-local.json")) {
       writeFileSync(absolute, JSON.stringify({ deterministicGates: { routeViewportChecks: "180/180 passed" } }));
     } else if (path.endsWith("EvidencePage.tsx")) {

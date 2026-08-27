@@ -84,7 +84,7 @@ export function createTaskDraftHandler({ auth, resources, authOrigin, id = rando
           status: record.status,
           budgetAtomic: record.budgetAtomic,
           platformFeeAtomic: ((BigInt(record.budgetAtomic) * 6n) / 100n).toString(),
-          platformFeeStatus: "contract-support-pending",
+          platformFeeStatus: "included-in-v3-workflow-escrow-allowance",
         },
       }, { status: 201, headers: { "cache-control": "no-store", "x-request-id": requestId } });
     } catch (error) {

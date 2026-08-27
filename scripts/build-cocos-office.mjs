@@ -5,6 +5,9 @@ const root = resolve(import.meta.dirname, "..");
 const project = resolve(root, "apps/office-cocos");
 const output = resolve(project, "build/web-desktop-001");
 const publicOutput = resolve(root, "apps/web/public/office-cocos");
+const artSource = resolve(project, "assets/office/art");
+const artOutput = resolve(output, "art");
+const atlasSource = resolve(artSource, "starbuddy-agent-atlas.png");
 const settingsPath = resolve(output, "src/settings.json");
 const mainConfigPath = resolve(output, "assets/main/config.json");
 const sceneImportPath = resolve(output, "assets/main/import/e4/e4f83b65-2b89-4c40-9e64-798b3380272d.json");
@@ -18,6 +21,13 @@ function requireFile(path, description) {
 requireFile(settingsPath, "Cocos settings");
 requireFile(mainConfigPath, "Cocos main bundle config");
 requireFile(sceneImportPath, "Cocos OfficeScene import");
+requireFile(atlasSource, "StarBuddy agent atlas");
+
+const atlasBytes = readFileSync(atlasSource);
+const atlasColorType = atlasBytes[25];
+if (atlasColorType !== 4 && atlasColorType !== 6) {
+  throw new Error("StarBuddy agent atlas must be an alpha-channel PNG; refusing to publish an opaque checkerboard asset.");
+}
 
 const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
 const mainConfig = JSON.parse(readFileSync(mainConfigPath, "utf8"));
@@ -65,6 +75,7 @@ if (!style.includes(responsiveMarker)) {
 
 cpSync(resolve(project, "runtime/office-runtime.js"), resolve(output, "src/office-runtime.js"), { force: true });
 cpSync(resolve(project, "runtime/index.js"), resolve(output, "index.js"), { force: true });
+cpSync(artSource, artOutput, { recursive: true, force: true });
 cpSync(output, publicOutput, { recursive: true, force: true });
 
 console.log(JSON.stringify({
@@ -73,6 +84,7 @@ console.log(JSON.stringify({
   scriptPackages: settings.scripting.scriptPackages.length,
   splashScreen: "none",
   sceneMode: "programmatic-cocos-scene-with-gui-assets",
+  characterStyle: "starbuddy-state-driven-agent-sprites",
   responsiveHost: true,
   output: "apps/web/public/office-cocos",
 }, null, 2));

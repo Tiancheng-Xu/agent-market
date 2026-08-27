@@ -1,4 +1,9 @@
 {
+  "schemaVersion": "agent-market.visual-route-audit.v2",
+  "generatedAt": "2026-08-27T06:25:00.757Z",
+  "status": "verified-local",
+  "environment": "local-cloudflare-pages-edge-with-gpu-webgl",
+  "command": "node scripts/visual-route-audit.mjs",
   "summary": {
     "checked": 180,
     "widths": [
@@ -108,6 +113,7 @@
     "overflow": [],
     "brokenImages": [],
     "emptyButtons": [],
+    "cocosReadyFailures": [],
     "untranslated": [],
     "untranslatedEnglish": []
   },
@@ -124,6 +130,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -162,6 +169,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register agents, fund tasks, compare explainable matches, settle in YD, and trace every result through one request ID.",
@@ -190,6 +198,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "Personal AI Runtime v4.1",
         "已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
@@ -246,6 +255,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Find a qualified operator",
@@ -295,6 +305,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "浏览器只在 IndexedDB 中保存按钱包隔离的公开元数据；API Key、本地端口、模型文件与原始 Prompt 永远不会存入这里。"
       ],
@@ -329,6 +340,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register and maintain agents",
@@ -352,6 +364,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "面向本地训练 Runtime 与 DeepSeek、Kimi、Qwen、Zhipu Provider Agent 的工作流控制台。按顺序选择 Agent，再由主 Agent 编排最终答案。",
         "只需描述一次任务。Queen 规划 DAG、自动填充推荐 Agent、请求高风险确认，再通过一个用户流程执行独立 Judge 与 Final Arbiter Gate。",
@@ -412,6 +425,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Talk to real agents",
@@ -457,6 +471,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "修正 Manifest 身份后，已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
         "Digest: 2fa405e1244629244798cb4d7b8f4b3a5dd9e47aaf9ea7329e8dbe27bd32cffd",
@@ -484,6 +499,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified through the signed Agent Market owner runtime after the corrected manifest identity gate. Public callers remain blocked.",
@@ -505,6 +521,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -534,6 +551,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Open work with explicit settlement",
@@ -561,6 +579,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -597,6 +616,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Fund a verifiable task",
@@ -619,6 +639,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -650,6 +671,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Build a source-backed AI market brief",
@@ -675,6 +697,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "优先排序经过验证的公开市场 Agent。仅 Owner 可用的本地 Agent 对其 Owner 保持可见，但不会进入默认公开任务匹配。",
         "该 Agent Market Runtime/Provider 链路已有 Smoke 证据"
@@ -707,6 +730,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified public-market agents are ranked first. Owner-only local agents stay visible to their owner, but do not enter default public task matching.",
@@ -732,9 +756,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "虚拟办公室 / Web 原型",
@@ -742,7 +765,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -762,13 +784,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -788,9 +810,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "虚拟办公室 / Web 原型",
@@ -798,7 +819,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -818,13 +838,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -844,6 +864,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -876,6 +897,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "One view across work and settlement",
@@ -899,6 +921,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -911,6 +934,8 @@
         "解除质押",
         "领取测试收益",
         "重新检查 RPC 回执",
+        "刷新链上头寸",
+        "本次会话尚未回读链上头寸。",
         "连接 MetaMask 后才能准备钱包自有的质押 Intent。",
         "只有独立验证的回执与匹配事件才能更新头寸；计算器不是链上状态。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
@@ -928,11 +953,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Six percent. Linear. Test-only.",
         "Yield is floor-rounded per second and funded by a separate Sepolia test pool. It is not a real return.",
         "principal x 6% x time",
+        "No on-chain position has been read back in this session.",
         "Connect MetaMask to prepare a wallet-owned staking intent.",
         "Only an independently verified receipt and matching event can advance the position. The calculator is not chain state.",
         "Verifiable autonomous work on Ethereum Sepolia."
@@ -951,28 +978,28 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
-        "仲裁委员会",
-        "具备冲突检测的案件队列",
-        "结算边界强制三名有效委员、不可修改投票和两票裁决门槛。",
-        "演示数据",
-        "本页数据仅用于展示界面状态，不构成部署或交易证据。",
+        "平台最终仲裁",
+        "一位责任明确的最终裁决者",
+        "V3 只使用一个已配置的平台仲裁钱包。浏览器不能授予该角色，只有验证通过的 TaskResolved 回执才能推进案件状态。",
         "需要操作",
-        "冲突声明",
-        "打开证据包前先核对利益关系。",
-        "声明无冲突",
-        "提交不可变投票",
+        "冲突与证据审查",
+        "启用最终仲裁前，必须审查案件证据、关联关系与确定性 Gate。",
+        "完成审查",
+        "唯一角色 Gate",
+        "裁决 V3 任务",
         "任务资源 ID",
         "裁决方向",
         "发布方胜诉",
-        "提交 Sepolia 投票",
+        "在 Sepolia 上裁决",
         "重新检查 RPC 回执",
-        "委员会成员资格由服务端校验；浏览器不能授予该角色。",
-        "三席两票",
-        "只有合约收到两票有效且一致的投票后才形成裁决。",
-        "当前未加载经过外部验证的案件。",
+        "服务端必须同时验证已配置的平台仲裁钱包和 V3 Workflow Escrow 地址。",
+        "唯一最终仲裁者",
+        "最终裁决不是模型投票或多数表决。旧 V2 委员会投票仅作为历史记录，不能裁决 V3 任务。",
+        "当前未加载已获得外部验证的 V3 争议案件。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
       ]
     },
@@ -988,15 +1015,17 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
-        "Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary.",
-        "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Review relationships before opening the evidence packet.",
-        "Cast an immutable vote",
-        "Committee membership is checked server-side; the browser cannot grant this role.",
-        "A ruling forms only when the contract reaches two valid aligned votes.",
-        "No externally verified case is loaded.",
+        "One accountable final ruling",
+        "V3 uses one configured platform arbiter wallet. The browser cannot grant the role, and only a verified TaskResolved receipt advances the case.",
+        "Conflict and evidence review",
+        "Review the case evidence, relationships, and deterministic Gates before enabling final arbitration.",
+        "Resolve the V3 task",
+        "The server requires the configured platform arbiter wallet and the V3 Workflow Escrow address.",
+        "The final ruling is not a model vote or majority poll. Legacy V2 committee voting remains historical and cannot resolve a V3 task.",
+        "No externally verified V3 dispute is loaded.",
         "Verifiable autonomous work on Ethereum Sepolia."
       ],
       "chinese": []
@@ -1013,6 +1042,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -1039,6 +1069,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Exactly three valid seats are assigned. Two aligned votes form a ruling; conflicts trigger replacement.",
@@ -1060,6 +1091,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -1093,6 +1125,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Observe first. Suggest second.",
@@ -1119,12 +1152,14 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
         "Agent Market 参考 Web3 课程 Evidence 标准作为检查表，但实现保持项目专用：优先 SSR、安全 Hydration、延迟加载大型 Evidence 媒体、明确显示离线或降级状态，并只记录脱敏原因码。",
         "浏览器信号、Edge SSR、React 降级模式、Health/API 超时、本地 Runtime、Provider API 与 Evidence 记录相互隔离，单个慢依赖不会拖垮页面。",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
+        "Evidence 边界： the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "采用方案 C：同步调用使用 Worker、Tunnel 与本地 Runtime；异步 Runner 控制面保留身份、心跳、Lease、结果与证据。",
         "Worker 验证访问并签名 Runtime 调用；Runtime 验证 HMAC 后调用 Ollama 或 Provider API，并以 SSE 流式返回。",
@@ -1143,7 +1178,7 @@
         "查看 Queen GraphQL Runtime Smoke 证据",
         "Queen 提出可编辑 DAG；用户确认当前版本与 Agent 分配后才能启动。启动后锁定已有节点，Red Team 与 Repair 只能通过递增版本追加。",
         "IndexedDB 只保存按钱包隔离的公开元数据。免费 HTTPS Agent 可进入当前浏览器目录；付费 Agent 必须通过平台测试；本地 Ollama Agent 默认仅 Owner 可见且离线。",
-        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV1 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
+        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV2 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
         "本地 V3 合约实现固定 6% 不退平台发布费、Agent 节点质押 ERC-721 凭证、唯一平台仲裁者和按结果退还或没收。现有 V2 Sepolia 合约未修改，V3 尚未部署。",
         "只允许当前任务节点的 Agent Input/Output Envelope 出入站，并执行 HMAC、时间戳、Nonce 防重放、大小限制、哈希与敏感信息扫描。这里只完成本地 Handler 与测试，没有创建或修改 AWS 资源。",
         "既有 V1 全链路证据保持有效。最新 AWS 控制台只读回读显示 UPDATE_COMPLETE、消费端 Disabled、ECS 运行任务 0、DLQ 0，工作队列保留 2 条消息；计算已暂停，但队列未清空。",
@@ -1168,18 +1203,18 @@
         "services/trainer/src/agent_market_trainer/train.py · services/trainer/src/agent_market_trainer/model_store.py · services/trainer/tests",
         "services/trainer/tests/test_train.py · services/trainer/tests/test_model_store.py · docs/evidence/testing/2026-08-21-phase2-local-gates.json",
         "T7 已通过 25 项专项测试、8 项 repository policy 测试与真实 PostgreSQL replay Gate 3/3。AWS 静态扫描可识别 option，并对 action 前未知 option fail-closed；V2 AWS 资源仍未部署。",
-        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs",
-        "apps/transaction-engine/src/recovery/replay.test.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.integration.test.ts · infra/aws/template.test.mjs · infra/aws/t7-repair.test.mjs · .tc-flow/reviews/T7.test-evidence.json · scripts/aws/inject-agent-market-cluster-retain.test.mjs · scripts/aws/deploy-agent-market.test.mjs · scripts/aws/pause-agent-market.test.mjs · scripts/validate-repository.test.mjs · docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs"
       ],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "交付证据 / DELIVERY EVIDENCE",
         "先有证据，再报进度",
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "完整功能操作录屏",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
+        "上一版完整功能录屏（待重录）",
+        "这段录屏保留为历史本地证据，但早于 V3 平台唯一仲裁者界面和最终 Cocos 角色尺寸，因此不能作为当前最终录屏。新的全流程录屏将在所有本地与外部 Gate 关闭后生成；未发送的链上交易仍不会被伪造成成功。",
+        "300.1 秒 · 1920×960 · H.264 视频 · 摘要 6b336d52…",
         "查看录屏事实台账",
-        "查看后续修复台账",
+        "查看 GraphQL 终态预演台账",
         "全路由、多视口、完整中文",
         "本地隔离 Chrome 检查 18 个路由、中文与英文两种语言，在 375、390、430、1440 与 1920 像素下验证深链状态、横向溢出、破图、空按钮和未翻译文案；共 180 个组合全部通过。",
         "390 像素移动端",
@@ -1209,6 +1244,8 @@
         "健康链路完整渲染；弱设备延后重媒体与动效；Runtime/API 超时显示本地降级卡片，绝不在无证据时标记成功。",
         "当前边界",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "网站实测指标",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
         "本地与 Provider Agent 共用一个签名网关",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "架构仲裁",
@@ -1218,10 +1255,7 @@
         "Queen 主导的 GraphQL 工作流",
         "/agent/graphql 是真实任务唯一的编排入口。LangGraph 执行状态图边界。Queen 提出可编辑 DAG；已接受的分配和当前版本必须在启动前确认，启动后锁定任务图。Judge 与 Final Arbiter 保持独立 Agent 和隔离上下文。",
         "风险与补救策略",
-        "GraphQL 保留全部强制阶段，以质量 Gate 约束成本优先排序，自动加入补救策略，并在高风险或 Judge 低分路径触发 Red Team 审查。",
-        "模型池排序",
-        "三选一候选池按访问范围、能力、License/Tag 元数据、健康状态与评分历史过滤，再按 modelTag 去重。零分新模型获得探索加成；低分旧模型进入淘汰。",
-        "仅 Owner 可用的本地 Agent"
+        "GraphQL 保留全部强制阶段，以质量 Gate 约束成本优先排序，自动加入补救策略，并在高风险或 Judge 低分路径触发 Red Team 审查。"
       ]
     },
     {
@@ -1236,12 +1270,15 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
-        "Recorded full-screen in external Chrome across MetaMask connection, Agent registration and maintenance, task draft validation and transaction preview, GraphQL DAG generation and manual reassignment, workflow start, dashboard, staking calculator, committee, read-only operations, and Evidence. The recording truthfully preserves the then non-terminal workflow and missing committee feedback. The code now adds terminal states, per-operation timeout, cancellation, and local committee acknowledgement, verified by a separate fix ledger. The original recording remains unedited; no chain transaction was sent, and it does not replace production, AWS, or Sepolia readback.",
+        "Previous full workflow recording (re-record pending)",
+        "This recording remains historical local evidence, but it predates the V3 sole-platform-arbiter UI and final Cocos character sizing, so it is not the current final recording. A new full-flow recording will be generated after all local and external gates close; unsent chain transactions will not be presented as successful.",
+        "300.1s · 1920×960 · H.264 · SHA-256 6b336d52…",
         "View recording fact ledger",
-        "View follow-up fix ledger",
+        "View GraphQL terminal preflight ledger",
         "All routes, all target viewports, complete Chinese UI",
         "An isolated local Chrome checked 18 routes in both Chinese and English at 375, 390, 430, 1440, and 1920 pixels for deep-link status, horizontal overflow, broken images, empty buttons, and untranslated prose. All 180 combinations passed.",
         "Home, agents, registration, live runtime, tasks, publishing, staking, committee, operations, and Evidence.",
@@ -1256,6 +1293,8 @@
         "Browser signals, Edge SSR, React degraded mode, health/API timeouts, local runtime, provider APIs, and Evidence records are separated so one slow dependency cannot collapse the page.",
         "Healthy paths render fully. Weak clients defer heavy media and motion. Runtime/API timeouts show local fallback cards and never mark work successful without proof.",
         "Implemented now: Edge SSR, hydration fallback, explicit offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "The v2 performance envelope records TTFB, FCP, LCP, CLS, INP, hydration duration and outcome, recoverable hydration errors, CSR fallback count, bounded-window FPS, P95 frame time, dropped-frame ratio, sample count, and sample duration. It carries only a UUIDv7 request ID, sanitized pathname, build version, and timestamp.",
+        "Evidence boundary: the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "Local and provider agents share one signed gateway",
         "The browser talks to the Cloudflare edge gateway. The gateway signs runtime requests; the local runtime calls Ollama, DeepSeek, Kimi, Qwen, or Zhipu server-side. Queen-led GraphQL uses LangGraph for state transitions, confirmation, locking, failure routing, and recovery while enforcing independent Judge and Final Arbiter roles. Ollama and provider keys are never exposed to the browser.",
         "C wins: synchronous chat uses Worker, Tunnel, and local runtime; async runner control plane keeps identity, heartbeat, lease, result, and evidence.",
@@ -1276,17 +1315,13 @@
         "View owner-trained model artifact evidenceView owner-trained Agent Market runtime smoke evidence",
         "View sanitized live-agent smoke evidence",
         "View Queen GraphQL runtime smoke evidence",
+        "View live distinct-model GraphQL terminal preflight",
         "View local validation evidence",
         "View important-node catalog preview evidence",
         "New workflow nodes and boundaries",
         "These statuses cover local code and tests only. Anything not deployed to Sepolia, AWS, or production is not presented as externally complete.",
         "Task category and tags are hard filters before selecting three distinct models from at most four candidates. Scores use a 90-day window, the latest 20 events, and 30-day exponential half-life; new agents start at 30.",
-        "DAG confirmation and rescue",
-        "Queen proposes an editable DAG. The current revision and assignments must be confirmed before start. Existing nodes lock after start; Red Team and Repair append through versioned revisions.",
-        "IndexedDB stores wallet-scoped public metadata only. Free HTTPS agents enter the current browser catalog, paid agents require a platform test, and local Ollama agents remain owner-only and offline by default.",
-        "Cocos Creator 3.8.8 locally renders task desks, agents, status, and animation. It receives only sanitized OfficeSnapshotV1 data and returns only desk-selection events; owner-private data, downloads, wallet access, and execution authority remain at the React/AWS boundary.",
-        "View the local Cocos Gate ledger",
-        "V3 deposit and stake receipt"
+        "DAG confirmation and rescue"
       ],
       "chinese": []
     },
@@ -1302,6 +1337,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -1323,6 +1359,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "The requested Agent Market surface does not exist.",
@@ -1342,6 +1379,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -1380,6 +1418,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register agents, fund tasks, compare explainable matches, settle in YD, and trace every result through one request ID.",
@@ -1408,6 +1447,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "Personal AI Runtime v4.1",
         "已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
@@ -1464,6 +1504,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Find a qualified operator",
@@ -1513,6 +1554,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "浏览器只在 IndexedDB 中保存按钱包隔离的公开元数据；API Key、本地端口、模型文件与原始 Prompt 永远不会存入这里。"
       ],
@@ -1547,6 +1589,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register and maintain agents",
@@ -1570,6 +1613,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "面向本地训练 Runtime 与 DeepSeek、Kimi、Qwen、Zhipu Provider Agent 的工作流控制台。按顺序选择 Agent，再由主 Agent 编排最终答案。",
         "只需描述一次任务。Queen 规划 DAG、自动填充推荐 Agent、请求高风险确认，再通过一个用户流程执行独立 Judge 与 Final Arbiter Gate。",
@@ -1630,6 +1674,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Talk to real agents",
@@ -1675,6 +1720,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "修正 Manifest 身份后，已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
         "Digest: 2fa405e1244629244798cb4d7b8f4b3a5dd9e47aaf9ea7329e8dbe27bd32cffd",
@@ -1702,6 +1748,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified through the signed Agent Market owner runtime after the corrected manifest identity gate. Public callers remain blocked.",
@@ -1723,6 +1770,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -1752,6 +1800,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Open work with explicit settlement",
@@ -1779,6 +1828,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -1815,6 +1865,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Fund a verifiable task",
@@ -1837,6 +1888,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -1868,6 +1920,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Build a source-backed AI market brief",
@@ -1893,6 +1946,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "优先排序经过验证的公开市场 Agent。仅 Owner 可用的本地 Agent 对其 Owner 保持可见，但不会进入默认公开任务匹配。",
         "该 Agent Market Runtime/Provider 链路已有 Smoke 证据"
@@ -1925,6 +1979,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified public-market agents are ranked first. Owner-only local agents stay visible to their owner, but do not enter default public task matching.",
@@ -1950,9 +2005,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "虚拟办公室 / Web 原型",
@@ -1960,7 +2014,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -1980,13 +2033,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -2006,9 +2059,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "虚拟办公室 / Web 原型",
@@ -2016,7 +2068,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -2036,13 +2087,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -2062,6 +2113,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -2094,6 +2146,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "One view across work and settlement",
@@ -2117,6 +2170,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -2129,6 +2183,8 @@
         "解除质押",
         "领取测试收益",
         "重新检查 RPC 回执",
+        "刷新链上头寸",
+        "本次会话尚未回读链上头寸。",
         "连接 MetaMask 后才能准备钱包自有的质押 Intent。",
         "只有独立验证的回执与匹配事件才能更新头寸；计算器不是链上状态。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
@@ -2146,11 +2202,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Six percent. Linear. Test-only.",
         "Yield is floor-rounded per second and funded by a separate Sepolia test pool. It is not a real return.",
         "principal x 6% x time",
+        "No on-chain position has been read back in this session.",
         "Connect MetaMask to prepare a wallet-owned staking intent.",
         "Only an independently verified receipt and matching event can advance the position. The calculator is not chain state.",
         "Verifiable autonomous work on Ethereum Sepolia."
@@ -2169,28 +2227,28 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
-        "仲裁委员会",
-        "具备冲突检测的案件队列",
-        "结算边界强制三名有效委员、不可修改投票和两票裁决门槛。",
-        "演示数据",
-        "本页数据仅用于展示界面状态，不构成部署或交易证据。",
+        "平台最终仲裁",
+        "一位责任明确的最终裁决者",
+        "V3 只使用一个已配置的平台仲裁钱包。浏览器不能授予该角色，只有验证通过的 TaskResolved 回执才能推进案件状态。",
         "需要操作",
-        "冲突声明",
-        "打开证据包前先核对利益关系。",
-        "声明无冲突",
-        "提交不可变投票",
+        "冲突与证据审查",
+        "启用最终仲裁前，必须审查案件证据、关联关系与确定性 Gate。",
+        "完成审查",
+        "唯一角色 Gate",
+        "裁决 V3 任务",
         "任务资源 ID",
         "裁决方向",
         "发布方胜诉",
-        "提交 Sepolia 投票",
+        "在 Sepolia 上裁决",
         "重新检查 RPC 回执",
-        "委员会成员资格由服务端校验；浏览器不能授予该角色。",
-        "三席两票",
-        "只有合约收到两票有效且一致的投票后才形成裁决。",
-        "当前未加载经过外部验证的案件。",
+        "服务端必须同时验证已配置的平台仲裁钱包和 V3 Workflow Escrow 地址。",
+        "唯一最终仲裁者",
+        "最终裁决不是模型投票或多数表决。旧 V2 委员会投票仅作为历史记录，不能裁决 V3 任务。",
+        "当前未加载已获得外部验证的 V3 争议案件。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
       ]
     },
@@ -2206,15 +2264,17 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
-        "Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary.",
-        "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Review relationships before opening the evidence packet.",
-        "Cast an immutable vote",
-        "Committee membership is checked server-side; the browser cannot grant this role.",
-        "A ruling forms only when the contract reaches two valid aligned votes.",
-        "No externally verified case is loaded.",
+        "One accountable final ruling",
+        "V3 uses one configured platform arbiter wallet. The browser cannot grant the role, and only a verified TaskResolved receipt advances the case.",
+        "Conflict and evidence review",
+        "Review the case evidence, relationships, and deterministic Gates before enabling final arbitration.",
+        "Resolve the V3 task",
+        "The server requires the configured platform arbiter wallet and the V3 Workflow Escrow address.",
+        "The final ruling is not a model vote or majority poll. Legacy V2 committee voting remains historical and cannot resolve a V3 task.",
+        "No externally verified V3 dispute is loaded.",
         "Verifiable autonomous work on Ethereum Sepolia."
       ],
       "chinese": []
@@ -2231,6 +2291,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -2257,6 +2318,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Exactly three valid seats are assigned. Two aligned votes form a ruling; conflicts trigger replacement.",
@@ -2278,6 +2340,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -2311,6 +2374,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Observe first. Suggest second.",
@@ -2337,12 +2401,14 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
         "Agent Market 参考 Web3 课程 Evidence 标准作为检查表，但实现保持项目专用：优先 SSR、安全 Hydration、延迟加载大型 Evidence 媒体、明确显示离线或降级状态，并只记录脱敏原因码。",
         "浏览器信号、Edge SSR、React 降级模式、Health/API 超时、本地 Runtime、Provider API 与 Evidence 记录相互隔离，单个慢依赖不会拖垮页面。",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
+        "Evidence 边界： the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "采用方案 C：同步调用使用 Worker、Tunnel 与本地 Runtime；异步 Runner 控制面保留身份、心跳、Lease、结果与证据。",
         "Worker 验证访问并签名 Runtime 调用；Runtime 验证 HMAC 后调用 Ollama 或 Provider API，并以 SSE 流式返回。",
@@ -2361,7 +2427,7 @@
         "查看 Queen GraphQL Runtime Smoke 证据",
         "Queen 提出可编辑 DAG；用户确认当前版本与 Agent 分配后才能启动。启动后锁定已有节点，Red Team 与 Repair 只能通过递增版本追加。",
         "IndexedDB 只保存按钱包隔离的公开元数据。免费 HTTPS Agent 可进入当前浏览器目录；付费 Agent 必须通过平台测试；本地 Ollama Agent 默认仅 Owner 可见且离线。",
-        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV1 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
+        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV2 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
         "本地 V3 合约实现固定 6% 不退平台发布费、Agent 节点质押 ERC-721 凭证、唯一平台仲裁者和按结果退还或没收。现有 V2 Sepolia 合约未修改，V3 尚未部署。",
         "只允许当前任务节点的 Agent Input/Output Envelope 出入站，并执行 HMAC、时间戳、Nonce 防重放、大小限制、哈希与敏感信息扫描。这里只完成本地 Handler 与测试，没有创建或修改 AWS 资源。",
         "既有 V1 全链路证据保持有效。最新 AWS 控制台只读回读显示 UPDATE_COMPLETE、消费端 Disabled、ECS 运行任务 0、DLQ 0，工作队列保留 2 条消息；计算已暂停，但队列未清空。",
@@ -2386,18 +2452,18 @@
         "services/trainer/src/agent_market_trainer/train.py · services/trainer/src/agent_market_trainer/model_store.py · services/trainer/tests",
         "services/trainer/tests/test_train.py · services/trainer/tests/test_model_store.py · docs/evidence/testing/2026-08-21-phase2-local-gates.json",
         "T7 已通过 25 项专项测试、8 项 repository policy 测试与真实 PostgreSQL replay Gate 3/3。AWS 静态扫描可识别 option，并对 action 前未知 option fail-closed；V2 AWS 资源仍未部署。",
-        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs",
-        "apps/transaction-engine/src/recovery/replay.test.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.integration.test.ts · infra/aws/template.test.mjs · infra/aws/t7-repair.test.mjs · .tc-flow/reviews/T7.test-evidence.json · scripts/aws/inject-agent-market-cluster-retain.test.mjs · scripts/aws/deploy-agent-market.test.mjs · scripts/aws/pause-agent-market.test.mjs · scripts/validate-repository.test.mjs · docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs"
       ],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "交付证据 / DELIVERY EVIDENCE",
         "先有证据，再报进度",
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "完整功能操作录屏",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
+        "上一版完整功能录屏（待重录）",
+        "这段录屏保留为历史本地证据，但早于 V3 平台唯一仲裁者界面和最终 Cocos 角色尺寸，因此不能作为当前最终录屏。新的全流程录屏将在所有本地与外部 Gate 关闭后生成；未发送的链上交易仍不会被伪造成成功。",
+        "300.1 秒 · 1920×960 · H.264 视频 · 摘要 6b336d52…",
         "查看录屏事实台账",
-        "查看后续修复台账",
+        "查看 GraphQL 终态预演台账",
         "全路由、多视口、完整中文",
         "本地隔离 Chrome 检查 18 个路由、中文与英文两种语言，在 375、390、430、1440 与 1920 像素下验证深链状态、横向溢出、破图、空按钮和未翻译文案；共 180 个组合全部通过。",
         "390 像素移动端",
@@ -2427,6 +2493,8 @@
         "健康链路完整渲染；弱设备延后重媒体与动效；Runtime/API 超时显示本地降级卡片，绝不在无证据时标记成功。",
         "当前边界",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "网站实测指标",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
         "本地与 Provider Agent 共用一个签名网关",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "架构仲裁",
@@ -2436,10 +2504,7 @@
         "Queen 主导的 GraphQL 工作流",
         "/agent/graphql 是真实任务唯一的编排入口。LangGraph 执行状态图边界。Queen 提出可编辑 DAG；已接受的分配和当前版本必须在启动前确认，启动后锁定任务图。Judge 与 Final Arbiter 保持独立 Agent 和隔离上下文。",
         "风险与补救策略",
-        "GraphQL 保留全部强制阶段，以质量 Gate 约束成本优先排序，自动加入补救策略，并在高风险或 Judge 低分路径触发 Red Team 审查。",
-        "模型池排序",
-        "三选一候选池按访问范围、能力、License/Tag 元数据、健康状态与评分历史过滤，再按 modelTag 去重。零分新模型获得探索加成；低分旧模型进入淘汰。",
-        "仅 Owner 可用的本地 Agent"
+        "GraphQL 保留全部强制阶段，以质量 Gate 约束成本优先排序，自动加入补救策略，并在高风险或 Judge 低分路径触发 Red Team 审查。"
       ]
     },
     {
@@ -2454,12 +2519,15 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
-        "Recorded full-screen in external Chrome across MetaMask connection, Agent registration and maintenance, task draft validation and transaction preview, GraphQL DAG generation and manual reassignment, workflow start, dashboard, staking calculator, committee, read-only operations, and Evidence. The recording truthfully preserves the then non-terminal workflow and missing committee feedback. The code now adds terminal states, per-operation timeout, cancellation, and local committee acknowledgement, verified by a separate fix ledger. The original recording remains unedited; no chain transaction was sent, and it does not replace production, AWS, or Sepolia readback.",
+        "Previous full workflow recording (re-record pending)",
+        "This recording remains historical local evidence, but it predates the V3 sole-platform-arbiter UI and final Cocos character sizing, so it is not the current final recording. A new full-flow recording will be generated after all local and external gates close; unsent chain transactions will not be presented as successful.",
+        "300.1s · 1920×960 · H.264 · SHA-256 6b336d52…",
         "View recording fact ledger",
-        "View follow-up fix ledger",
+        "View GraphQL terminal preflight ledger",
         "All routes, all target viewports, complete Chinese UI",
         "An isolated local Chrome checked 18 routes in both Chinese and English at 375, 390, 430, 1440, and 1920 pixels for deep-link status, horizontal overflow, broken images, empty buttons, and untranslated prose. All 180 combinations passed.",
         "Home, agents, registration, live runtime, tasks, publishing, staking, committee, operations, and Evidence.",
@@ -2474,6 +2542,8 @@
         "Browser signals, Edge SSR, React degraded mode, health/API timeouts, local runtime, provider APIs, and Evidence records are separated so one slow dependency cannot collapse the page.",
         "Healthy paths render fully. Weak clients defer heavy media and motion. Runtime/API timeouts show local fallback cards and never mark work successful without proof.",
         "Implemented now: Edge SSR, hydration fallback, explicit offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "The v2 performance envelope records TTFB, FCP, LCP, CLS, INP, hydration duration and outcome, recoverable hydration errors, CSR fallback count, bounded-window FPS, P95 frame time, dropped-frame ratio, sample count, and sample duration. It carries only a UUIDv7 request ID, sanitized pathname, build version, and timestamp.",
+        "Evidence boundary: the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "Local and provider agents share one signed gateway",
         "The browser talks to the Cloudflare edge gateway. The gateway signs runtime requests; the local runtime calls Ollama, DeepSeek, Kimi, Qwen, or Zhipu server-side. Queen-led GraphQL uses LangGraph for state transitions, confirmation, locking, failure routing, and recovery while enforcing independent Judge and Final Arbiter roles. Ollama and provider keys are never exposed to the browser.",
         "C wins: synchronous chat uses Worker, Tunnel, and local runtime; async runner control plane keeps identity, heartbeat, lease, result, and evidence.",
@@ -2494,17 +2564,13 @@
         "View owner-trained model artifact evidenceView owner-trained Agent Market runtime smoke evidence",
         "View sanitized live-agent smoke evidence",
         "View Queen GraphQL runtime smoke evidence",
+        "View live distinct-model GraphQL terminal preflight",
         "View local validation evidence",
         "View important-node catalog preview evidence",
         "New workflow nodes and boundaries",
         "These statuses cover local code and tests only. Anything not deployed to Sepolia, AWS, or production is not presented as externally complete.",
         "Task category and tags are hard filters before selecting three distinct models from at most four candidates. Scores use a 90-day window, the latest 20 events, and 30-day exponential half-life; new agents start at 30.",
-        "DAG confirmation and rescue",
-        "Queen proposes an editable DAG. The current revision and assignments must be confirmed before start. Existing nodes lock after start; Red Team and Repair append through versioned revisions.",
-        "IndexedDB stores wallet-scoped public metadata only. Free HTTPS agents enter the current browser catalog, paid agents require a platform test, and local Ollama agents remain owner-only and offline by default.",
-        "Cocos Creator 3.8.8 locally renders task desks, agents, status, and animation. It receives only sanitized OfficeSnapshotV1 data and returns only desk-selection events; owner-private data, downloads, wallet access, and execution authority remain at the React/AWS boundary.",
-        "View the local Cocos Gate ledger",
-        "V3 deposit and stake receipt"
+        "DAG confirmation and rescue"
       ],
       "chinese": []
     },
@@ -2520,6 +2586,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -2541,6 +2608,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "The requested Agent Market surface does not exist.",
@@ -2560,6 +2628,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -2598,6 +2667,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register agents, fund tasks, compare explainable matches, settle in YD, and trace every result through one request ID.",
@@ -2626,6 +2696,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "Personal AI Runtime v4.1",
         "已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
@@ -2682,6 +2753,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Find a qualified operator",
@@ -2731,6 +2803,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "浏览器只在 IndexedDB 中保存按钱包隔离的公开元数据；API Key、本地端口、模型文件与原始 Prompt 永远不会存入这里。"
       ],
@@ -2765,6 +2838,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register and maintain agents",
@@ -2788,6 +2862,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "面向本地训练 Runtime 与 DeepSeek、Kimi、Qwen、Zhipu Provider Agent 的工作流控制台。按顺序选择 Agent，再由主 Agent 编排最终答案。",
         "只需描述一次任务。Queen 规划 DAG、自动填充推荐 Agent、请求高风险确认，再通过一个用户流程执行独立 Judge 与 Final Arbiter Gate。",
@@ -2848,6 +2923,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Talk to real agents",
@@ -2893,6 +2969,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "修正 Manifest 身份后，已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
         "Digest: 2fa405e1244629244798cb4d7b8f4b3a5dd9e47aaf9ea7329e8dbe27bd32cffd",
@@ -2920,6 +2997,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified through the signed Agent Market owner runtime after the corrected manifest identity gate. Public callers remain blocked.",
@@ -2941,6 +3019,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -2970,6 +3049,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Open work with explicit settlement",
@@ -2997,6 +3077,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -3033,6 +3114,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Fund a verifiable task",
@@ -3055,6 +3137,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -3086,6 +3169,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Build a source-backed AI market brief",
@@ -3111,6 +3195,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "优先排序经过验证的公开市场 Agent。仅 Owner 可用的本地 Agent 对其 Owner 保持可见，但不会进入默认公开任务匹配。",
         "该 Agent Market Runtime/Provider 链路已有 Smoke 证据"
@@ -3143,6 +3228,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified public-market agents are ranked first. Owner-only local agents stay visible to their owner, but do not enter default public task matching.",
@@ -3168,9 +3254,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "虚拟办公室 / Web 原型",
@@ -3178,7 +3263,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -3198,13 +3282,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -3224,9 +3308,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "虚拟办公室 / Web 原型",
@@ -3234,7 +3317,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -3254,13 +3336,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -3280,6 +3362,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -3312,6 +3395,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "One view across work and settlement",
@@ -3335,6 +3419,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -3347,6 +3432,8 @@
         "解除质押",
         "领取测试收益",
         "重新检查 RPC 回执",
+        "刷新链上头寸",
+        "本次会话尚未回读链上头寸。",
         "连接 MetaMask 后才能准备钱包自有的质押 Intent。",
         "只有独立验证的回执与匹配事件才能更新头寸；计算器不是链上状态。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
@@ -3364,11 +3451,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Six percent. Linear. Test-only.",
         "Yield is floor-rounded per second and funded by a separate Sepolia test pool. It is not a real return.",
         "principal x 6% x time",
+        "No on-chain position has been read back in this session.",
         "Connect MetaMask to prepare a wallet-owned staking intent.",
         "Only an independently verified receipt and matching event can advance the position. The calculator is not chain state.",
         "Verifiable autonomous work on Ethereum Sepolia."
@@ -3387,28 +3476,28 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
-        "仲裁委员会",
-        "具备冲突检测的案件队列",
-        "结算边界强制三名有效委员、不可修改投票和两票裁决门槛。",
-        "演示数据",
-        "本页数据仅用于展示界面状态，不构成部署或交易证据。",
+        "平台最终仲裁",
+        "一位责任明确的最终裁决者",
+        "V3 只使用一个已配置的平台仲裁钱包。浏览器不能授予该角色，只有验证通过的 TaskResolved 回执才能推进案件状态。",
         "需要操作",
-        "冲突声明",
-        "打开证据包前先核对利益关系。",
-        "声明无冲突",
-        "提交不可变投票",
+        "冲突与证据审查",
+        "启用最终仲裁前，必须审查案件证据、关联关系与确定性 Gate。",
+        "完成审查",
+        "唯一角色 Gate",
+        "裁决 V3 任务",
         "任务资源 ID",
         "裁决方向",
         "发布方胜诉",
-        "提交 Sepolia 投票",
+        "在 Sepolia 上裁决",
         "重新检查 RPC 回执",
-        "委员会成员资格由服务端校验；浏览器不能授予该角色。",
-        "三席两票",
-        "只有合约收到两票有效且一致的投票后才形成裁决。",
-        "当前未加载经过外部验证的案件。",
+        "服务端必须同时验证已配置的平台仲裁钱包和 V3 Workflow Escrow 地址。",
+        "唯一最终仲裁者",
+        "最终裁决不是模型投票或多数表决。旧 V2 委员会投票仅作为历史记录，不能裁决 V3 任务。",
+        "当前未加载已获得外部验证的 V3 争议案件。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
       ]
     },
@@ -3424,15 +3513,17 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
-        "Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary.",
-        "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Review relationships before opening the evidence packet.",
-        "Cast an immutable vote",
-        "Committee membership is checked server-side; the browser cannot grant this role.",
-        "A ruling forms only when the contract reaches two valid aligned votes.",
-        "No externally verified case is loaded.",
+        "One accountable final ruling",
+        "V3 uses one configured platform arbiter wallet. The browser cannot grant the role, and only a verified TaskResolved receipt advances the case.",
+        "Conflict and evidence review",
+        "Review the case evidence, relationships, and deterministic Gates before enabling final arbitration.",
+        "Resolve the V3 task",
+        "The server requires the configured platform arbiter wallet and the V3 Workflow Escrow address.",
+        "The final ruling is not a model vote or majority poll. Legacy V2 committee voting remains historical and cannot resolve a V3 task.",
+        "No externally verified V3 dispute is loaded.",
         "Verifiable autonomous work on Ethereum Sepolia."
       ],
       "chinese": []
@@ -3449,6 +3540,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -3475,6 +3567,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Exactly three valid seats are assigned. Two aligned votes form a ruling; conflicts trigger replacement.",
@@ -3496,6 +3589,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -3529,6 +3623,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Observe first. Suggest second.",
@@ -3555,12 +3650,14 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
         "Agent Market 参考 Web3 课程 Evidence 标准作为检查表，但实现保持项目专用：优先 SSR、安全 Hydration、延迟加载大型 Evidence 媒体、明确显示离线或降级状态，并只记录脱敏原因码。",
         "浏览器信号、Edge SSR、React 降级模式、Health/API 超时、本地 Runtime、Provider API 与 Evidence 记录相互隔离，单个慢依赖不会拖垮页面。",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
+        "Evidence 边界： the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "采用方案 C：同步调用使用 Worker、Tunnel 与本地 Runtime；异步 Runner 控制面保留身份、心跳、Lease、结果与证据。",
         "Worker 验证访问并签名 Runtime 调用；Runtime 验证 HMAC 后调用 Ollama 或 Provider API，并以 SSE 流式返回。",
@@ -3579,7 +3676,7 @@
         "查看 Queen GraphQL Runtime Smoke 证据",
         "Queen 提出可编辑 DAG；用户确认当前版本与 Agent 分配后才能启动。启动后锁定已有节点，Red Team 与 Repair 只能通过递增版本追加。",
         "IndexedDB 只保存按钱包隔离的公开元数据。免费 HTTPS Agent 可进入当前浏览器目录；付费 Agent 必须通过平台测试；本地 Ollama Agent 默认仅 Owner 可见且离线。",
-        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV1 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
+        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV2 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
         "本地 V3 合约实现固定 6% 不退平台发布费、Agent 节点质押 ERC-721 凭证、唯一平台仲裁者和按结果退还或没收。现有 V2 Sepolia 合约未修改，V3 尚未部署。",
         "只允许当前任务节点的 Agent Input/Output Envelope 出入站，并执行 HMAC、时间戳、Nonce 防重放、大小限制、哈希与敏感信息扫描。这里只完成本地 Handler 与测试，没有创建或修改 AWS 资源。",
         "既有 V1 全链路证据保持有效。最新 AWS 控制台只读回读显示 UPDATE_COMPLETE、消费端 Disabled、ECS 运行任务 0、DLQ 0，工作队列保留 2 条消息；计算已暂停，但队列未清空。",
@@ -3604,18 +3701,18 @@
         "services/trainer/src/agent_market_trainer/train.py · services/trainer/src/agent_market_trainer/model_store.py · services/trainer/tests",
         "services/trainer/tests/test_train.py · services/trainer/tests/test_model_store.py · docs/evidence/testing/2026-08-21-phase2-local-gates.json",
         "T7 已通过 25 项专项测试、8 项 repository policy 测试与真实 PostgreSQL replay Gate 3/3。AWS 静态扫描可识别 option，并对 action 前未知 option fail-closed；V2 AWS 资源仍未部署。",
-        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs",
-        "apps/transaction-engine/src/recovery/replay.test.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.integration.test.ts · infra/aws/template.test.mjs · infra/aws/t7-repair.test.mjs · .tc-flow/reviews/T7.test-evidence.json · scripts/aws/inject-agent-market-cluster-retain.test.mjs · scripts/aws/deploy-agent-market.test.mjs · scripts/aws/pause-agent-market.test.mjs · scripts/validate-repository.test.mjs · docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs"
       ],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "交付证据 / DELIVERY EVIDENCE",
         "先有证据，再报进度",
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "完整功能操作录屏",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
+        "上一版完整功能录屏（待重录）",
+        "这段录屏保留为历史本地证据，但早于 V3 平台唯一仲裁者界面和最终 Cocos 角色尺寸，因此不能作为当前最终录屏。新的全流程录屏将在所有本地与外部 Gate 关闭后生成；未发送的链上交易仍不会被伪造成成功。",
+        "300.1 秒 · 1920×960 · H.264 视频 · 摘要 6b336d52…",
         "查看录屏事实台账",
-        "查看后续修复台账",
+        "查看 GraphQL 终态预演台账",
         "全路由、多视口、完整中文",
         "本地隔离 Chrome 检查 18 个路由、中文与英文两种语言，在 375、390、430、1440 与 1920 像素下验证深链状态、横向溢出、破图、空按钮和未翻译文案；共 180 个组合全部通过。",
         "390 像素移动端",
@@ -3645,6 +3742,8 @@
         "健康链路完整渲染；弱设备延后重媒体与动效；Runtime/API 超时显示本地降级卡片，绝不在无证据时标记成功。",
         "当前边界",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "网站实测指标",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
         "本地与 Provider Agent 共用一个签名网关",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "架构仲裁",
@@ -3654,10 +3753,7 @@
         "Queen 主导的 GraphQL 工作流",
         "/agent/graphql 是真实任务唯一的编排入口。LangGraph 执行状态图边界。Queen 提出可编辑 DAG；已接受的分配和当前版本必须在启动前确认，启动后锁定任务图。Judge 与 Final Arbiter 保持独立 Agent 和隔离上下文。",
         "风险与补救策略",
-        "GraphQL 保留全部强制阶段，以质量 Gate 约束成本优先排序，自动加入补救策略，并在高风险或 Judge 低分路径触发 Red Team 审查。",
-        "模型池排序",
-        "三选一候选池按访问范围、能力、License/Tag 元数据、健康状态与评分历史过滤，再按 modelTag 去重。零分新模型获得探索加成；低分旧模型进入淘汰。",
-        "仅 Owner 可用的本地 Agent"
+        "GraphQL 保留全部强制阶段，以质量 Gate 约束成本优先排序，自动加入补救策略，并在高风险或 Judge 低分路径触发 Red Team 审查。"
       ]
     },
     {
@@ -3672,12 +3768,15 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
-        "Recorded full-screen in external Chrome across MetaMask connection, Agent registration and maintenance, task draft validation and transaction preview, GraphQL DAG generation and manual reassignment, workflow start, dashboard, staking calculator, committee, read-only operations, and Evidence. The recording truthfully preserves the then non-terminal workflow and missing committee feedback. The code now adds terminal states, per-operation timeout, cancellation, and local committee acknowledgement, verified by a separate fix ledger. The original recording remains unedited; no chain transaction was sent, and it does not replace production, AWS, or Sepolia readback.",
+        "Previous full workflow recording (re-record pending)",
+        "This recording remains historical local evidence, but it predates the V3 sole-platform-arbiter UI and final Cocos character sizing, so it is not the current final recording. A new full-flow recording will be generated after all local and external gates close; unsent chain transactions will not be presented as successful.",
+        "300.1s · 1920×960 · H.264 · SHA-256 6b336d52…",
         "View recording fact ledger",
-        "View follow-up fix ledger",
+        "View GraphQL terminal preflight ledger",
         "All routes, all target viewports, complete Chinese UI",
         "An isolated local Chrome checked 18 routes in both Chinese and English at 375, 390, 430, 1440, and 1920 pixels for deep-link status, horizontal overflow, broken images, empty buttons, and untranslated prose. All 180 combinations passed.",
         "Home, agents, registration, live runtime, tasks, publishing, staking, committee, operations, and Evidence.",
@@ -3692,6 +3791,8 @@
         "Browser signals, Edge SSR, React degraded mode, health/API timeouts, local runtime, provider APIs, and Evidence records are separated so one slow dependency cannot collapse the page.",
         "Healthy paths render fully. Weak clients defer heavy media and motion. Runtime/API timeouts show local fallback cards and never mark work successful without proof.",
         "Implemented now: Edge SSR, hydration fallback, explicit offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "The v2 performance envelope records TTFB, FCP, LCP, CLS, INP, hydration duration and outcome, recoverable hydration errors, CSR fallback count, bounded-window FPS, P95 frame time, dropped-frame ratio, sample count, and sample duration. It carries only a UUIDv7 request ID, sanitized pathname, build version, and timestamp.",
+        "Evidence boundary: the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "Local and provider agents share one signed gateway",
         "The browser talks to the Cloudflare edge gateway. The gateway signs runtime requests; the local runtime calls Ollama, DeepSeek, Kimi, Qwen, or Zhipu server-side. Queen-led GraphQL uses LangGraph for state transitions, confirmation, locking, failure routing, and recovery while enforcing independent Judge and Final Arbiter roles. Ollama and provider keys are never exposed to the browser.",
         "C wins: synchronous chat uses Worker, Tunnel, and local runtime; async runner control plane keeps identity, heartbeat, lease, result, and evidence.",
@@ -3712,17 +3813,13 @@
         "View owner-trained model artifact evidenceView owner-trained Agent Market runtime smoke evidence",
         "View sanitized live-agent smoke evidence",
         "View Queen GraphQL runtime smoke evidence",
+        "View live distinct-model GraphQL terminal preflight",
         "View local validation evidence",
         "View important-node catalog preview evidence",
         "New workflow nodes and boundaries",
         "These statuses cover local code and tests only. Anything not deployed to Sepolia, AWS, or production is not presented as externally complete.",
         "Task category and tags are hard filters before selecting three distinct models from at most four candidates. Scores use a 90-day window, the latest 20 events, and 30-day exponential half-life; new agents start at 30.",
-        "DAG confirmation and rescue",
-        "Queen proposes an editable DAG. The current revision and assignments must be confirmed before start. Existing nodes lock after start; Red Team and Repair append through versioned revisions.",
-        "IndexedDB stores wallet-scoped public metadata only. Free HTTPS agents enter the current browser catalog, paid agents require a platform test, and local Ollama agents remain owner-only and offline by default.",
-        "Cocos Creator 3.8.8 locally renders task desks, agents, status, and animation. It receives only sanitized OfficeSnapshotV1 data and returns only desk-selection events; owner-private data, downloads, wallet access, and execution authority remain at the React/AWS boundary.",
-        "View the local Cocos Gate ledger",
-        "V3 deposit and stake receipt"
+        "DAG confirmation and rescue"
       ],
       "chinese": []
     },
@@ -3738,6 +3835,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -3759,6 +3857,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "The requested Agent Market surface does not exist.",
@@ -3778,6 +3877,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -3817,6 +3917,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register agents, fund tasks, compare explainable matches, settle in YD, and trace every result through one request ID.",
@@ -3845,6 +3946,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "Personal AI Runtime v4.1",
         "已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
@@ -3902,6 +4004,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Find a qualified operator",
@@ -3951,6 +4054,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "浏览器只在 IndexedDB 中保存按钱包隔离的公开元数据；API Key、本地端口、模型文件与原始 Prompt 永远不会存入这里。"
       ],
@@ -3986,6 +4090,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register and maintain agents",
@@ -4009,6 +4114,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "面向本地训练 Runtime 与 DeepSeek、Kimi、Qwen、Zhipu Provider Agent 的工作流控制台。按顺序选择 Agent，再由主 Agent 编排最终答案。",
         "只需描述一次任务。Queen 规划 DAG、自动填充推荐 Agent、请求高风险确认，再通过一个用户流程执行独立 Judge 与 Final Arbiter Gate。",
@@ -4070,6 +4176,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Talk to real agents",
@@ -4115,6 +4222,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "修正 Manifest 身份后，已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
         "Digest: 2fa405e1244629244798cb4d7b8f4b3a5dd9e47aaf9ea7329e8dbe27bd32cffd",
@@ -4143,6 +4251,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified through the signed Agent Market owner runtime after the corrected manifest identity gate. Public callers remain blocked.",
@@ -4164,6 +4273,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4194,6 +4304,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Open work with explicit settlement",
@@ -4221,6 +4332,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4258,6 +4370,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Fund a verifiable task",
@@ -4280,6 +4393,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4312,6 +4426,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Build a source-backed AI market brief",
@@ -4337,6 +4452,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "优先排序经过验证的公开市场 Agent。仅 Owner 可用的本地 Agent 对其 Owner 保持可见，但不会进入默认公开任务匹配。",
         "该 Agent Market Runtime/Provider 链路已有 Smoke 证据"
@@ -4370,6 +4486,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified public-market agents are ranked first. Owner-only local agents stay visible to their owner, but do not enter default public task matching.",
@@ -4395,9 +4512,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "仲裁委员会",
@@ -4406,7 +4522,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -4426,13 +4541,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -4452,9 +4567,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "仲裁委员会",
@@ -4463,7 +4577,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -4483,13 +4596,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -4509,6 +4622,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4542,6 +4656,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "One view across work and settlement",
@@ -4565,6 +4680,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4578,6 +4694,8 @@
         "解除质押",
         "领取测试收益",
         "重新检查 RPC 回执",
+        "刷新链上头寸",
+        "本次会话尚未回读链上头寸。",
         "连接 MetaMask 后才能准备钱包自有的质押 Intent。",
         "只有独立验证的回执与匹配事件才能更新头寸；计算器不是链上状态。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
@@ -4595,11 +4713,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Six percent. Linear. Test-only.",
         "Yield is floor-rounded per second and funded by a separate Sepolia test pool. It is not a real return.",
         "principal x 6% x time",
+        "No on-chain position has been read back in this session.",
         "Connect MetaMask to prepare a wallet-owned staking intent.",
         "Only an independently verified receipt and matching event can advance the position. The calculator is not chain state.",
         "Verifiable autonomous work on Ethereum Sepolia."
@@ -4618,28 +4738,29 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "仲裁委员会",
-        "具备冲突检测的案件队列",
-        "结算边界强制三名有效委员、不可修改投票和两票裁决门槛。",
-        "演示数据",
-        "本页数据仅用于展示界面状态，不构成部署或交易证据。",
+        "平台最终仲裁",
+        "一位责任明确的最终裁决者",
+        "V3 只使用一个已配置的平台仲裁钱包。浏览器不能授予该角色，只有验证通过的 TaskResolved 回执才能推进案件状态。",
         "需要操作",
-        "冲突声明",
-        "打开证据包前先核对利益关系。",
-        "声明无冲突",
-        "提交不可变投票",
+        "冲突与证据审查",
+        "启用最终仲裁前，必须审查案件证据、关联关系与确定性 Gate。",
+        "完成审查",
+        "唯一角色 Gate",
+        "裁决 V3 任务",
         "任务资源 ID",
         "裁决方向",
         "发布方胜诉",
-        "提交 Sepolia 投票",
+        "在 Sepolia 上裁决",
         "重新检查 RPC 回执",
-        "委员会成员资格由服务端校验；浏览器不能授予该角色。",
-        "三席两票",
-        "只有合约收到两票有效且一致的投票后才形成裁决。",
-        "当前未加载经过外部验证的案件。",
+        "服务端必须同时验证已配置的平台仲裁钱包和 V3 Workflow Escrow 地址。",
+        "唯一最终仲裁者",
+        "最终裁决不是模型投票或多数表决。旧 V2 委员会投票仅作为历史记录，不能裁决 V3 任务。",
+        "当前未加载已获得外部验证的 V3 争议案件。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
       ]
     },
@@ -4655,15 +4776,17 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
-        "Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary.",
-        "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Review relationships before opening the evidence packet.",
-        "Cast an immutable vote",
-        "Committee membership is checked server-side; the browser cannot grant this role.",
-        "A ruling forms only when the contract reaches two valid aligned votes.",
-        "No externally verified case is loaded.",
+        "One accountable final ruling",
+        "V3 uses one configured platform arbiter wallet. The browser cannot grant the role, and only a verified TaskResolved receipt advances the case.",
+        "Conflict and evidence review",
+        "Review the case evidence, relationships, and deterministic Gates before enabling final arbitration.",
+        "Resolve the V3 task",
+        "The server requires the configured platform arbiter wallet and the V3 Workflow Escrow address.",
+        "The final ruling is not a model vote or majority poll. Legacy V2 committee voting remains historical and cannot resolve a V3 task.",
+        "No externally verified V3 dispute is loaded.",
         "Verifiable autonomous work on Ethereum Sepolia."
       ],
       "chinese": []
@@ -4680,6 +4803,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4707,6 +4831,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Exactly three valid seats are assigned. Two aligned votes form a ruling; conflicts trigger replacement.",
@@ -4728,6 +4853,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4762,6 +4888,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Observe first. Suggest second.",
@@ -4788,12 +4915,14 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
         "Agent Market 参考 Web3 课程 Evidence 标准作为检查表，但实现保持项目专用：优先 SSR、安全 Hydration、延迟加载大型 Evidence 媒体、明确显示离线或降级状态，并只记录脱敏原因码。",
         "浏览器信号、Edge SSR、React 降级模式、Health/API 超时、本地 Runtime、Provider API 与 Evidence 记录相互隔离，单个慢依赖不会拖垮页面。",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
+        "Evidence 边界： the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "采用方案 C：同步调用使用 Worker、Tunnel 与本地 Runtime；异步 Runner 控制面保留身份、心跳、Lease、结果与证据。",
         "Worker 验证访问并签名 Runtime 调用；Runtime 验证 HMAC 后调用 Ollama 或 Provider API，并以 SSE 流式返回。",
@@ -4812,7 +4941,7 @@
         "查看 Queen GraphQL Runtime Smoke 证据",
         "Queen 提出可编辑 DAG；用户确认当前版本与 Agent 分配后才能启动。启动后锁定已有节点，Red Team 与 Repair 只能通过递增版本追加。",
         "IndexedDB 只保存按钱包隔离的公开元数据。免费 HTTPS Agent 可进入当前浏览器目录；付费 Agent 必须通过平台测试；本地 Ollama Agent 默认仅 Owner 可见且离线。",
-        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV1 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
+        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV2 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
         "本地 V3 合约实现固定 6% 不退平台发布费、Agent 节点质押 ERC-721 凭证、唯一平台仲裁者和按结果退还或没收。现有 V2 Sepolia 合约未修改，V3 尚未部署。",
         "只允许当前任务节点的 Agent Input/Output Envelope 出入站，并执行 HMAC、时间戳、Nonce 防重放、大小限制、哈希与敏感信息扫描。这里只完成本地 Handler 与测试，没有创建或修改 AWS 资源。",
         "既有 V1 全链路证据保持有效。最新 AWS 控制台只读回读显示 UPDATE_COMPLETE、消费端 Disabled、ECS 运行任务 0、DLQ 0，工作队列保留 2 条消息；计算已暂停，但队列未清空。",
@@ -4837,8 +4966,7 @@
         "services/trainer/src/agent_market_trainer/train.py · services/trainer/src/agent_market_trainer/model_store.py · services/trainer/tests",
         "services/trainer/tests/test_train.py · services/trainer/tests/test_model_store.py · docs/evidence/testing/2026-08-21-phase2-local-gates.json",
         "T7 已通过 25 项专项测试、8 项 repository policy 测试与真实 PostgreSQL replay Gate 3/3。AWS 静态扫描可识别 option，并对 action 前未知 option fail-closed；V2 AWS 资源仍未部署。",
-        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs",
-        "apps/transaction-engine/src/recovery/replay.test.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.integration.test.ts · infra/aws/template.test.mjs · infra/aws/t7-repair.test.mjs · .tc-flow/reviews/T7.test-evidence.json · scripts/aws/inject-agent-market-cluster-retain.test.mjs · scripts/aws/deploy-agent-market.test.mjs · scripts/aws/pause-agent-market.test.mjs · scripts/validate-repository.test.mjs · docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs"
       ],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4846,10 +4974,11 @@
         "交付证据 / DELIVERY EVIDENCE",
         "先有证据，再报进度",
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "完整功能操作录屏",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
+        "上一版完整功能录屏（待重录）",
+        "这段录屏保留为历史本地证据，但早于 V3 平台唯一仲裁者界面和最终 Cocos 角色尺寸，因此不能作为当前最终录屏。新的全流程录屏将在所有本地与外部 Gate 关闭后生成；未发送的链上交易仍不会被伪造成成功。",
+        "300.1 秒 · 1920×960 · H.264 视频 · 摘要 6b336d52…",
         "查看录屏事实台账",
-        "查看后续修复台账",
+        "查看 GraphQL 终态预演台账",
         "全路由、多视口、完整中文",
         "本地隔离 Chrome 检查 18 个路由、中文与英文两种语言，在 375、390、430、1440 与 1920 像素下验证深链状态、横向溢出、破图、空按钮和未翻译文案；共 180 个组合全部通过。",
         "390 像素移动端",
@@ -4879,6 +5008,8 @@
         "健康链路完整渲染；弱设备延后重媒体与动效；Runtime/API 超时显示本地降级卡片，绝不在无证据时标记成功。",
         "当前边界",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "网站实测指标",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
         "本地与 Provider Agent 共用一个签名网关",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "架构仲裁",
@@ -4887,10 +5018,7 @@
         "Worker 验证访问并签名 Runtime 调用；Runtime 验证 HMAC 后调用 Ollama 或 Provider API，并以 SSE 流式返回。",
         "Queen 主导的 GraphQL 工作流",
         "/agent/graphql 是真实任务唯一的编排入口。LangGraph 执行状态图边界。Queen 提出可编辑 DAG；已接受的分配和当前版本必须在启动前确认，启动后锁定任务图。Judge 与 Final Arbiter 保持独立 Agent 和隔离上下文。",
-        "风险与补救策略",
-        "GraphQL 保留全部强制阶段，以质量 Gate 约束成本优先排序，自动加入补救策略，并在高风险或 Judge 低分路径触发 Red Team 审查。",
-        "模型池排序",
-        "三选一候选池按访问范围、能力、License/Tag 元数据、健康状态与评分历史过滤，再按 modelTag 去重。零分新模型获得探索加成；低分旧模型进入淘汰。"
+        "风险与补救策略"
       ]
     },
     {
@@ -4905,12 +5033,15 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
-        "Recorded full-screen in external Chrome across MetaMask connection, Agent registration and maintenance, task draft validation and transaction preview, GraphQL DAG generation and manual reassignment, workflow start, dashboard, staking calculator, committee, read-only operations, and Evidence. The recording truthfully preserves the then non-terminal workflow and missing committee feedback. The code now adds terminal states, per-operation timeout, cancellation, and local committee acknowledgement, verified by a separate fix ledger. The original recording remains unedited; no chain transaction was sent, and it does not replace production, AWS, or Sepolia readback.",
+        "Previous full workflow recording (re-record pending)",
+        "This recording remains historical local evidence, but it predates the V3 sole-platform-arbiter UI and final Cocos character sizing, so it is not the current final recording. A new full-flow recording will be generated after all local and external gates close; unsent chain transactions will not be presented as successful.",
+        "300.1s · 1920×960 · H.264 · SHA-256 6b336d52…",
         "View recording fact ledger",
-        "View follow-up fix ledger",
+        "View GraphQL terminal preflight ledger",
         "All routes, all target viewports, complete Chinese UI",
         "An isolated local Chrome checked 18 routes in both Chinese and English at 375, 390, 430, 1440, and 1920 pixels for deep-link status, horizontal overflow, broken images, empty buttons, and untranslated prose. All 180 combinations passed.",
         "Home, agents, registration, live runtime, tasks, publishing, staking, committee, operations, and Evidence.",
@@ -4925,6 +5056,8 @@
         "Browser signals, Edge SSR, React degraded mode, health/API timeouts, local runtime, provider APIs, and Evidence records are separated so one slow dependency cannot collapse the page.",
         "Healthy paths render fully. Weak clients defer heavy media and motion. Runtime/API timeouts show local fallback cards and never mark work successful without proof.",
         "Implemented now: Edge SSR, hydration fallback, explicit offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "The v2 performance envelope records TTFB, FCP, LCP, CLS, INP, hydration duration and outcome, recoverable hydration errors, CSR fallback count, bounded-window FPS, P95 frame time, dropped-frame ratio, sample count, and sample duration. It carries only a UUIDv7 request ID, sanitized pathname, build version, and timestamp.",
+        "Evidence boundary: the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "Local and provider agents share one signed gateway",
         "The browser talks to the Cloudflare edge gateway. The gateway signs runtime requests; the local runtime calls Ollama, DeepSeek, Kimi, Qwen, or Zhipu server-side. Queen-led GraphQL uses LangGraph for state transitions, confirmation, locking, failure routing, and recovery while enforcing independent Judge and Final Arbiter roles. Ollama and provider keys are never exposed to the browser.",
         "C wins: synchronous chat uses Worker, Tunnel, and local runtime; async runner control plane keeps identity, heartbeat, lease, result, and evidence.",
@@ -4945,17 +5078,13 @@
         "View owner-trained model artifact evidenceView owner-trained Agent Market runtime smoke evidence",
         "View sanitized live-agent smoke evidence",
         "View Queen GraphQL runtime smoke evidence",
+        "View live distinct-model GraphQL terminal preflight",
         "View local validation evidence",
         "View important-node catalog preview evidence",
         "New workflow nodes and boundaries",
         "These statuses cover local code and tests only. Anything not deployed to Sepolia, AWS, or production is not presented as externally complete.",
         "Task category and tags are hard filters before selecting three distinct models from at most four candidates. Scores use a 90-day window, the latest 20 events, and 30-day exponential half-life; new agents start at 30.",
-        "DAG confirmation and rescue",
-        "Queen proposes an editable DAG. The current revision and assignments must be confirmed before start. Existing nodes lock after start; Red Team and Repair append through versioned revisions.",
-        "IndexedDB stores wallet-scoped public metadata only. Free HTTPS agents enter the current browser catalog, paid agents require a platform test, and local Ollama agents remain owner-only and offline by default.",
-        "Cocos Creator 3.8.8 locally renders task desks, agents, status, and animation. It receives only sanitized OfficeSnapshotV1 data and returns only desk-selection events; owner-private data, downloads, wallet access, and execution authority remain at the React/AWS boundary.",
-        "View the local Cocos Gate ledger",
-        "V3 deposit and stake receipt"
+        "DAG confirmation and rescue"
       ],
       "chinese": []
     },
@@ -4971,6 +5100,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -4993,6 +5123,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "The requested Agent Market surface does not exist.",
@@ -5012,6 +5143,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -5051,6 +5183,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register agents, fund tasks, compare explainable matches, settle in YD, and trace every result through one request ID.",
@@ -5079,6 +5212,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "Personal AI Runtime v4.1",
         "已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
@@ -5136,6 +5270,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Find a qualified operator",
@@ -5185,6 +5320,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "浏览器只在 IndexedDB 中保存按钱包隔离的公开元数据；API Key、本地端口、模型文件与原始 Prompt 永远不会存入这里。"
       ],
@@ -5220,6 +5356,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Register and maintain agents",
@@ -5243,6 +5380,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "面向本地训练 Runtime 与 DeepSeek、Kimi、Qwen、Zhipu Provider Agent 的工作流控制台。按顺序选择 Agent，再由主 Agent 编排最终答案。",
         "只需描述一次任务。Queen 规划 DAG、自动填充推荐 Agent、请求高风险确认，再通过一个用户流程执行独立 Judge 与 Final Arbiter Gate。",
@@ -5304,6 +5442,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Talk to real agents",
@@ -5349,6 +5488,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "修正 Manifest 身份后，已通过 Agent Market 签名 Owner Runtime 验证；公开调用仍被阻止。",
         "Digest: 2fa405e1244629244798cb4d7b8f4b3a5dd9e47aaf9ea7329e8dbe27bd32cffd",
@@ -5377,6 +5517,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified through the signed Agent Market owner runtime after the corrected manifest identity gate. Public callers remain blocked.",
@@ -5398,6 +5539,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -5428,6 +5570,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Open work with explicit settlement",
@@ -5455,6 +5598,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -5492,6 +5636,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Fund a verifiable task",
@@ -5514,6 +5659,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -5546,6 +5692,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Build a source-backed AI market brief",
@@ -5571,6 +5718,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "优先排序经过验证的公开市场 Agent。仅 Owner 可用的本地 Agent 对其 Owner 保持可见，但不会进入默认公开任务匹配。",
         "该 Agent Market Runtime/Provider 链路已有 Smoke 证据"
@@ -5604,6 +5752,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Verified public-market agents are ranked first. Owner-only local agents stay visible to their owner, but do not enter default public task matching.",
@@ -5629,9 +5778,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "仲裁委员会",
@@ -5640,7 +5788,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -5660,13 +5807,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -5686,9 +5833,8 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
-      "english": [
-        "Build the Agent Market workflow"
-      ],
+      "cocosOfficeReady": true,
+      "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "仲裁委员会",
@@ -5697,7 +5843,6 @@
         "这里只展示进行中和已完成的项目。Cocos 负责渲染社交办公室；React 则把身份、私有节点数据与结果下载严格限制在已验证的 Owner 边界内。",
         "演示数据",
         "本页数据仅用于展示界面状态，不构成部署或交易证据。",
-        "Cocos 办公室正在加载；已验证的 Web 办公室仍可使用。",
         "构建 Agent Market 工作流",
         "访客模式",
         "访客只能看到公开桌面状态、Tags、角色与在线动效。节点输入、输出与结果下载会在渲染前移除。",
@@ -5717,13 +5862,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "VIRTUAL OFFICE / WEB PROTOTYPE",
         "One task, one desk",
         "Only in-progress and completed projects appear here. Cocos renders the social office while React keeps identity, private node data, and downloads behind the verified owner boundary.",
         "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Cocos office is loading. The verified Web office remains available.",
         "Build the Agent Market workflow",
         "Only public desk status, tags, roles, and presence animations are visible. Node input/output and result downloads are removed before rendering.",
         "Open public task profile",
@@ -5743,6 +5888,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -5776,6 +5922,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "One view across work and settlement",
@@ -5799,6 +5946,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -5812,6 +5960,8 @@
         "解除质押",
         "领取测试收益",
         "重新检查 RPC 回执",
+        "刷新链上头寸",
+        "本次会话尚未回读链上头寸。",
         "连接 MetaMask 后才能准备钱包自有的质押 Intent。",
         "只有独立验证的回执与匹配事件才能更新头寸；计算器不是链上状态。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
@@ -5829,11 +5979,13 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Six percent. Linear. Test-only.",
         "Yield is floor-rounded per second and funded by a separate Sepolia test pool. It is not a real return.",
         "principal x 6% x time",
+        "No on-chain position has been read back in this session.",
         "Connect MetaMask to prepare a wallet-owned staking intent.",
         "Only an independently verified receipt and matching event can advance the position. The calculator is not chain state.",
         "Verifiable autonomous work on Ethereum Sepolia."
@@ -5852,28 +6004,29 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
         "仲裁委员会",
-        "具备冲突检测的案件队列",
-        "结算边界强制三名有效委员、不可修改投票和两票裁决门槛。",
-        "演示数据",
-        "本页数据仅用于展示界面状态，不构成部署或交易证据。",
+        "平台最终仲裁",
+        "一位责任明确的最终裁决者",
+        "V3 只使用一个已配置的平台仲裁钱包。浏览器不能授予该角色，只有验证通过的 TaskResolved 回执才能推进案件状态。",
         "需要操作",
-        "冲突声明",
-        "打开证据包前先核对利益关系。",
-        "声明无冲突",
-        "提交不可变投票",
+        "冲突与证据审查",
+        "启用最终仲裁前，必须审查案件证据、关联关系与确定性 Gate。",
+        "完成审查",
+        "唯一角色 Gate",
+        "裁决 V3 任务",
         "任务资源 ID",
         "裁决方向",
         "发布方胜诉",
-        "提交 Sepolia 投票",
+        "在 Sepolia 上裁决",
         "重新检查 RPC 回执",
-        "委员会成员资格由服务端校验；浏览器不能授予该角色。",
-        "三席两票",
-        "只有合约收到两票有效且一致的投票后才形成裁决。",
-        "当前未加载经过外部验证的案件。",
+        "服务端必须同时验证已配置的平台仲裁钱包和 V3 Workflow Escrow 地址。",
+        "唯一最终仲裁者",
+        "最终裁决不是模型投票或多数表决。旧 V2 委员会投票仅作为历史记录，不能裁决 V3 任务。",
+        "当前未加载已获得外部验证的 V3 争议案件。",
         "在 Ethereum Sepolia 上实现可验证的自主协作。"
       ]
     },
@@ -5889,15 +6042,17 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
-        "Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary.",
-        "Values on this page demonstrate UI states and are not deployment or transaction evidence.",
-        "Review relationships before opening the evidence packet.",
-        "Cast an immutable vote",
-        "Committee membership is checked server-side; the browser cannot grant this role.",
-        "A ruling forms only when the contract reaches two valid aligned votes.",
-        "No externally verified case is loaded.",
+        "One accountable final ruling",
+        "V3 uses one configured platform arbiter wallet. The browser cannot grant the role, and only a verified TaskResolved receipt advances the case.",
+        "Conflict and evidence review",
+        "Review the case evidence, relationships, and deterministic Gates before enabling final arbitration.",
+        "Resolve the V3 task",
+        "The server requires the configured platform arbiter wallet and the V3 Workflow Escrow address.",
+        "The final ruling is not a model vote or majority poll. Legacy V2 committee voting remains historical and cannot resolve a V3 task.",
+        "No externally verified V3 dispute is loaded.",
         "Verifiable autonomous work on Ethereum Sepolia."
       ],
       "chinese": []
@@ -5914,6 +6069,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -5941,6 +6097,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Exactly three valid seats are assigned. Two aligned votes form a ruling; conflicts trigger replacement.",
@@ -5962,6 +6119,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -5996,6 +6154,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "Observe first. Suggest second.",
@@ -6022,12 +6181,14 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
         "Agent Market 参考 Web3 课程 Evidence 标准作为检查表，但实现保持项目专用：优先 SSR、安全 Hydration、延迟加载大型 Evidence 媒体、明确显示离线或降级状态，并只记录脱敏原因码。",
         "浏览器信号、Edge SSR、React 降级模式、Health/API 超时、本地 Runtime、Provider API 与 Evidence 记录相互隔离，单个慢依赖不会拖垮页面。",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
+        "Evidence 边界： the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "采用方案 C：同步调用使用 Worker、Tunnel 与本地 Runtime；异步 Runner 控制面保留身份、心跳、Lease、结果与证据。",
         "Worker 验证访问并签名 Runtime 调用；Runtime 验证 HMAC 后调用 Ollama 或 Provider API，并以 SSE 流式返回。",
@@ -6046,7 +6207,7 @@
         "查看 Queen GraphQL Runtime Smoke 证据",
         "Queen 提出可编辑 DAG；用户确认当前版本与 Agent 分配后才能启动。启动后锁定已有节点，Red Team 与 Repair 只能通过递增版本追加。",
         "IndexedDB 只保存按钱包隔离的公开元数据。免费 HTTPS Agent 可进入当前浏览器目录；付费 Agent 必须通过平台测试；本地 Ollama Agent 默认仅 Owner 可见且离线。",
-        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV1 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
+        "Cocos Creator 3.8.8 已在本地真实渲染任务桌、Agent、状态与动画；只接收脱敏 OfficeSnapshotV2 并只回传选桌事件。Owner 私有数据、下载、钱包与执行权限仍留在 React/AWS 边界。",
         "本地 V3 合约实现固定 6% 不退平台发布费、Agent 节点质押 ERC-721 凭证、唯一平台仲裁者和按结果退还或没收。现有 V2 Sepolia 合约未修改，V3 尚未部署。",
         "只允许当前任务节点的 Agent Input/Output Envelope 出入站，并执行 HMAC、时间戳、Nonce 防重放、大小限制、哈希与敏感信息扫描。这里只完成本地 Handler 与测试，没有创建或修改 AWS 资源。",
         "既有 V1 全链路证据保持有效。最新 AWS 控制台只读回读显示 UPDATE_COMPLETE、消费端 Disabled、ECS 运行任务 0、DLQ 0，工作队列保留 2 条消息；计算已暂停，但队列未清空。",
@@ -6071,8 +6232,7 @@
         "services/trainer/src/agent_market_trainer/train.py · services/trainer/src/agent_market_trainer/model_store.py · services/trainer/tests",
         "services/trainer/tests/test_train.py · services/trainer/tests/test_model_store.py · docs/evidence/testing/2026-08-21-phase2-local-gates.json",
         "T7 已通过 25 项专项测试、8 项 repository policy 测试与真实 PostgreSQL replay Gate 3/3。AWS 静态扫描可识别 option，并对 action 前未知 option fail-closed；V2 AWS 资源仍未部署。",
-        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs",
-        "apps/transaction-engine/src/recovery/replay.test.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.integration.test.ts · infra/aws/template.test.mjs · infra/aws/t7-repair.test.mjs · .tc-flow/reviews/T7.test-evidence.json · scripts/aws/inject-agent-market-cluster-retain.test.mjs · scripts/aws/deploy-agent-market.test.mjs · scripts/aws/pause-agent-market.test.mjs · scripts/validate-repository.test.mjs · docs/evidence/testing/2026-08-21-phase2-local-gates.json"
+        "infra/aws/template.yaml · scripts/aws/pause-agent-market.sh · apps/transaction-engine/src/recovery/replay.ts · apps/transaction-engine/src/recovery/postgres-replay-ledger.ts · database/migrations/0006_t7_recovery.sql · scripts/aws/prepare-agent-market-cluster-transition.sh · scripts/aws/validate-agent-market-cluster-transition.sh · scripts/aws/deploy-agent-market.sh · scripts/validate-repository.mjs · .github/workflows/repository-policy.yml · scripts/aws/inject-agent-market-cluster-retain.mjs"
       ],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -6080,10 +6240,11 @@
         "交付证据 / DELIVERY EVIDENCE",
         "先有证据，再报进度",
         "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。",
-        "完整功能操作录屏",
-        "在外置 Chrome 中全屏录制，覆盖 MetaMask 连接、Agent 注册与维护、任务草稿校验和交易预览、GraphQL DAG 自动生成与手动改派、工作流启动、工作台、质押计算器、仲裁委员会、只读运维和 Evidence。录屏如实保留了当时工作流未在等待窗口内结束、仲裁按钮无可见反馈的状态；后续代码已补充终态、单操作超时、取消和委员会本地反馈，并以独立修复台账验证。原录屏不重剪，未发送链上交易，也不替代生产、AWS 或 Sepolia 外部回读。",
+        "上一版完整功能录屏（待重录）",
+        "这段录屏保留为历史本地证据，但早于 V3 平台唯一仲裁者界面和最终 Cocos 角色尺寸，因此不能作为当前最终录屏。新的全流程录屏将在所有本地与外部 Gate 关闭后生成；未发送的链上交易仍不会被伪造成成功。",
+        "300.1 秒 · 1920×960 · H.264 视频 · 摘要 6b336d52…",
         "查看录屏事实台账",
-        "查看后续修复台账",
+        "查看 GraphQL 终态预演台账",
         "全路由、多视口、完整中文",
         "本地隔离 Chrome 检查 18 个路由、中文与英文两种语言，在 375、390、430、1440 与 1920 像素下验证深链状态、横向溢出、破图、空按钮和未翻译文案；共 180 个组合全部通过。",
         "390 像素移动端",
@@ -6113,6 +6274,8 @@
         "健康链路完整渲染；弱设备延后重媒体与动效；Runtime/API 超时显示本地降级卡片，绝不在无证据时标记成功。",
         "当前边界",
         "当前已实现：Edge SSR、Hydration 回退、明确的 offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "网站实测指标",
+        "v2 性能 Envelope 记录 TTFB、FCP、LCP、CLS、INP、水合耗时与结果、可恢复水合错误、CSR 回退次数、限时窗口 FPS、P95 帧耗时、掉帧率、采样数与采样时长。它只携带 UUIDv7 请求 ID、脱敏路径名、构建版本和时间戳。",
         "本地与 Provider Agent 共用一个签名网关",
         "浏览器只访问 Cloudflare Edge 网关；网关签名 Runtime 请求，本地 Runtime 在服务端调用 Ollama、DeepSeek、Kimi、Qwen 或智谱。Queen 主导的 GraphQL 使用 LangGraph 管理状态迁移、确认、锁定、失败路由与恢复，并强制独立 Judge 与 Final Arbiter。浏览器永远看不到 Ollama 与 Provider Key。",
         "架构仲裁",
@@ -6121,10 +6284,7 @@
         "Worker 验证访问并签名 Runtime 调用；Runtime 验证 HMAC 后调用 Ollama 或 Provider API，并以 SSE 流式返回。",
         "Queen 主导的 GraphQL 工作流",
         "/agent/graphql 是真实任务唯一的编排入口。LangGraph 执行状态图边界。Queen 提出可编辑 DAG；已接受的分配和当前版本必须在启动前确认，启动后锁定任务图。Judge 与 Final Arbiter 保持独立 Agent 和隔离上下文。",
-        "风险与补救策略",
-        "GraphQL 保留全部强制阶段，以质量 Gate 约束成本优先排序，自动加入补救策略，并在高风险或 Judge 低分路径触发 Red Team 审查。",
-        "模型池排序",
-        "三选一候选池按访问范围、能力、License/Tag 元数据、健康状态与评分历史过滤，再按 modelTag 去重。零分新模型获得探索加成；低分旧模型进入淘汰。"
+        "风险与补救策略"
       ]
     },
     {
@@ -6139,12 +6299,15 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
-        "Recorded full-screen in external Chrome across MetaMask connection, Agent registration and maintenance, task draft validation and transaction preview, GraphQL DAG generation and manual reassignment, workflow start, dashboard, staking calculator, committee, read-only operations, and Evidence. The recording truthfully preserves the then non-terminal workflow and missing committee feedback. The code now adds terminal states, per-operation timeout, cancellation, and local committee acknowledgement, verified by a separate fix ledger. The original recording remains unedited; no chain transaction was sent, and it does not replace production, AWS, or Sepolia readback.",
+        "Previous full workflow recording (re-record pending)",
+        "This recording remains historical local evidence, but it predates the V3 sole-platform-arbiter UI and final Cocos character sizing, so it is not the current final recording. A new full-flow recording will be generated after all local and external gates close; unsent chain transactions will not be presented as successful.",
+        "300.1s · 1920×960 · H.264 · SHA-256 6b336d52…",
         "View recording fact ledger",
-        "View follow-up fix ledger",
+        "View GraphQL terminal preflight ledger",
         "All routes, all target viewports, complete Chinese UI",
         "An isolated local Chrome checked 18 routes in both Chinese and English at 375, 390, 430, 1440, and 1920 pixels for deep-link status, horizontal overflow, broken images, empty buttons, and untranslated prose. All 180 combinations passed.",
         "Home, agents, registration, live runtime, tasks, publishing, staking, committee, operations, and Evidence.",
@@ -6159,6 +6322,8 @@
         "Browser signals, Edge SSR, React degraded mode, health/API timeouts, local runtime, provider APIs, and Evidence records are separated so one slow dependency cannot collapse the page.",
         "Healthy paths render fully. Weak clients defer heavy media and motion. Runtime/API timeouts show local fallback cards and never mark work successful without proof.",
         "Implemented now: Edge SSR, hydration fallback, explicit offline health, lazy Evidence screenshots, data-saver, weak-network, low-memory, low-CPU, reduced-motion and sanitized reason-code degradation. Fresh AWS V2 Web Vitals writeback remains pending external readback.",
+        "The v2 performance envelope records TTFB, FCP, LCP, CLS, INP, hydration duration and outcome, recoverable hydration errors, CSR fallback count, bounded-window FPS, P95 frame time, dropped-frame ratio, sample count, and sample duration. It carries only a UUIDv7 request ID, sanitized pathname, build version, and timestamp.",
+        "Evidence boundary: the schema, browser collector, Edge HMAC, AWS Gate, and PostgreSQL migration are locally gated. Real production values remain pending until one approved AWS sample is read back end to end.",
         "Local and provider agents share one signed gateway",
         "The browser talks to the Cloudflare edge gateway. The gateway signs runtime requests; the local runtime calls Ollama, DeepSeek, Kimi, Qwen, or Zhipu server-side. Queen-led GraphQL uses LangGraph for state transitions, confirmation, locking, failure routing, and recovery while enforcing independent Judge and Final Arbiter roles. Ollama and provider keys are never exposed to the browser.",
         "C wins: synchronous chat uses Worker, Tunnel, and local runtime; async runner control plane keeps identity, heartbeat, lease, result, and evidence.",
@@ -6179,17 +6344,13 @@
         "View owner-trained model artifact evidenceView owner-trained Agent Market runtime smoke evidence",
         "View sanitized live-agent smoke evidence",
         "View Queen GraphQL runtime smoke evidence",
+        "View live distinct-model GraphQL terminal preflight",
         "View local validation evidence",
         "View important-node catalog preview evidence",
         "New workflow nodes and boundaries",
         "These statuses cover local code and tests only. Anything not deployed to Sepolia, AWS, or production is not presented as externally complete.",
         "Task category and tags are hard filters before selecting three distinct models from at most four candidates. Scores use a 90-day window, the latest 20 events, and 30-day exponential half-life; new agents start at 30.",
-        "DAG confirmation and rescue",
-        "Queen proposes an editable DAG. The current revision and assignments must be confirmed before start. Existing nodes lock after start; Red Team and Repair append through versioned revisions.",
-        "IndexedDB stores wallet-scoped public metadata only. Free HTTPS agents enter the current browser catalog, paid agents require a platform test, and local Ollama agents remain owner-only and offline by default.",
-        "Cocos Creator 3.8.8 locally renders task desks, agents, status, and animation. It receives only sanitized OfficeSnapshotV1 data and returns only desk-selection events; owner-private data, downloads, wallet access, and execution authority remain at the React/AWS boundary.",
-        "View the local Cocos Gate ledger",
-        "V3 deposit and stake receipt"
+        "DAG confirmation and rescue"
       ],
       "chinese": []
     },
@@ -6205,6 +6366,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [],
       "chinese": [
         "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
@@ -6227,6 +6389,7 @@
       "overflow": false,
       "brokenImages": [],
       "emptyButtons": 0,
+      "cocosOfficeReady": true,
       "english": [
         "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN",
         "The requested Agent Market surface does not exist.",

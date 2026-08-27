@@ -1,49 +1,62 @@
 {
-  "schemaVersion": "agent-market.evidence.v1",
-  "recordedAt": "2026-08-26",
+  "schemaVersion": "agent-market.evidence.v2",
+  "recordedAt": "2026-08-26T13:51:42.414Z",
   "status": "verified-local",
-  "subject": "Agent Market Cocos virtual office",
+  "subject": "Agent Market StarBuddy state-driven Cocos virtual office",
   "implementation": {
     "engine": "Cocos Creator 3.8.8",
-    "target": "Web Desktop",
+    "target": "Web Desktop embedded by React",
     "scene": "AgentMarketOffice",
-    "mode": "programmatic-cocos-scene-with-gui-assets",
-    "sceneUuidCount": 3,
-    "scriptPackageCount": 1,
+    "rendering": "programmatic Cocos scene with generated 2.5D office and transparent StarBuddy sprite atlas",
+    "characterStyle": "BabySteps StarBuddy-derived roles with WorkBuddy-style lifecycle states",
     "responsiveHost": true
   },
-  "runtimeGate": {
-    "scene": "AgentMarketOffice",
-    "batcherReady": true,
-    "drawCalls": 33,
-    "cameraVisibility": 33554432,
-    "canvasLayer": 33554432,
-    "graphicsComponents": 10,
-    "labels": 23,
-    "iframeViewport": "759x618",
-    "gameViewport": "759x618",
-    "canvasViewport": "759x618"
+  "stateContract": {
+    "input": "agent-market.office.snapshot.v2",
+    "outputs": [
+      "agent-market.office.ready.v2",
+      "agent-market.office.select-desk.v2"
+    ],
+    "activities": [
+      "idle",
+      "walking",
+      "thinking",
+      "working",
+      "reviewing",
+      "waiting",
+      "done",
+      "failed",
+      "offline"
+    ],
+    "authority": "presentation-only; animation never changes task, workflow, wallet, chain, or runtime truth"
+  },
+  "visualReadback": {
+    "browser": "isolated external Google Chrome against 127.0.0.1:4173/office",
+    "viewport": "1440x900",
+    "taskDesksVisible": 4,
+    "agentRenderSize": "76x76 Cocos units",
+    "transparentAtlas": true,
+    "screenshotSha256": "13ab381e7b0078e81a3ded62b19582e97547797fb1871799d3afec00b78f5f94",
+    "screenshot": "apps/web/public/evidence/agent-market-cocos-office-local.png"
+  },
+  "assetIdentity": {
+    "agentAtlasSha256": "04afee4293869bc1ac0573afb9a3d51265cc914976dc5d46c160ed2eea0e557c",
+    "officeBackgroundSha256": "972c4b5494db9737cab486a39a3cf161bb4bd4e0f78f1584bac824c9c79f2a1e",
+    "runtimeSha256": "be024705ce43ca50081f31e835a29ace4621b1ea98c7339c396f6afd17f6e4af"
   },
   "deterministicGates": {
     "artifactTests": "1/1 passed",
-    "webTests": "89/89 passed",
+    "alphaChannelGate": "passed",
+    "postSpriteFrameSizeGate": "passed",
     "routeViewportChecks": "180/180 passed",
-    "targetWidths": [
-      375,
-      390,
-      430,
-      1440,
-      1920
-    ],
-    "routeCount": 18,
-    "locales": [
-      "zh-CN",
-      "en"
-    ]
+    "browserHandshake": "Cocos game-start and runtime ready in 3770ms with GPU/WebGL enabled; React host received ready.v2",
+    "sharedContractTests": "30/30 passed",
+    "webTests": "91/91 passed",
+    "webTypecheck": "passed"
   },
   "securityBoundary": {
-    "input": "sanitized OfficeSnapshotV1 only",
-    "output": "select-desk event only",
+    "input": "sanitized OfficeSnapshotV2 only",
+    "output": "ready and select-desk UI events only",
     "forbidden": [
       "wallet signing",
       "private node input or output",
@@ -55,6 +68,5 @@
     ],
     "authoritativeLayer": "React owner boundary and private AWS control plane"
   },
-  "screenshot": "apps/web/public/evidence/agent-market-cocos-office-local.png",
   "externalStatus": "not-production-proof"
 }

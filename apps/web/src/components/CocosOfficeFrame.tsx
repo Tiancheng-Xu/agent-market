@@ -38,7 +38,7 @@ export function CocosOfficeFrame({
       if (!frame) return;
       const message = parseOfficeCocosMessage(event, { expectedOrigin, expectedSource: frame });
       if (!message) return;
-      if (message.type === "agent-market.office.ready.v1") {
+      if (message.type === "agent-market.office.ready.v2") {
         setStatus("ready");
         postOfficeSnapshot(frame, expectedOrigin, snapshot);
       } else {

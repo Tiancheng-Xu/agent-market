@@ -158,7 +158,7 @@ export function TaskNewPage({ walletAddress = null }: { walletAddress?: string |
   async function submitCreateTask(nextTask: TaskDraftResponse) {
     if (!walletAddress || !draft) throw new Error("WALLET_OR_DRAFT_MISSING");
     const deadline = Math.floor(Date.now() / 1_000) + draft.completionHours * 3_600;
-    const intent = await createTransactionIntent(nextTask.resourceId, "createTask", { deadline });
+    const intent = await createTransactionIntent(nextTask.resourceId, "createWorkflowTask", { deadline });
     const txHash = await sendTransactionIntent(intent, walletAddress);
     setPending({ stage: "escrow", intent, txHash, task: nextTask });
     setStep("escrow");
@@ -168,7 +168,7 @@ export function TaskNewPage({ walletAddress = null }: { walletAddress?: string |
   async function publishTask() {
     if (!draft) { setMessage("Validate the draft first."); return; }
     if (!walletAddress) { setMessage("Connect MetaMask before creating a wallet session."); return; }
-    const approved = window.confirm("Sepolia test transaction warning: this flow requests a message signature and up to two MetaMask transaction confirmations. Test YD and gas may be spent. The proposed 6% platform publishing fee is not charged until contract support is independently verified. Continue?");
+    const approved = window.confirm("Sepolia test transaction warning: this V3 flow requests a message signature and up to two MetaMask transaction confirmations. The approval covers the task budget plus the fixed, non-refundable 6% platform publication fee. Test YD and gas may be spent. Continue?");
     if (!approved) { setMessage("Funding cancelled before any transaction was requested."); return; }
     setBusy(true);
     try {
@@ -181,11 +181,11 @@ export function TaskNewPage({ walletAddress = null }: { walletAddress?: string |
         budgetAtomic: ydIntegerToAtomic(draft.budget),
       });
       setTask(nextTask);
-      const intent = await createTransactionIntent(nextTask.resourceId, "approve", { target: "escrow" });
+      const intent = await createTransactionIntent(nextTask.resourceId, "approve", { target: "workflowEscrow" });
       const txHash = await sendTransactionIntent(intent, walletAddress);
       setPending({ stage: "approval", intent, txHash, task: nextTask });
       setStep("approval");
-      setMessage("YD approval submitted. Recheck its RPC receipt before the escrow transaction can be requested.");
+      setMessage("V3 YD approval for budget plus the fixed 6% publication fee was submitted. Recheck its RPC receipt before requesting Workflow Escrow funding.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "TASK_FUNDING_FAILED");
     } finally {

@@ -109,7 +109,7 @@ describe("transaction intent and verification routes", () => {
     expect(body.task).toEqual(expect.objectContaining({
       resourceId,
       platformFeeAtomic: "6000000000000000000",
-      platformFeeStatus: "contract-support-pending",
+      platformFeeStatus: "included-in-v3-workflow-escrow-allowance",
     }));
     await expect(resources.requireAuthorized(resourceId, wallet.address, "createTask")).resolves.toMatchObject({
       publisherWallet: wallet.address.toLowerCase(),

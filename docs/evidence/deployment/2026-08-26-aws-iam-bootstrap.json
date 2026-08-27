@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "agent-market.aws-iam-bootstrap.v1",
+  "recordedAt": "2026-08-27T03:36:11Z",
+  "status": "verified-external-readonly-ready",
+  "region": "us-east-1",
+  "resources": {
+    "operatorUser": {
+      "created": true,
+      "consoleLoginProfile": true,
+      "passwordResetRequired": false,
+      "passwordResetCompleted": true,
+      "mfaEnrolled": true,
+      "accessKeysCreated": false,
+      "attachedPolicies": 0,
+      "inlinePolicies": 0
+    },
+    "operatorRole": {
+      "created": true,
+      "attachedPolicies": [
+        "ReadOnlyAccess",
+        "SignInLocalDevelopmentAccess"
+      ],
+      "trustScopedToOperatorUser": true,
+      "mfaRequired": true,
+      "maxSessionDurationSeconds": 3600
+    }
+  },
+  "safety": {
+    "rootCliSessionClosed": true,
+    "administratorAccessAttached": false,
+    "organizationsEnabled": false,
+    "controlTowerEnabled": false,
+    "accountPlanChanged": false,
+    "paidResourcesCreated": false,
+    "credentialsPublished": false
+  },
+  "verification": {
+    "cliIdentity": "assumed-role/AgentMarketOperatorRole",
+    "mfaRoleSessionVerified": true,
+    "readOnlyInventoryCompleted": true,
+    "rootProfileReplacedByOperatorRole": true
+  },
+  "pending": [],
+  "boundary": "This proves only the IAM bootstrap. It is not AWS V2 performance-chain deployment or production readback evidence."
+}

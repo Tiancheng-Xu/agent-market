@@ -2,14 +2,14 @@ import {
   officeCocosMessageSchema,
   officeHostMessageSchema,
   type OfficeCocosMessage,
-  type OfficeSnapshotV1,
+  type OfficeSnapshotV2,
 } from "@agent-market/shared-contracts";
 
 type MessageLike = Pick<MessageEvent<unknown>, "data" | "origin" | "source">;
 
-export function postOfficeSnapshot(frame: Window, expectedOrigin: string, snapshot: OfficeSnapshotV1): void {
+export function postOfficeSnapshot(frame: Window, expectedOrigin: string, snapshot: OfficeSnapshotV2): void {
   const message = officeHostMessageSchema.parse({
-    type: "agent-market.office.snapshot.v1",
+    type: "agent-market.office.snapshot.v2",
     payload: snapshot,
   });
   frame.postMessage(message, expectedOrigin);

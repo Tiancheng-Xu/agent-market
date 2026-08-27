@@ -11,9 +11,12 @@ import {
   authenticateWalletSession,
   createChainAccountResource,
   createTransactionIntent,
+  formatYdAtomic,
+  readVaultPosition,
   sendTransactionIntent,
   verifyTransactionIntent,
   ydIntegerToAtomic,
+  type VaultPositionSnapshot,
 } from "../lib/chainClient";
 
 export function WorkspacePage({ walletAddress = null }: { walletAddress?: string | null }) {
@@ -84,6 +87,7 @@ export function StakingPage({ walletAddress = null }: { walletAddress?: string |
   const [message, setMessage] = useState("Connect MetaMask to prepare a wallet-owned staking intent.");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<null | { stage: "approval" | "stake" | "unstake" | "claimYield"; intent: TransactionIntentV1; txHash: string; resourceId: string }>(null);
+  const [position, setPosition] = useState<VaultPositionSnapshot | null>(null);
   const annual = useMemo(() => calculateLinearYield(principal, SECONDS_PER_YEAR), [principal]);
 
   async function sendVaultIntent(resourceId: string, method: "stake" | "unstake" | "claimYield") {
@@ -124,7 +128,9 @@ export function StakingPage({ walletAddress = null }: { walletAddress?: string |
       if (checked.verification.status === "confirmed") {
         if (pending.stage === "approval") await sendVaultIntent(pending.resourceId, "stake");
         else {
-          setMessage("Receipt and expected event verified. Refresh on-chain position readback before relying on the displayed position.");
+          const refreshed = await readVaultPosition(pending.resourceId);
+          setPosition(refreshed);
+          setMessage("Receipt and expected event verified. The wallet-owned position was refreshed from Sepolia RPC.");
           setPending(null);
         }
       } else setMessage("Verification status: " + checked.verification.status + ". No success state has been claimed.");
@@ -135,5 +141,21 @@ export function StakingPage({ walletAddress = null }: { walletAddress?: string |
     }
   }
 
-  return <Localized><><PageHeader eyebrow="YD STAKING" title="Six percent. Linear. Test-only." description="Yield is floor-rounded per second and funded by a separate Sepolia test pool. It is not a real return." actions={<Badge tone="amber">TESTNET ACTIONS</Badge>} /><div className="staking-layout"><Panel className="yield-visual"><span className="eyebrow">LINEAR MODEL</span><strong>{principal.toLocaleString()} YD</strong><div className="yield-line"><span /></div><dl><div><dt>1 year</dt><dd>+{annual.toLocaleString()} YD</dd></div><div><dt>5 years</dt><dd>+{(annual * 5).toLocaleString()} YD</dd></div><div><dt>Formula</dt><dd>principal x 6% x time</dd></div></dl></Panel><Panel className="stake-control"><h2>Wallet-owned position</h2><label>Principal<input type="range" min="100" max="25000" step="100" value={principal} onChange={(event) => setPrincipal(Number(event.target.value))} /></label><div className="amount-readout">{principal.toLocaleString()} <span>YD</span></div><div className="button-row"><button className="button button-primary" disabled={busy || !walletAddress} onClick={() => void prepareAction("stake")}>Stake test YD</button><button className="button button-ghost" disabled={busy || !walletAddress} onClick={() => void prepareAction("unstake")}>Unstake</button><button className="button button-ghost" disabled={busy || !walletAddress} onClick={() => void prepareAction("claimYield")}>Claim yield</button></div><button className="button button-warning" disabled={busy || !pending} onClick={() => void recheck()}>Recheck RPC receipt</button><div className="inline-state" role="status" aria-live="polite">{message}</div><small>Only an independently verified receipt and matching event can advance the position. The calculator is not chain state.</small></Panel></div></></Localized>;
+  async function refreshPosition() {
+    if (!walletAddress) { setMessage("Connect MetaMask first."); return; }
+    setBusy(true);
+    try {
+      await authenticateWalletSession(walletAddress);
+      const account = await createChainAccountResource();
+      const refreshed = await readVaultPosition(account.resourceId);
+      setPosition(refreshed);
+      setMessage("Wallet-owned position refreshed from Sepolia RPC. This readback did not send a transaction.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "CHAIN_POSITION_UNAVAILABLE");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <Localized><><PageHeader eyebrow="YD STAKING" title="Six percent. Linear. Test-only." description="Yield is floor-rounded per second and funded by a separate Sepolia test pool. It is not a real return." actions={<Badge tone="amber">TESTNET ACTIONS</Badge>} /><div className="staking-layout"><Panel className="yield-visual"><span className="eyebrow">LINEAR MODEL</span><strong>{principal.toLocaleString()} YD</strong><div className="yield-line"><span /></div><dl><div><dt>1 year</dt><dd>+{annual.toLocaleString()} YD</dd></div><div><dt>5 years</dt><dd>+{(annual * 5).toLocaleString()} YD</dd></div><div><dt>Formula</dt><dd>principal x 6% x time</dd></div></dl></Panel><Panel className="stake-control"><h2>Wallet-owned position</h2><label>Principal<input type="range" min="100" max="25000" step="100" value={principal} onChange={(event) => setPrincipal(Number(event.target.value))} /></label><div className="amount-readout">{principal.toLocaleString()} <span>YD</span></div><div className="button-row"><button className="button button-primary" disabled={busy || !walletAddress} onClick={() => void prepareAction("stake")}>Stake test YD</button><button className="button button-ghost" disabled={busy || !walletAddress} onClick={() => void prepareAction("unstake")}>Unstake</button><button className="button button-ghost" disabled={busy || !walletAddress} onClick={() => void prepareAction("claimYield")}>Claim yield</button></div><div className="button-row"><button className="button button-warning" disabled={busy || !pending} onClick={() => void recheck()}>Recheck RPC receipt</button><button className="button button-ghost" disabled={busy || !walletAddress} onClick={() => void refreshPosition()}>Refresh on-chain position</button></div>{position ? <dl className="position-readback"><div><dt>Staked principal</dt><dd>{formatYdAtomic(position.principalAtomic)} YD</dd></div><div><dt>Checkpointed yield</dt><dd>{formatYdAtomic(position.accruedAtomic)} YD</dd></div><div><dt>Currently earned</dt><dd>{formatYdAtomic(position.earnedAtomic)} YD</dd></div><div><dt>Vault reward reserve</dt><dd>{formatYdAtomic(position.rewardReserveAtomic)} YD</dd></div><div><dt>Readback block</dt><dd>{position.blockNumber}</dd></div><div><dt>Checked at</dt><dd>{position.checkedAt}</dd></div></dl> : <p className="muted">No on-chain position has been read back in this session.</p>}<div className="inline-state" role="status" aria-live="polite">{message}</div><small>Only an independently verified receipt and matching event can advance the position. The calculator is not chain state.</small></Panel></div></></Localized>;
 }

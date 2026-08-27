@@ -6,6 +6,7 @@
   "exports": "./src/index.ts",
   "scripts": {
     "check": "pnpm typecheck",
+    "evidence:graphql-terminals": "tsx ../../scripts/evidence/verify-graphql-terminal-matrix.ts",
     "runtime:dev": "tsx src/runtime-server.ts",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"

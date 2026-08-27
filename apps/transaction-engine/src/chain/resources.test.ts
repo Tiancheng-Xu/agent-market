@@ -47,4 +47,17 @@ describe("chain resource authorization", () => {
     await expect(repository.requireAuthorized(RESOURCE_ID, agent, "submitWork"))
       .rejects.toThrow("CHAIN_RESOURCE_STATE_INVALID");
   });
+
+  it("allows only the configured platform arbiter to resolve a V3 workflow task", async () => {
+    const publisher = Wallet.createRandom().address;
+    const arbiter = Wallet.createRandom().address;
+    const repository = new MemoryChainResourceRepository([{
+      resourceId: RESOURCE_ID, publisherWallet: publisher, agentWallet: null,
+      budgetAtomic: "100", status: "disputed",
+    }], [], arbiter);
+    await expect(repository.requireAuthorized(RESOURCE_ID, arbiter, "resolveWorkflowTask"))
+      .resolves.toMatchObject({ status: "disputed" });
+    await expect(repository.requireAuthorized(RESOURCE_ID, publisher, "resolveWorkflowTask"))
+      .rejects.toMatchObject({ code: "CHAIN_RESOURCE_FORBIDDEN" });
+  });
 });

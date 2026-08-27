@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { walletTransactionFromIntent, ydIntegerToAtomic } from "./chainClient";
+import { formatYdAtomic, walletTransactionFromIntent, ydIntegerToAtomic } from "./chainClient";
 
 const intent = {
   intentId: "0191f6f8-cb6b-7f31-81ad-c497d7d90301",
@@ -20,6 +20,13 @@ describe("chain client deterministic gates", () => {
   it("converts whole test YD amounts without floating-point loss", () => {
     expect(ydIntegerToAtomic("100")).toBe("100000000000000000000");
     expect(() => ydIntegerToAtomic("1.5")).toThrow("YD_AMOUNT_INVALID");
+  });
+
+  it("formats atomic YD readback without floating-point rounding", () => {
+    expect(formatYdAtomic("100000000000000000000")).toBe("100");
+    expect(formatYdAtomic("1000000000000000001")).toBe("1");
+    expect(formatYdAtomic("1234500000000000000")).toBe("1.2345");
+    expect(() => formatYdAtomic("-1")).toThrow("YD_ATOMIC_INVALID");
   });
 
   it("accepts only a live Sepolia intent owned by the connected wallet", () => {
