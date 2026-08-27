@@ -57,15 +57,16 @@ test("executes fail-closed HMAC authentication before parsing and SNS publish", 
   assert.ok(code.indexOf("if not authenticated(headers,raw)") < code.indexOf("payload=json.loads(raw)"));
   assert.ok(code.indexOf("if not authenticated(headers,raw)") < code.indexOf("sns.publish("));
   assert.match(code, /hmac\.compare_digest\(expected,signature\)/u);
+  assert.match(code, /MessageGroupId="performance"/u);
   assert.ok(code.includes('except Exception: return response(503,{"error":"INGESTION_AUTH_UNAVAILABLE"})'));
   assertPythonCompiles(code, "ingestion inline code");
 });
 
-test("enforces one dispatcher worker and durable ECS task identity before RunTask", () => {
+test("enforces one project task and durable ECS task identity before RunTask", () => {
   const fn = resourceBlock("DispatcherFunction");
   const mapping = resourceBlock("PerformanceConsumerMapping");
   const code = inlinePython("DispatcherFunction");
-  assert.match(fn, /ReservedConcurrentExecutions: 1/u);
+  assert.doesNotMatch(fn, /ReservedConcurrentExecutions:/u);
   assert.match(mapping, /BatchSize: 1/u);
   assert.match(mapping, /FunctionResponseTypes:\s*\n\s*- ReportBatchItemFailures/u);
   assert.match(mapping, /MaximumConcurrency: 2/u);

@@ -149,13 +149,19 @@ Resources:
                 aws:SourceArn: !Ref PerformanceTopic
               StringEquals:
                 aws:SourceAccount: !Ref AWS::AccountId
-          - Sid: DenyInsecureTransport
+          - Sid: DenyInsecureTransportWorkQueue
             Effect: Deny
             Principal: "*"
             Action: sqs:*
-            Resource:
-              - !GetAtt PerformanceWorkQueue.Arn
-              - !GetAtt PerformanceDeadLetterQueue.Arn
+            Resource: !GetAtt PerformanceWorkQueue.Arn
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+          - Sid: DenyInsecureTransportDeadLetterQueue
+            Effect: Deny
+            Principal: "*"
+            Action: sqs:*
+            Resource: !GetAtt PerformanceDeadLetterQueue.Arn
             Condition:
               Bool:
                 aws:SecureTransport: false
@@ -571,7 +577,6 @@ Resources:
       Role: !GetAtt DispatcherRole.Arn
       Timeout: 900
       MemorySize: 256
-      ReservedConcurrentExecutions: 1
       Environment:
         Variables:
           CLUSTER_ARN: !Ref SharedEcsClusterArn
@@ -688,8 +693,8 @@ Resources:
       FunctionResponseTypes:
         - ReportBatchItemFailures
       ScalingConfig:
-        # AWS requires at least 2 here; ReservedConcurrentExecutions=1 above
-        # is the enforceable one-worker boundary.
+        # AWS requires at least 2 here. The fixed FIFO MessageGroupId above
+        # serializes delivery to one in-flight batch without reserved concurrency.
         MaximumConcurrency: 2
 
 Outputs:

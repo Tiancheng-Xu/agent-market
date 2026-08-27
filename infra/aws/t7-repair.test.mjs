@@ -48,7 +48,7 @@ test("pause owns, deduplicates, stops, and drains PENDING plus RUNNING tasks", (
 test("resume completes strict preflight before any mutation", () => {
   assert.match(pause, /validate_lifecycle_state/);
   assert.match(pause, /snapshotHash/);
-  assert.match(pause, /priorDispatcherConcurrency \| type == "number".*priorDispatcherConcurrency == 1/s);
+  assert.match(pause, /priorDispatcherConcurrency == "unreserved".*priorDispatcherConcurrency \| type == "number".*== 1/s);
   assert.match(pause, /queue_has_messages_without_metric/);
   const resume = pause.slice(pause.indexOf('[[ -n "$state" ]] || { echo "pause state missing"'));
   const validate = resume.indexOf('validate_lifecycle_state "$state"');

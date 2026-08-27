@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "profile": "compact",
-  "status": "verified",
-  "summary": "The Agent Market performance chain has one archived production browser-to-public-Evidence sample, and the project-specific AWS consumer was reversibly paused after readback.",
+  "status": "verified-production",
+  "summary": "Agent Market now has a fresh controlled V2 sample across HMAC API ingestion, SNS/SQS, ARM64 ECS Fargate, PostgreSQL persistence and independent readback; the workload was paused and all queues were drained afterward.",
   "evidenceUrl": "https://agent-market.baby2b.online/evidence",
   "dataMode": "live",
-  "metrics": ["LCP", "CLS", "INP", "FCP", "TTFB"],
+  "metrics": ["LCP", "CLS", "INP", "FCP", "TTFB", "FPS", "FRAME_TIME_P95", "DROPPED_FRAME_RATIO", "FRAME_SAMPLE_COUNT", "FRAME_WINDOW_DURATION", "HYDRATION_DURATION"],
   "percentiles": ["p50", "p75", "p95"],
   "dimensions": ["sample_count", "time_window", "route", "release"],
   "pipeline": ["browser-sdk", "api", "sqs-dlq", "ecs-cleaner", "storage", "dashboard"],
@@ -16,6 +16,11 @@
     "sdk-failure-isolation"
   ],
   "proof": [
+    {
+      "kind": "aws-v2-closure",
+      "location": "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json",
+      "proves": "Request 01a04416-8dcd-7790-b69a-ca233f232044 completed API, queue, ARM64 ECS and PostgreSQL readback with task exit code 0, then returned to a paused zero-queue state."
+    },
     {
       "kind": "live-event",
       "location": "docs/evidence/testing/2026-08-20-performance-observability.json",
@@ -48,20 +53,26 @@
     }
   ],
   "limitations": [
-    "The verified sample count is one; treat it as delivery evidence, not an ongoing production SLO.",
+    "The fresh V2 sample count is one; the aggregate window contains ten historical samples. Treat this as delivery evidence, not an ongoing production SLO.",
     "The AWS consumer is paused after verification; new samples require an explicitly authorized controlled run."
   ],
   "verifiedSample": {
-    "requestId": "38979d29-2ef6-4006-b120-6cc95e59eef4",
-    "runId": "44c41841-3d20-4856-9f71-76750075c3a4",
+    "requestId": "01a04416-8dcd-7790-b69a-ca233f232044",
+    "runId": "565fa11a-e932-48be-b032-7baea23d4e14",
     "route": "/evidence",
-    "lcpMs": 1192,
+    "lcpMs": 836.4,
+    "fps": 59.4,
+    "hydrationDurationMs": 96.3,
+    "renderOutcome": "hydrated",
+    "freshV2SampleCount": 1,
+    "aggregateWindowSampleCount": 10,
     "errorRate": 0,
-    "readBackAt": "2026-08-21T01:06:51Z"
+    "readBackAt": "2026-08-27T17:08:48Z"
   },
   "supportingEvidence": [
     "docs/evidence/testing/2026-08-20-performance-observability.json",
     "docs/evidence/deployment/2026-08-21-aws-reversible-pause.json",
+    "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json",
     "apps/web/public/evidence/aws-runtime-exit-zero.png"
   ],
   "nextStep": "For a new release, run a fresh preview or production Web Vitals smoke after Cloudflare deployment and record it separately without overwriting the archived sample."

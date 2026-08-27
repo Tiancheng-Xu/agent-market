@@ -27,6 +27,7 @@ export const PUBLIC_EVIDENCE_STATUSES = new Set(["verified-local", "verified-pro
 const V2_PRODUCTION_RECORDS = new Map([
   ["V2-CLOUDFLARE-ACTIONS", "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json"],
   ["V2-SEPOLIA-READBACK", "docs/evidence/deployment/2026-08-21-sepolia-public-readback.json"],
+  ["V2-PERFORMANCE-OPS", "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json"],
 ]);
 const REQUIRED_PUBLIC_ARTIFACTS = [
   "README.md", "docs/evidence/phase2-local-validation.json", "docs/architecture/adr/0001-defer-the-graph.md", "apps/web/src/pages/EvidencePage.tsx",
@@ -204,6 +205,42 @@ function validateV2ProductionRecord(root, item, violations) {
   } else if (item.id === "V2-SEPOLIA-READBACK") {
     const transactions = [record.transactions?.normal, record.transactions?.dispute];
     valid = record.project === "agent-market" && record.status === "verified-production" && record.network === "sepolia" && record.chainId === 11155111 && record.source === "tenderly-rpc-and-etherscan-public-html" && record.secondaryRpc?.checkedChainId === 11155111 && record.blockscout?.status === "pending-pro-api-key" && transactions.every((transaction) => /^0x[0-9a-f]{64}$/i.test(transaction?.transactionHash ?? "") && Number.isSafeInteger(transaction?.blockNumber) && transaction.status === 1 && transaction.matchingEventCount === 1 && transaction.etherscan?.statusMarker === "Success" && transaction.etherscan?.url === `https://sepolia.etherscan.io/tx/${transaction.transactionHash}` && /^[0-9a-f]{64}$/.test(transaction.etherscan?.pageSha256 ?? ""));
+  } else if (item.id === "V2-PERFORMANCE-OPS") {
+    const sample = record.sample ?? {};
+    const execution = record.execution ?? {};
+    const finalState = record.finalState ?? {};
+    const cleanup = record.securityCleanup ?? {};
+    valid = record.status === "verified-production"
+      && record.region === "us-east-1"
+      && record.stackName === "agent-market-performance"
+      && record.runtime?.platform === "AWS Fargate ARM64"
+      && /^sha256:[0-9a-f]{64}$/.test(record.runtime?.imageDigest ?? "")
+      && sample.schemaVersion === 2
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(sample.requestId ?? "")
+      && sample.httpStatus === 202
+      && sample.metrics?.FPS >= 0
+      && sample.metrics?.HYDRATION_DURATION >= 0
+      && sample.render?.outcome === "hydrated"
+      && execution.taskExitCode === 0
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(execution.runId ?? "")
+      && execution.evidenceStatus === "verified"
+      && finalState.ingestionReservedConcurrency === 0
+      && finalState.dispatcherReservedConcurrency === 0
+      && finalState.consumerMappingState === "Disabled"
+      && finalState.ecsRunningTasks === 0
+      && finalState.ecsPendingTasks === 0
+      && finalState.workQueueVisible === 0
+      && finalState.workQueueInFlight === 0
+      && finalState.deadLetterQueueVisible === 0
+      && finalState.deadLetterQueueInFlight === 0
+      && cleanup.temporaryOperatorAccessKeyDeleted === true
+      && cleanup.temporaryManagedPoliciesDeleted === true
+      && cleanup.temporaryRoleInlinePolicyDeleted === true
+      && cleanup.temporaryIngestionSecretDeleted === true
+      && cleanup.ecrLoginRemoved === true
+      && cleanup.secretValuesPublished === false
+      && cleanup.accountPlanChanged === false
+      && cleanup.sharedFoundationDeleted === false;
   }
   if (!valid) {
     violations.push(`phase2-production-record-invalid:${item.id}`);

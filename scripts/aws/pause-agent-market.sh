@@ -73,9 +73,13 @@ stop_project_tasks() {
 }
 
 get_concurrency() {
-  local function_name="$1"
-  aws_cli lambda get-function-concurrency --function-name "$function_name" \
-    | jq -r 'if has("ReservedConcurrentExecutions") then .ReservedConcurrentExecutions else "unreserved" end'
+  local function_name="$1" response
+  response="$(aws_cli lambda get-function-concurrency --function-name "$function_name")"
+  if [[ -z "${response//[[:space:]]/}" ]]; then
+    printf '%s\n' "unreserved"
+    return 0
+  fi
+  jq -er 'if has("ReservedConcurrentExecutions") then .ReservedConcurrentExecutions else "unreserved" end' <<<"$response"
 }
 
 concurrency_json() {
@@ -110,7 +114,8 @@ validate_resume_state() {
     (.priorMappingState == "Enabled" or .priorMappingState == "Disabled") and
     ((.priorIngestionConcurrency == "unreserved") or
       (.priorIngestionConcurrency | type == "number" and . == floor and . >= 0 and . <= 1)) and
-    (.priorDispatcherConcurrency | type == "number" and . == floor and . >= 0 and . <= 1)
+    ((.priorDispatcherConcurrency == "unreserved") or
+      (.priorDispatcherConcurrency | type == "number" and . == floor and . == 1))
   ' >/dev/null <<<"$state_json" || { echo "lifecycle state schema or ownership invalid" >&2; return 1; }
 }
 
@@ -172,8 +177,8 @@ validate_lifecycle_state() {
     } and
     (.snapshot.priorIngestionConcurrency == "unreserved" or
       (.snapshot.priorIngestionConcurrency | type == "number" and . >= 0 and . <= 1000)) and
-    (.snapshot.priorDispatcherConcurrency | type == "number") and
-    .snapshot.priorDispatcherConcurrency == 1 and
+    ((.snapshot.priorDispatcherConcurrency == "unreserved") or
+      (.snapshot.priorDispatcherConcurrency | type == "number" and . == 1)) and
     (.snapshot.priorMappingState | IN("Enabled","Disabled")) and
     (.snapshot.capturedAt | fromdateiso8601)
   ' <<<"$state_json" >/dev/null || { echo "pause lifecycle schema or ownership invalid" >&2; return 1; }

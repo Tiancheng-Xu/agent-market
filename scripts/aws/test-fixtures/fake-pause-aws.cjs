@@ -50,7 +50,7 @@ if (service === "cloudformation" && action === "describe-stacks") {
 }
 if (service === "lambda" && action === "get-function-concurrency") {
   const value = option("--function-name") === "ingestion" ? state.ingestionConcurrency : state.dispatcherConcurrency;
-  process.stdout.write(outputText ? String(value) + "\n" : JSON.stringify({ ReservedConcurrentExecutions: value }));
+  process.stdout.write(outputText ? String(value) + "\n" : value === "unreserved" ? "" : JSON.stringify({ ReservedConcurrentExecutions: value }));
   process.exit(0);
 }
 if (service === "lambda" && action === "get-event-source-mapping") {
