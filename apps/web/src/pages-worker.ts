@@ -125,7 +125,8 @@ function isDocumentRequest(request: Request): boolean {
   if (pathname.startsWith("/assets/") || /\.[a-z0-9]+$/i.test(pathname)) {
     return false;
   }
-  return request.headers.get("accept")?.includes("text/html") ?? false;
+  const accept = request.headers.get("accept")?.trim();
+  return accept === undefined || accept === "*/*" || accept.includes("text/html");
 }
 
 function documentHeaders(mode: "ssr" | "csr-fallback", cache: string) {
