@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { Localized } from "../i18n/LanguageProvider";
+
 type TagSelectorProps = {
   name: string;
   label: string;
@@ -35,7 +37,7 @@ export function TagSelector({ name, label, suggestions, maxTags = 12 }: TagSelec
   const options = [...new Set([...suggestions.map(normalizeTag), ...selected])].filter(Boolean);
 
   return (
-    <fieldset className="tag-selector span-two">
+    <Localized><fieldset className="tag-selector span-two">
       <legend>{label}</legend>
       <div className="tag-selector-meta">
         <small>Select matching capabilities. Tags are normalized and deduplicated.</small>
@@ -80,7 +82,7 @@ export function TagSelector({ name, label, suggestions, maxTags = 12 }: TagSelec
       ) : (
         <button type="button" className="tag-add-button" onClick={() => setCustomOpen(true)}>+ Add custom tag</button>
       )}
-    </fieldset>
+    </fieldset></Localized>
   );
 }
 

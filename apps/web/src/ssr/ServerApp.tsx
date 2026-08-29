@@ -1,4 +1,5 @@
 import { FullChainEvidence } from "../evidence/FullChainEvidence";
+import phase2Evidence from "../evidence/phase2-evidence.generated.json";
 import { routeForPath } from "./routeDefinitions";
 
 export function ServerApp({ pathname }: { pathname: string }) {
@@ -14,6 +15,7 @@ export function ServerApp({ pathname }: { pathname: string }) {
         <nav aria-label="Primary navigation">
           <a href="/agents">Agents</a>
           <a href="/tasks">Tasks</a>
+          <a href="/office">Office</a>
           <a href="/staking">Staking</a>
           <a href="/evidence/">Evidence</a>
         </nav>
@@ -28,7 +30,10 @@ export function ServerApp({ pathname }: { pathname: string }) {
           <div><dt>Evidence</dt><dd>Requirement to verification trace</dd></div>
         </dl>
       </section>
-      {pathname.replace(/\/+$/, "") === "/evidence" ? <FullChainEvidence /> : null}
+      {pathname.replace(/\/+$/, "") === "/evidence" ? <>
+        <p data-evidence-boundary="current">{phase2Evidence.truthBoundary.en}</p>
+        <FullChainEvidence />
+      </> : null}
     </main>
   );
 }
