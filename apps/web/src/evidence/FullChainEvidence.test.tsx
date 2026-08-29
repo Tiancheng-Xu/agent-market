@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { FullChainEvidence } from "./FullChainEvidence";
+import { ServerApp } from "../ssr/ServerApp";
 
 describe("full delivery chain evidence", () => {
-  it("renders the complete V2 delivery boundary without external overclaim", () => {
+  it("renders the complete delivery boundary with scoped external closure", () => {
     const markup = renderToStaticMarkup(<FullChainEvidence />);
 
     expect(markup.match(/data-chain-step=/g)?.length).toBeGreaterThanOrEqual(12);
@@ -18,9 +19,10 @@ describe("full delivery chain evidence", () => {
     expect(markup).toContain("Go matcher + pgvector");
     expect(markup).toContain("grouped OOF/CV");
     expect(markup).toContain("safe JSON artifact");
-    expect(markup).toContain("Blockscout + RPC");
+    expect(markup).toContain("independent RPC receipt + state readback");
     expect(markup).toContain("replay / ops / pause");
-    expect(markup).toContain("pending-external");
+    expect(markup).not.toContain("pending-external");
+    expect(markup.match(/verified-production/g)?.length).toBeGreaterThanOrEqual(9);
     expect(markup).toContain("/architecture/full-delivery-chain.svg");
     expect(markup).toContain('width="1600"');
     expect(markup).toContain('height="900"');
@@ -33,6 +35,12 @@ describe("full delivery chain evidence", () => {
     expect(main).not.toContain("FullChainEvidence");
     expect(page).not.toContain("FullChainEvidence");
     expect(page.match(/file: "agent-market-v3-workflow"/g)).toHaveLength(1);
+  });
+
+  it("uses the canonical trailing-slash Evidence URL in SSR navigation", () => {
+    const serverApp = readFileSync(new URL("../ssr/ServerApp.tsx", import.meta.url), "utf8");
+    expect(serverApp).toContain('href="/evidence/"');
+    expect(renderToStaticMarkup(<ServerApp pathname="/evidence/" />)).toContain('class="full-chain"');
   });
 
   it("keeps traceability columns readable inside a contained horizontal scroller", () => {

@@ -28,6 +28,7 @@ const V2_PRODUCTION_RECORDS = new Map([
   ["V2-CLOUDFLARE-ACTIONS", "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json"],
   ["V2-SEPOLIA-READBACK", "docs/evidence/deployment/2026-08-21-sepolia-public-readback.json"],
   ["V2-PERFORMANCE-OPS", "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json"],
+  ["V2-EXTERNAL-DELIVERY", "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json"],
 ]);
 const REQUIRED_PUBLIC_ARTIFACTS = [
   "README.md", "docs/evidence/phase2-local-validation.json", "docs/architecture/adr/0001-defer-the-graph.md", "apps/web/src/pages/EvidencePage.tsx",
@@ -205,7 +206,7 @@ function validateV2ProductionRecord(root, item, violations) {
   } else if (item.id === "V2-SEPOLIA-READBACK") {
     const transactions = [record.transactions?.normal, record.transactions?.dispute];
     valid = record.project === "agent-market" && record.status === "verified-production" && record.network === "sepolia" && record.chainId === 11155111 && record.source === "tenderly-rpc-and-etherscan-public-html" && record.secondaryRpc?.checkedChainId === 11155111 && record.blockscout?.status === "pending-pro-api-key" && transactions.every((transaction) => /^0x[0-9a-f]{64}$/i.test(transaction?.transactionHash ?? "") && Number.isSafeInteger(transaction?.blockNumber) && transaction.status === 1 && transaction.matchingEventCount === 1 && transaction.etherscan?.statusMarker === "Success" && transaction.etherscan?.url === `https://sepolia.etherscan.io/tx/${transaction.transactionHash}` && /^[0-9a-f]{64}$/.test(transaction.etherscan?.pageSha256 ?? ""));
-  } else if (item.id === "V2-PERFORMANCE-OPS") {
+  } else if (item.id === "V2-PERFORMANCE-OPS" || item.id === "V2-EXTERNAL-DELIVERY") {
     const sample = record.sample ?? {};
     const execution = record.execution ?? {};
     const finalState = record.finalState ?? {};
@@ -272,7 +273,9 @@ export function validateEvidenceRepository(root = process.cwd(), { includeClosur
       }
     }
   }
-  for (const status of PUBLIC_EVIDENCE_STATUSES) if (!document.items.some((item) => item.status === status)) violations.push(`required-status-missing:${status}`);
+  for (const status of ["verified-local", "verified-production", "deferred"]) {
+    if (!document.items.some((item) => item.status === status)) violations.push(`required-status-missing:${status}`);
+  }
   const diagrams = document.assets?.diagrams;
   const evidencePagePath = resolve(root, "apps/web/src/pages/EvidencePage.tsx");
   const evidencePage = existsSync(evidencePagePath) ? readFileSync(evidencePagePath, "utf8") : "";

@@ -2,10 +2,10 @@
   "evidenceVersion": 2,
   "project": "agent-market",
   "snapshot": "phase2-local-validation",
-  "capturedAt": "2026-08-22T01:52:50.047Z",
+  "capturedAt": "2026-08-28T23:05:28.880Z",
   "truthBoundary": {
-    "en": "V1 production proof remains valid only for its recorded V1 scope. V2 Cloudflare delivery is verified-production; other V2 claims remain local, pending external verification, or deferred.",
-    "zh": "V1 生产证据只在其既有范围内有效。V2 Cloudflare 交付已完成生产验证；其余 V2 状态仍为本地已验证、等待外部验证或延期。"
+    "en": "Cloudflare Web, the AWS V2 performance runtime, and Sepolia V3 are independently verified-production within their recorded scopes. Local runtime, matcher, trainer, and visual checks remain verified-local; The Graph remains deferred.",
+    "zh": "Cloudflare Web、AWS V2 性能 Runtime 与 Sepolia V3 已在各自记录范围内独立完成生产验证。本地 Runtime、匹配器、训练器与视觉检查仍为 verified-local；The Graph 仍为延期。"
   },
   "assets": {
     "diagrams": [
@@ -272,15 +272,19 @@
         "zh": "部署剩余的 V2 AWS runtime，并发布新的外部回读。"
       },
       "implementation": {
-        "en": "Cloudflare delivery is independently verified; the V2 AWS runtime remains undeployed and cannot inherit Cloudflare production status.",
-        "zh": "Cloudflare 交付已独立验证；V2 AWS runtime 仍未部署，不能继承 Cloudflare 的生产状态。"
+        "en": "Cloudflare Web, the AWS V2 runtime, and the Sepolia V3 interaction flow are independently verified; none of these evidence scopes substitutes for another.",
+        "zh": "Cloudflare Web、AWS V2 Runtime 与 Sepolia V3 交互流程已分别验证；三套证据范围互不替代。"
       },
       "code": [
         ".github/workflows/verify.yml",
         ".github/workflows/project-delivery.yml"
       ],
-      "evidence": [],
-      "status": "pending-external"
+      "evidence": [
+        "docs/evidence/deployment/2026-08-21-cloudflare-pages-v2-production.json",
+        "docs/evidence/deployment/2026-08-27-aws-v2-performance-closure.json",
+        "docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json"
+      ],
+      "status": "verified-production"
     },
     {
       "id": "V2-THE-GRAPH",

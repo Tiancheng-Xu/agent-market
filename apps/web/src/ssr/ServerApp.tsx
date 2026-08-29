@@ -15,7 +15,7 @@ export function ServerApp({ pathname }: { pathname: string }) {
           <a href="/agents">Agents</a>
           <a href="/tasks">Tasks</a>
           <a href="/staking">Staking</a>
-          <a href="/evidence">Evidence</a>
+          <a href="/evidence/">Evidence</a>
         </nav>
       </header>
       <section aria-labelledby="edge-route-title">
@@ -28,7 +28,7 @@ export function ServerApp({ pathname }: { pathname: string }) {
           <div><dt>Evidence</dt><dd>Requirement to verification trace</dd></div>
         </dl>
       </section>
-      {pathname === "/evidence" ? <FullChainEvidence /> : null}
+      {pathname.replace(/\/+$/, "") === "/evidence" ? <FullChainEvidence /> : null}
     </main>
   );
 }
