@@ -8,6 +8,8 @@ const publicOutput = resolve(root, "apps/web/public/office-cocos");
 const artSource = resolve(project, "assets/office/art");
 const artOutput = resolve(output, "art");
 const atlasSource = resolve(artSource, "starbuddy-agent-atlas.png");
+const webpBackgroundSource = resolve(artSource, "starbuddy-office-background.webp");
+const webpAtlasSource = resolve(artSource, "starbuddy-agent-atlas.webp");
 const settingsPath = resolve(output, "src/settings.json");
 const mainConfigPath = resolve(output, "assets/main/config.json");
 const sceneImportPath = resolve(output, "assets/main/import/e4/e4f83b65-2b89-4c40-9e64-798b3380272d.json");
@@ -22,6 +24,8 @@ requireFile(settingsPath, "Cocos settings");
 requireFile(mainConfigPath, "Cocos main bundle config");
 requireFile(sceneImportPath, "Cocos OfficeScene import");
 requireFile(atlasSource, "StarBuddy agent atlas");
+requireFile(webpBackgroundSource, "Optimized StarBuddy office background");
+requireFile(webpAtlasSource, "Optimized StarBuddy agent atlas");
 
 const atlasBytes = readFileSync(atlasSource);
 const atlasColorType = atlasBytes[25];
@@ -60,6 +64,13 @@ writeFileSync(settingsPath, `${JSON.stringify(settings)}\n`);
 const indexPath = resolve(output, "index.html");
 const stylePath = resolve(output, "style.css");
 let index = readFileSync(indexPath, "utf8");
+const preloadMarker = '<link rel="preload" as="image" type="image/webp" href="/office-cocos/art/starbuddy-office-background.webp" fetchpriority="high"/>';
+if (!index.includes(preloadMarker)) {
+  index = index.replace(
+    '<link rel="stylesheet" type="text/css" href="./style.css"/>',
+    `${preloadMarker}\n    <link rel="preload" as="image" type="image/webp" href="/office-cocos/art/starbuddy-agent-atlas.webp" fetchpriority="high"/>\n    <link rel="stylesheet" type="text/css" href="./style.css"/>`,
+  );
+}
 index = index.replace(
   /<div id="GameDiv"[^>]*>/,
   '<div id="GameDiv" cc_exact_fit_screen="true" style="width: 100%; height: 100%;">',

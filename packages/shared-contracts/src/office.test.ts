@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  officeCocosMessageSchema,
   officeHostMessageSchema,
   officeSnapshotSchema,
   toPublicOfficeSnapshot,
@@ -69,5 +70,16 @@ describe("OfficeSnapshotV2", () => {
     });
     expect(officeHostMessageSchema.parse({ type: "agent-market.office.snapshot.v2", payload: snapshot })).toBeTruthy();
     expect(() => officeHostMessageSchema.parse({ type: "wallet.sign", payload: {} })).toThrow();
+  });
+
+  it("accepts only a sanitized Cocos degraded reason", () => {
+    expect(officeCocosMessageSchema.parse({
+      type: "agent-market.office.degraded.v2",
+      reasonCode: "ASSET_LOAD_FAILED",
+    })).toBeTruthy();
+    expect(() => officeCocosMessageSchema.parse({
+      type: "agent-market.office.degraded.v2",
+      reasonCode: "private runtime path",
+    })).toThrow();
   });
 });

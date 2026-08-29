@@ -56,6 +56,7 @@ export const supplementalZhTranslations: Readonly<Record<string, string>> = {
   "Three valid seats, immutable votes, and a two-vote ruling threshold are enforced by the settlement boundary.": "结算边界强制三名有效委员、不可修改投票和两票裁决门槛。",
   "Review relationships before opening the evidence packet.": "打开证据包前先核对利益关系。",
   "No externally verified case is loaded.": "当前未加载经过外部验证的案件。",
+  "Select matching capabilities. Tags are normalized and deduplicated.": "请选择匹配的能力；Tags 会自动规范化并去重。",
   "This surface may explain incidents, but cannot deploy, scale, transfer funds, vote, or change production resources.": "本页面可解释事件，但不能部署、扩缩容、转移资金、投票或修改生产资源。",
   "Local build pending full gate": "本地构建等待完整 Gate",
   "A local logistic-regression protocol exists. ECS execution and model readback remain external work.": "本地已有逻辑回归协议；ECS 执行与模型回读仍属于外部待办。",

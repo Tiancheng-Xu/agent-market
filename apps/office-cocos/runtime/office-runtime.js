@@ -100,7 +100,8 @@ System.register([], function (_export) {
 
   function loadTexture(cc, url) {
     return new Promise(function (resolve, reject) {
-      cc.assetManager.loadRemote(url, { ext: ".png" }, function (error, imageAsset) {
+      var extension = url.slice(url.lastIndexOf("."));
+      cc.assetManager.loadRemote(url, { ext: extension }, function (error, imageAsset) {
         if (error) return reject(error);
         var texture = new cc.Texture2D();
         texture.image = imageAsset;
@@ -282,20 +283,20 @@ System.register([], function (_export) {
     window.addEventListener("resize", function () { render(cc, root); });
     cc.director.runSceneImmediate(scene);
     Promise.all([
-      loadTexture(cc, "/office-cocos/art/starbuddy-office-background.png"),
-      loadTexture(cc, "/office-cocos/art/starbuddy-agent-atlas.png")
+      loadTexture(cc, "/office-cocos/art/starbuddy-office-background.webp"),
+      loadTexture(cc, "/office-cocos/art/starbuddy-agent-atlas.webp")
     ]).then(function (loaded) {
       console.info("agent-market.office.assets.ready");
       document.documentElement.dataset.officeRuntime = "ready";
       textures.background = loaded[0];
       textures.atlas = loaded[1];
       render(cc, root);
+      window.parent.postMessage({ type: "agent-market.office.ready.v2" }, window.location.origin);
     }).catch(function () {
       console.warn("agent-market.office.assets.degraded");
       document.documentElement.dataset.officeRuntime = "degraded";
       render(cc, root);
-    }).finally(function () {
-      window.parent.postMessage({ type: "agent-market.office.ready.v2" }, window.location.origin);
+      window.parent.postMessage({ type: "agent-market.office.degraded.v2", reasonCode: "ASSET_LOAD_FAILED" }, window.location.origin);
     });
     render(cc, root);
   }

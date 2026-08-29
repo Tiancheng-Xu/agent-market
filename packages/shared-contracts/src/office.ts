@@ -48,6 +48,10 @@ export const officeHostMessageSchema = z.object({
 export const officeCocosMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("agent-market.office.ready.v2") }).strict(),
   z.object({
+    type: z.literal("agent-market.office.degraded.v2"),
+    reasonCode: z.literal("ASSET_LOAD_FAILED"),
+  }).strict(),
+  z.object({
     type: z.literal("agent-market.office.select-desk.v2"),
     taskId: z.string().min(1).max(128),
   }).strict(),

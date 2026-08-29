@@ -59,8 +59,17 @@ await new Promise((resolve, reject) => {
 
 let nextId = 1;
 const pending = new Map();
+const pageErrors = [];
+let activeRoute = "startup";
 socket.onmessage = (event) => {
   const message = JSON.parse(event.data);
+  if (message.method === "Runtime.exceptionThrown") {
+    pageErrors.push({
+      route: activeRoute,
+      text: message.params?.exceptionDetails?.text ?? "Uncaught exception",
+    });
+    return;
+  }
   if (!message.id || !pending.has(message.id)) return;
   const handler = pending.get(message.id);
   pending.delete(message.id);
@@ -102,10 +111,14 @@ for (const width of widths) {
   });
 
   for (const route of routes) {
+    activeRoute = route;
+    const navigationStartedAt = performance.now();
     await send("Page.navigate", { url: `${baseUrl}${route}` });
     await sleep(600);
+    let cocosReadyMs = null;
     if (route === "/office") {
       await waitFor('document.querySelector(".cocos-office-host")?.classList.contains("cocos-office-ready")');
+      cocosReadyMs = Math.round(performance.now() - navigationStartedAt);
     }
     for (const locale of locales) {
       const label = locale === "zh-CN" ? "中文" : "EN";
@@ -139,7 +152,7 @@ for (const width of widths) {
         chinese: [...new Set(chinese)].slice(0, 50),
       };
     })()`);
-      results.push({ width, route, locale, ...audit });
+      results.push({ width, route, locale, cocosReadyMs, ...audit });
 
       if ((width === 390 || width === 1920) && screenshotRoutes.has(route)) {
         const screenshot = await send("Page.captureScreenshot", {
@@ -187,11 +200,13 @@ const summary = {
   brokenImages: results.filter((result) => result.brokenImages.length > 0),
   emptyButtons: results.filter((result) => result.emptyButtons > 0),
   cocosReadyFailures: results.filter((result) => result.route === "/office" && !result.cocosOfficeReady),
+  cocosReadyMs: results.filter((result) => result.route === "/office" && result.locale === "zh-CN").map(({ width, cocosReadyMs }) => ({ width, cocosReadyMs })),
+  pageErrors,
   untranslated,
   untranslatedEnglish,
 };
 await writeFile(`${outputDirectory}/result.json`, `${JSON.stringify({ summary, results }, null, 2)}\n`);
 process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-if (summary.httpReadback.some((entry) => entry.status !== entry.expected) || summary.overflow.length || summary.brokenImages.length || summary.emptyButtons.length || summary.cocosReadyFailures.length || summary.untranslated.length || summary.untranslatedEnglish.length) {
+if (summary.httpReadback.some((entry) => entry.status !== entry.expected) || summary.overflow.length || summary.brokenImages.length || summary.emptyButtons.length || summary.cocosReadyFailures.length || summary.cocosReadyMs.some((entry) => entry.cocosReadyMs === null || entry.cocosReadyMs > 5000) || summary.pageErrors.length || summary.untranslated.length || summary.untranslatedEnglish.length) {
   process.exitCode = 1;
 }

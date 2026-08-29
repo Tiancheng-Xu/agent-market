@@ -40,7 +40,11 @@ describe("full delivery chain evidence", () => {
   it("uses the canonical trailing-slash Evidence URL in SSR navigation", () => {
     const serverApp = readFileSync(new URL("../ssr/ServerApp.tsx", import.meta.url), "utf8");
     expect(serverApp).toContain('href="/evidence/"');
-    expect(renderToStaticMarkup(<ServerApp pathname="/evidence/" />)).toContain('class="full-chain"');
+    const markup = renderToStaticMarkup(<ServerApp pathname="/evidence/" />);
+    expect(markup).toContain('href="/office"');
+    expect(markup).toContain('data-evidence-boundary="current"');
+    expect(markup).toContain("Cloudflare Web, the AWS V2 performance runtime, and Sepolia V3");
+    expect(markup).toContain('class="full-chain"');
   });
 
   it("keeps traceability columns readable inside a contained horizontal scroller", () => {
