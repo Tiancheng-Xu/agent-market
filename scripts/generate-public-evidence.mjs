@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +23,10 @@ const TITLES = [
 ];
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const PUBLIC_DEPLOYMENT_EVIDENCE = [
+  "sepolia-workflow-v3.json",
+  "2026-08-28-sepolia-v3-interaction-closure.json",
+];
 
 export function generatePublicEvidence(root = REPOSITORY_ROOT) {
   const document = readEvidence(resolve(root, "docs/evidence/requirements.yaml"));
@@ -39,6 +43,11 @@ export function generatePublicEvidence(root = REPOSITORY_ROOT) {
   writeFileSync(output, `${JSON.stringify({ requirements }, null, 2)}\n`);
   const phase2 = JSON.parse(readFileSync(resolve(root, "docs/evidence/phase2-local-validation.json"), "utf8"));
   writeFileSync(resolve(root, "apps/web/src/evidence/phase2-evidence.generated.json"), `${JSON.stringify(phase2, null, 2)}\n`);
+  const publicEvidence = resolve(root, "apps/web/public/evidence");
+  mkdirSync(publicEvidence, { recursive: true });
+  for (const file of PUBLIC_DEPLOYMENT_EVIDENCE) {
+    copyFileSync(resolve(root, "docs/evidence/deployment", file), resolve(publicEvidence, file));
+  }
   return output;
 }
 

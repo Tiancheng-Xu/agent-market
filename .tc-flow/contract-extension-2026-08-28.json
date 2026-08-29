@@ -7,6 +7,7 @@
   "objective": "Close the remaining V3 Sepolia task, arbitration, and staking receipts while preserving the already verified GraphQL, AWS V2, Cocos, owner-trained Runtime, and bilingual route evidence.",
   "allowedWritePaths": [
     "scripts/dev-agent-market-local.mjs",
+    "scripts/generate-public-evidence.mjs",
     "apps/transaction-engine/package.json",
     "docs/evidence/testing/2026-08-26-agent-market-closure-audit.json",
     "apps/web/src/pages/EvidencePage.tsx",
@@ -16,7 +17,9 @@
     "apps/web/src/pages/DirectoryPages.test.tsx",
     "apps/web/src/styles.css",
     "docs/evidence/deployment/sepolia-workflow-v3.json",
-    "docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json"
+    "docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json",
+    "apps/web/public/evidence/sepolia-workflow-v3.json",
+    "apps/web/public/evidence/2026-08-28-sepolia-v3-interaction-closure.json"
   ],
   "deterministicGates": [
     "Transaction Engine local full-stack entry remains loopback-only",
