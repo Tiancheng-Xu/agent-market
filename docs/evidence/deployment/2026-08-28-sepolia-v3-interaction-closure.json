@@ -1,0 +1,424 @@
+{
+  "schemaVersion": "agent-market.sepolia-v3-interaction-closure.v1",
+  "recordedAt": "2026-08-28T23:05:28.880Z",
+  "status": "verified-production",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "runId": "am-v3-20260828122728",
+  "scope": [
+    "browser MetaMask signing",
+    "V3 task publication and escrow",
+    "DAG anchoring and three-node assignment",
+    "automatic Agent acceptance",
+    "user dispute",
+    "fixed platform-arbiter ruling",
+    "receipt-gated Agent stake return",
+    "YD reward-pool funding",
+    "stake",
+    "unstake",
+    "yield claim",
+    "independent RPC receipt and contract-state readback"
+  ],
+  "roles": {
+    "publisher": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+    "agent": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+    "platformArbiter": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+    "platformTreasury": "0x0880386F9eEbEd9c3b32a36277ef00e0e5C65430"
+  },
+  "roleBoundary": "Single Sepolia EOA reused for publisher, owner-agent, and fixed platform arbiter in test closure.",
+  "contracts": {
+    "YDToken": "0x2f3462CE1cA78b3d1F21108C0785422B7Ca4A880",
+    "TaskStakeReceipt": "0xeBe83C2707c72e3b07d87a6915437101e0926578",
+    "AgentMarketWorkflowEscrow": "0x3AE2D94fbF7B017B1AeAACe875BD9C115dD156e6",
+    "StakeYieldVault": "0x3eA161bff63029a4556556643834e15863E750AD"
+  },
+  "ids": {
+    "runId": "am-v3-20260828122728",
+    "taskId": "0xa713eb4d3472b167d398ef5ac79731478f345da869d10cbe89e4e5f93ce533c1",
+    "requestRef": "0xf764cc3a219c992ec76196fb1778c77eae2e7320764a05b7ab08ef6824cf6be1",
+    "workflowId": "0x76fcf76caba589268bfad32c3f7b92878e6b28e0541e0d46aa76a527a651fdbd",
+    "dagHash": "0x9bef1929c48dd077f8161e63a9748583b2e02ca86181f6d7fed51ee3bae0e680",
+    "nodeIds": [
+      "0x393d320200b44867adc22cf21d59785c66ed4c18a2d6b61800facc861c134e6b",
+      "0x369ddd1826cadab14b6ce2c0b92104a1cf1ac47df2311b4e17db1420f04bac05",
+      "0xe4bea77f0cb11e97956bdcff8e09d1a1e0f5df88a4993eb90a5a76493647f133"
+    ],
+    "receiptIds": [
+      "15378738897315723238965444111971451818428661312770948500686299954791033154872",
+      "11161994257934366080026788080146530951748718902752154609895351700597287488954",
+      "106295144113668238139928682207205287578209185127755583488283441329062811060582"
+    ]
+  },
+  "candidateSelection": {
+    "strategy": "category+tags+decayed-window-score",
+    "candidates": [
+      {
+        "id": "research-agent",
+        "score": 88
+      },
+      {
+        "id": "code-agent",
+        "score": 84
+      },
+      {
+        "id": "judge-agent",
+        "score": 81
+      },
+      {
+        "id": "backup-agent",
+        "score": 73
+      }
+    ],
+    "selected": [
+      "research-agent",
+      "code-agent",
+      "judge-agent"
+    ]
+  },
+  "policy": {
+    "taskBudgetAtomic": "100000000000000000000",
+    "nonRefundablePublicationFeeAtomic": "6000000000000000000",
+    "publicationFeeRate": "6%",
+    "assignedShareBps": 10000,
+    "acceptedShareBps": 10000,
+    "platformArbitration": "single fixed platform arbiter in this Sepolia test closure"
+  },
+  "phases": {
+    "fundingAndDeployment": [
+      {
+        "action": "YD faucet",
+        "transactionHash": "0xefd0add86f6d3224a5db41071c07486d11f2ff15e01a4b851b5fc7e73360a4ae",
+        "blockNumber": 11584786,
+        "status": 1,
+        "gasUsed": "72988",
+        "feeWei": "187590137103248"
+      },
+      {
+        "action": "部署 TaskStakeReceipt",
+        "transactionHash": "0x9dd090c0ea5c1c07ac9ad2372dac6649878c781a1fbd2fbc9bd052de2cfdb517",
+        "blockNumber": 11584793,
+        "status": 1,
+        "gasUsed": "1142092",
+        "feeWei": "2906984427768596"
+      },
+      {
+        "action": "部署 AgentMarketWorkflowEscrow",
+        "transactionHash": "0xd89651e3db6438f66e4927b0102b2dc4e82ad68174488c09605840104896c8bf",
+        "blockNumber": 11584807,
+        "status": 1,
+        "gasUsed": "1786759",
+        "feeWei": "4622698081991808"
+      },
+      {
+        "action": "配置 Receipt escrow",
+        "transactionHash": "0xdf9393a769530d764504e6c086a1d76a2db9ed8b68b27548d6d9a15fe729f9ab",
+        "blockNumber": 11584818,
+        "status": 1,
+        "gasUsed": "46329",
+        "feeWei": "115268623832880"
+      },
+      {
+        "action": "部署 StakeYieldVault",
+        "transactionHash": "0x5ea4c14ed5d6dc66f44605214c012f647065d4f836095d2bff766893c22b0992",
+        "blockNumber": 11584828,
+        "status": 1,
+        "gasUsed": "645594",
+        "feeWei": "1663623307517952"
+      }
+    ],
+    "taskPublicationAndEscrow": [
+      {
+        "action": "YD approve workflow escrow",
+        "transactionHash": "0xcd31ae485d0e08d2d68d02eabbdb34d337160f2fa3a35dd78635a9067ce444ff",
+        "blockNumber": 11584843,
+        "status": 1,
+        "gasUsed": "46406",
+        "feeWei": "121522516101126"
+      },
+      {
+        "action": "发布任务 + 固定 6% 费用",
+        "transactionHash": "0xe31ba851284d8753f282fd644e456a14f50cb884eb54867673152317c4b55a26",
+        "blockNumber": 11584856,
+        "status": 1,
+        "gasUsed": "214290",
+        "feeWei": "519296186073150"
+      },
+      {
+        "action": "锚定 workflowId + dagHash v1",
+        "transactionHash": "0x43a95527aac714c417193db6d2fbe78f508f3ee7e91fca5a37e354b868286971",
+        "blockNumber": 11584867,
+        "status": 1,
+        "gasUsed": "77350",
+        "feeWei": "198061178665350"
+      }
+    ],
+    "dagAssignmentAndAutoAcceptance": [
+      {
+        "action": "分配 DAG 节点 1/3",
+        "transactionHash": "0x423f3f710496c9492bc60b54c7db250029c1f36a835db8def317060b82a8342e",
+        "blockNumber": 11584877,
+        "status": 1,
+        "gasUsed": "148410",
+        "feeWei": "375335830096830"
+      },
+      {
+        "action": "分配 DAG 节点 2/3",
+        "transactionHash": "0x83c69941b4647e9687465de1478abd9ca1de067cfbeb360659a91dc0b3f7acb4",
+        "blockNumber": 11584879,
+        "status": 1,
+        "gasUsed": "131334",
+        "feeWei": "338016154213332"
+      },
+      {
+        "action": "分配 DAG 节点 3/3",
+        "transactionHash": "0x7d1059150d36dff5c6c0aaf732b063058a5dcedc738d891c4ccccbb738c8923b",
+        "blockNumber": 11584881,
+        "status": 1,
+        "gasUsed": "131334",
+        "feeWei": "326956640607954"
+      },
+      {
+        "action": "Agent 自动接单链上确认 1/3",
+        "transactionHash": "0x3a30a957aa7dc29a520347c8f5cf39d73a525f81896e6d89c686d0cbe0db3d40",
+        "blockNumber": 11584886,
+        "status": 1,
+        "gasUsed": "183733",
+        "feeWei": "479004421169340"
+      },
+      {
+        "action": "Agent 自动接单链上确认 2/3",
+        "transactionHash": "0x49f78a30df55f190f742193337f05c79ab00aa88feece85e1a13c4656ed810df",
+        "blockNumber": 11584893,
+        "status": 1,
+        "gasUsed": "166829",
+        "feeWei": "423018415519791"
+      },
+      {
+        "action": "Agent 自动接单链上确认 3/3",
+        "transactionHash": "0x1421537e243d2d721641827bf6ce2c12df4afaecc0a646cbd004bf7179932d9a",
+        "blockNumber": 11584895,
+        "status": 1,
+        "gasUsed": "162029",
+        "feeWei": "420390448965193"
+      }
+    ],
+    "disputeAndPlatformRuling": [
+      {
+        "action": "用户提出异议",
+        "transactionHash": "0xf03729cc8f3836fb79d0bccf3455fa152eeeb9ab02d2ba499bc25168743f024e",
+        "blockNumber": 11584917,
+        "status": 1,
+        "gasUsed": "30936",
+        "feeWei": "76337966594856"
+      },
+      {
+        "action": "平台管理员最终仲裁：Agents 胜",
+        "transactionHash": "0x4987501878ad57bbdef58a8cb2a74ee7c186b230769dc03e527df37dd249a5b4",
+        "blockNumber": 11585277,
+        "status": 1,
+        "gasUsed": "82549",
+        "feeWei": "208452113948971"
+      }
+    ],
+    "stakeReceiptReturns": [
+      {
+        "action": "凭 receipt 领取并返还质押 1/3",
+        "transactionHash": "0x92994ab28cd2f92e70e83d9fc882be0891ee5310a66553618c785f8dd49df03f",
+        "blockNumber": 11587869,
+        "status": 1,
+        "gasUsed": "73473",
+        "feeWei": "191989315647336",
+        "recoveredFromChainEvent": true
+      },
+      {
+        "action": "凭 receipt 领取并返还质押 2/3",
+        "transactionHash": "0x68328967034f6f78a34c882ef8c6a82279188018be80aa723ac4e599766040ba",
+        "blockNumber": 11587912,
+        "status": 1,
+        "gasUsed": "73485",
+        "feeWei": "191403894237300"
+      },
+      {
+        "action": "凭 receipt 领取并返还质押 3/3",
+        "transactionHash": "0x7179aaf04b6e233dc0a0592d8909698c7867430a4cbde93f569394a3defed5d1",
+        "blockNumber": 11587915,
+        "status": 1,
+        "gasUsed": "64859",
+        "feeWei": "179773298795324"
+      }
+    ],
+    "stakingLifecycle": [
+      {
+        "action": "YD approve staking vault",
+        "transactionHash": "0xf224cf282f94547bf5fb86a40e1097248c315b896d4fa948344c99ab32570b65",
+        "blockNumber": 11587917,
+        "status": 1,
+        "gasUsed": "46406",
+        "feeWei": "122444415608856"
+      },
+      {
+        "action": "注资 6% 线性收益池",
+        "transactionHash": "0x6374479942d822eb2a245df1411cf21cdf850a860ca495c2919321f0ef539328",
+        "blockNumber": 11587918,
+        "status": 1,
+        "gasUsed": "86139",
+        "feeWei": "220623139476045"
+      },
+      {
+        "action": "质押 10 YD",
+        "transactionHash": "0xaca85e1af46173f34ad9c83a48775a023e2e03512c1893608b13f85c90745951",
+        "blockNumber": 11587919,
+        "status": 1,
+        "gasUsed": "86863",
+        "feeWei": "216081682895729"
+      },
+      {
+        "action": "解押 10 YD",
+        "transactionHash": "0x1ec57dfbd24c9c058bd9604864f7fadadf8f4843f16a1d97cd4c50f3c19b92eb",
+        "blockNumber": 11587926,
+        "status": 1,
+        "gasUsed": "70052",
+        "feeWei": "171006633431428"
+      },
+      {
+        "action": "领取 6% 线性收益",
+        "transactionHash": "0xa462d400507a464532407617e8c55d88635ae88cb939dc057c342813411327ad",
+        "blockNumber": 11587929,
+        "status": 1,
+        "gasUsed": "53963",
+        "feeWei": "134775476930276"
+      }
+    ]
+  },
+  "transactionCount": 24,
+  "gas": {
+    "capWei": "20000000000000000",
+    "spentWei": "14410654307192671",
+    "spentSepoliaEth": "0.014410654307192671",
+    "underCap": true
+  },
+  "eventReadback": {
+    "Transfer": 22,
+    "OwnershipTransferred": 2,
+    "Approval": 2,
+    "TaskCreated": 1,
+    "WorkflowAnchored": 1,
+    "NodeAssigned": 3,
+    "NodeAccepted": 3,
+    "DisputeOpened": 1,
+    "TaskResolved": 1,
+    "StakeClaimed": 3,
+    "RewardPoolFunded": 1,
+    "Staked": 1,
+    "Unstaked": 1,
+    "YieldClaimed": 1
+  },
+  "contractReadback": {
+    "workflow": {
+      "state": 4,
+      "budget": "100000000000000000000",
+      "publicationFee": "6000000000000000000",
+      "workflowVersion": 1,
+      "assignedShareBps": 10000,
+      "acceptedShareBps": 10000
+    },
+    "nodeIds": [
+      "0x393d320200b44867adc22cf21d59785c66ed4c18a2d6b61800facc861c134e6b",
+      "0x369ddd1826cadab14b6ce2c0b92104a1cf1ac47df2311b4e17db1420f04bac05",
+      "0xe4bea77f0cb11e97956bdcff8e09d1a1e0f5df88a4993eb90a5a76493647f133"
+    ],
+    "assignments": [
+      {
+        "nodeId": "0x393d320200b44867adc22cf21d59785c66ed4c18a2d6b61800facc861c134e6b",
+        "agent": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+        "stakeAmount": "5000000000000000000",
+        "receiptId": "15378738897315723238965444111971451818428661312770948500686299954791033154872",
+        "shareBps": 3400,
+        "accepted": true,
+        "stakeClaimed": true
+      },
+      {
+        "nodeId": "0x369ddd1826cadab14b6ce2c0b92104a1cf1ac47df2311b4e17db1420f04bac05",
+        "agent": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+        "stakeAmount": "5000000000000000000",
+        "receiptId": "11161994257934366080026788080146530951748718902752154609895351700597287488954",
+        "shareBps": 3300,
+        "accepted": true,
+        "stakeClaimed": true
+      },
+      {
+        "nodeId": "0xe4bea77f0cb11e97956bdcff8e09d1a1e0f5df88a4993eb90a5a76493647f133",
+        "agent": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+        "stakeAmount": "5000000000000000000",
+        "receiptId": "106295144113668238139928682207205287578209185127755583488283441329062811060582",
+        "shareBps": 3300,
+        "accepted": true,
+        "stakeClaimed": true
+      }
+    ],
+    "receiptBurned": [
+      {
+        "receiptId": "15378738897315723238965444111971451818428661312770948500686299954791033154872",
+        "burned": true
+      },
+      {
+        "receiptId": "11161994257934366080026788080146530951748718902752154609895351700597287488954",
+        "burned": true
+      },
+      {
+        "receiptId": "106295144113668238139928682207205287578209185127755583488283441329062811060582",
+        "burned": true
+      }
+    ],
+    "staking": {
+      "principal": "0",
+      "accrued": "0",
+      "earned": "0",
+      "allowance": "0",
+      "rewardReserve": "99999998401826484019"
+    },
+    "ydBalance": "894000001598173515981",
+    "platformArbiter": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+    "receiptEscrow": "0x3AE2D94fbF7B017B1AeAACe875BD9C115dD156e6"
+  },
+  "deterministicChecks": {
+    "all24ReceiptsSuccess": true,
+    "uniqueTransactionHashes": true,
+    "gasSumMatches": true,
+    "gasUnderCap": true,
+    "taskResolved": true,
+    "budget100YD": true,
+    "fixedFee6YD": true,
+    "workflowV1": true,
+    "assigned10000": true,
+    "accepted10000": true,
+    "threeNodes": true,
+    "allAssignmentsAccepted": true,
+    "allStakeReturned": true,
+    "allReceiptTokensBurned": true,
+    "arbiterMatches": true,
+    "receiptEscrowMatches": true,
+    "principalZero": true,
+    "accruedZero": true,
+    "earnedZero": true,
+    "vaultAllowanceConsumed": true,
+    "rewardReservePositive": true,
+    "expectedCoreEvents": true
+  },
+  "recovery": {
+    "occurred": true,
+    "transactionSequence": 17,
+    "action": "凭 receipt 领取并返还质押 1/3",
+    "reason": "BrowserProvider tx.wait listener stopped progressing after the transaction had already mined.",
+    "proof": "StakeClaimed event plus independent RPC receipt and nonce/state readback",
+    "duplicateTransactionSent": false
+  },
+  "security": {
+    "privateKeyPublished": false,
+    "walletSecretPublished": false,
+    "awsTouched": false,
+    "mainnetTouched": false,
+    "productionConfigurationChanged": false
+  },
+  "boundary": "All 24 receipts and final contract state were independently read from Ethereum Sepolia RPC. Product UI and Transaction Engine behavior remain supported by their local deterministic Evidence; this file proves the external chain and browser-wallet half of that composition. It does not claim multi-wallet role separation, mainnet value, a production SLO, or that the Cloudflare production route directly submitted these transactions."
+}

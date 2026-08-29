@@ -79,7 +79,7 @@ export function determineAgentAdmission(input: Pick<OwnerAgentDraft, "provider" 
 
 export function createOwnerAgentRecord(draft: OwnerAgentDraft, now = new Date()): OwnerAgentRecord {
   const ownerWallet = normalizeWallet(draft.ownerWallet);
-  const tags = [...new Set(draft.tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 32);
+  const tags = [...new Set(draft.tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 12);
   const admission = determineAgentAdmission(draft);
   const timestamp = now.toISOString();
   return {

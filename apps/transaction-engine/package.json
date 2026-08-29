@@ -6,6 +6,7 @@
   "scripts": {
     "build": "next build",
     "check": "pnpm typecheck",
+    "dev": "next dev --hostname 127.0.0.1",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },

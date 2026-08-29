@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "agent-market.sepolia-workflow-v3.v1",
+  "recordedAt": "2026-08-28T23:05:28.880Z",
+  "status": "verified-production",
+  "network": "sepolia",
+  "chainId": 11155111,
+  "rpcReadback": {
+    "provider": "https://ethereum-sepolia-rpc.publicnode.com",
+    "verifiedAt": "2026-08-28T23:06:45.418Z",
+    "transactionCount": 24,
+    "allReceiptsSuccessful": true,
+    "allTransactionHashesUnique": true,
+    "contractBytecode": {
+      "YDToken": {
+        "address": "0x2f3462CE1cA78b3d1F21108C0785422B7Ca4A880",
+        "hasCode": true,
+        "byteLength": 3365
+      },
+      "TaskStakeReceipt": {
+        "address": "0xeBe83C2707c72e3b07d87a6915437101e0926578",
+        "hasCode": true,
+        "byteLength": 4678
+      },
+      "AgentMarketWorkflowEscrow": {
+        "address": "0x3AE2D94fbF7B017B1AeAACe875BD9C115dD156e6",
+        "hasCode": true,
+        "byteLength": 7917
+      },
+      "StakeYieldVault": {
+        "address": "0x3eA161bff63029a4556556643834e15863E750AD",
+        "hasCode": true,
+        "byteLength": 2516
+      }
+    }
+  },
+  "runId": "am-v3-20260828122728",
+  "gas": {
+    "capWei": "20000000000000000",
+    "spentWei": "14410654307192671",
+    "spentSepoliaEth": "0.014410654307192671",
+    "underCap": true
+  },
+  "roles": {
+    "publisher": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+    "agent": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+    "platformArbiter": "0x4D9Df519AbCBE51C0098649bCd0e17ac1548Fa88",
+    "platformTreasury": "0x0880386F9eEbEd9c3b32a36277ef00e0e5C65430"
+  },
+  "roleBoundary": "Single Sepolia EOA reused for publisher, owner-agent, and fixed platform arbiter in test closure.",
+  "contracts": {
+    "YDToken": {
+      "address": "0x2f3462CE1cA78b3d1F21108C0785422B7Ca4A880",
+      "deployment": "reused-existing-v2",
+      "hasCode": true
+    },
+    "TaskStakeReceipt": {
+      "address": "0xeBe83C2707c72e3b07d87a6915437101e0926578",
+      "deploymentTransaction": {
+        "action": "部署 TaskStakeReceipt",
+        "transactionHash": "0x9dd090c0ea5c1c07ac9ad2372dac6649878c781a1fbd2fbc9bd052de2cfdb517",
+        "blockNumber": 11584793,
+        "status": 1,
+        "gasUsed": "1142092",
+        "feeWei": "2906984427768596"
+      },
+      "hasCode": true
+    },
+    "AgentMarketWorkflowEscrow": {
+      "address": "0x3AE2D94fbF7B017B1AeAACe875BD9C115dD156e6",
+      "deploymentTransaction": {
+        "action": "部署 AgentMarketWorkflowEscrow",
+        "transactionHash": "0xd89651e3db6438f66e4927b0102b2dc4e82ad68174488c09605840104896c8bf",
+        "blockNumber": 11584807,
+        "status": 1,
+        "gasUsed": "1786759",
+        "feeWei": "4622698081991808"
+      },
+      "hasCode": true
+    },
+    "StakeYieldVault": {
+      "address": "0x3eA161bff63029a4556556643834e15863E750AD",
+      "deploymentTransaction": {
+        "action": "部署 StakeYieldVault",
+        "transactionHash": "0x5ea4c14ed5d6dc66f44605214c012f647065d4f836095d2bff766893c22b0992",
+        "blockNumber": 11584828,
+        "status": 1,
+        "gasUsed": "645594",
+        "feeWei": "1663623307517952"
+      },
+      "hasCode": true
+    }
+  },
+  "configuration": [
+    {
+      "action": "配置 Receipt escrow",
+      "transactionHash": "0xdf9393a769530d764504e6c086a1d76a2db9ed8b68b27548d6d9a15fe729f9ab",
+      "blockNumber": 11584818,
+      "status": 1,
+      "gasUsed": "46329",
+      "feeWei": "115268623832880"
+    }
+  ],
+  "faucet": {
+    "action": "YD faucet",
+    "transactionHash": "0xefd0add86f6d3224a5db41071c07486d11f2ff15e01a4b851b5fc7e73360a4ae",
+    "blockNumber": 11584786,
+    "status": 1,
+    "gasUsed": "72988",
+    "feeWei": "187590137103248"
+  },
+  "workflow": {
+    "taskId": "0xa713eb4d3472b167d398ef5ac79731478f345da869d10cbe89e4e5f93ce533c1",
+    "requestRef": "0xf764cc3a219c992ec76196fb1778c77eae2e7320764a05b7ab08ef6824cf6be1",
+    "workflowId": "0x76fcf76caba589268bfad32c3f7b92878e6b28e0541e0d46aa76a527a651fdbd",
+    "dagHash": "0x9bef1929c48dd077f8161e63a9748583b2e02ca86181f6d7fed51ee3bae0e680",
+    "version": 1,
+    "nodeIds": [
+      "0x393d320200b44867adc22cf21d59785c66ed4c18a2d6b61800facc861c134e6b",
+      "0x369ddd1826cadab14b6ce2c0b92104a1cf1ac47df2311b4e17db1420f04bac05",
+      "0xe4bea77f0cb11e97956bdcff8e09d1a1e0f5df88a4993eb90a5a76493647f133"
+    ],
+    "receiptIds": [
+      "15378738897315723238965444111971451818428661312770948500686299954791033154872",
+      "11161994257934366080026788080146530951748718902752154609895351700597287488954",
+      "106295144113668238139928682207205287578209185127755583488283441329062811060582"
+    ],
+    "candidateSelection": {
+      "strategy": "category+tags+decayed-window-score",
+      "candidates": [
+        {
+          "id": "research-agent",
+          "score": 88
+        },
+        {
+          "id": "code-agent",
+          "score": 84
+        },
+        {
+          "id": "judge-agent",
+          "score": 81
+        },
+        {
+          "id": "backup-agent",
+          "score": 73
+        }
+      ],
+      "selected": [
+        "research-agent",
+        "code-agent",
+        "judge-agent"
+      ]
+    }
+  },
+  "deterministicGates": {
+    "contractCodePresent": true,
+    "fixedPublicationFeeSixYD": true,
+    "workflowVersionOne": true,
+    "assignedShareBps10000": true,
+    "acceptedShareBps10000": true,
+    "threeDagNodes": true,
+    "platformArbiterMatches": true,
+    "receiptEscrowMatches": true
+  },
+  "explorer": {
+    "transactionBaseUrl": "https://sepolia.etherscan.io/tx/",
+    "addressBaseUrl": "https://sepolia.etherscan.io/address/"
+  },
+  "boundary": "This is production verification on Ethereum Sepolia only. One Sepolia EOA is deliberately reused for publisher, owner-agent, and fixed platform-arbiter roles in this test closure; it is not multi-wallet separation evidence. The transactions were signed in Chrome/MetaMask through a local fail-closed closure harness using the compiled project contract artifacts. This proves deployed-contract behavior and browser wallet transport, not that a Cloudflare production route submitted the transactions. No private key, wallet secret, or AWS credential is included."
+}

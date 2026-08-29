@@ -43,8 +43,22 @@
     "apps/transaction-engine/src/chain/resources.test.ts",
     "database/migrations/0008_chain_account_resources.sql",
     "apps/transaction-engine/src/app/api/chain/account/route.ts",
-    "apps/web/src/pages/WorkflowPages.test.tsx"
+    "apps/web/src/pages/WorkflowPages.test.tsx",
+    ".tc-flow/contract-extension-2026-08-28.json",
+    "scripts/dev-agent-market-local.mjs",
+    "scripts/generate-public-evidence.mjs",
+    "apps/transaction-engine/package.json",
+    "docs/evidence/testing/2026-08-26-agent-market-closure-audit.json",
+    "apps/web/src/pages/EvidencePage.tsx",
+    "apps/web/src/ownerAgentRegistry.ts",
+    "apps/web/src/components/TagSelector.tsx",
+    "apps/web/src/pages/DirectoryPages.test.tsx",
+    "apps/web/src/styles.css",
+    "docs/evidence/deployment/sepolia-workflow-v3.json",
+    "docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json",
+    "apps/web/public/evidence/sepolia-workflow-v3.json",
+    "apps/web/public/evidence/2026-08-28-sepolia-v3-interaction-closure.json"
   ],
   "unexpectedFiles": [],
-  "updatedAt": "2026-08-26T02:29:00Z"
+  "updatedAt": "2026-08-29T00:48:12Z"
 }
