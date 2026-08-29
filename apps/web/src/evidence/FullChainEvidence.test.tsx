@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { FullChainEvidence } from "./FullChainEvidence";
+import { ServerApp } from "../ssr/ServerApp";
 
 describe("full delivery chain evidence", () => {
   it("renders the complete delivery boundary with scoped external closure", () => {
@@ -39,6 +40,7 @@ describe("full delivery chain evidence", () => {
   it("uses the canonical trailing-slash Evidence URL in SSR navigation", () => {
     const serverApp = readFileSync(new URL("../ssr/ServerApp.tsx", import.meta.url), "utf8");
     expect(serverApp).toContain('href="/evidence/"');
+    expect(renderToStaticMarkup(<ServerApp pathname="/evidence/" />)).toContain('class="full-chain"');
   });
 
   it("keeps traceability columns readable inside a contained horizontal scroller", () => {

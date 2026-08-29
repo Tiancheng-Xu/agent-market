@@ -28,7 +28,7 @@ export function ServerApp({ pathname }: { pathname: string }) {
           <div><dt>Evidence</dt><dd>Requirement to verification trace</dd></div>
         </dl>
       </section>
-      {pathname === "/evidence" ? <FullChainEvidence /> : null}
+      {pathname.replace(/\/+$/, "") === "/evidence" ? <FullChainEvidence /> : null}
     </main>
   );
 }
