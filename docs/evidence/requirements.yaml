@@ -16,12 +16,12 @@ requirements:
     last_verified_at: null
     blockers: []
   - requirement_id: REQ-AM-03
-    status: IMPLEMENTED_UNVERIFIED
+    status: VERIFIED
     implementation_locations: [apps/web/src/pages/DirectoryPages.tsx, packages/contracts/contracts/AgentMarketEscrow.sol]
-    test_evidence: [packages/contracts/test/SettlementFlow.test.ts]
-    deployment_evidence: []
-    transaction_evidence: []
-    last_verified_at: null
+    test_evidence: [packages/contracts/test/SettlementFlow.test.ts, docs/evidence/testing/2026-08-26-chain-interaction-local-gates.json]
+    deployment_evidence: [docs/evidence/deployment/sepolia-workflow-v3.json, docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    transaction_evidence: [docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    last_verified_at: "2026-08-28T23:05:28.880Z"
     blockers: []
   - requirement_id: REQ-AM-04
     status: IMPLEMENTING
@@ -48,36 +48,36 @@ requirements:
     last_verified_at: null
     blockers: []
   - requirement_id: REQ-AM-07
-    status: IMPLEMENTED_UNVERIFIED
+    status: VERIFIED
     implementation_locations: [packages/contracts/contracts/ArbitrationCommittee.sol, packages/contracts/contracts/AgentMarketEscrow.sol]
-    test_evidence: [packages/contracts/test/SettlementFlow.test.ts]
-    deployment_evidence: []
-    transaction_evidence: []
-    last_verified_at: null
+    test_evidence: [packages/contracts/test/SettlementFlow.test.ts, docs/evidence/testing/2026-08-26-chain-interaction-local-gates.json]
+    deployment_evidence: [docs/evidence/deployment/sepolia-workflow-v3.json, docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    transaction_evidence: [docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    last_verified_at: "2026-08-28T23:05:28.880Z"
     blockers: []
   - requirement_id: REQ-AM-08
-    status: IMPLEMENTED_UNVERIFIED
+    status: VERIFIED
     implementation_locations: [packages/contracts/contracts/YDToken.sol]
-    test_evidence: [packages/contracts/test/YDToken.test.ts]
-    deployment_evidence: []
-    transaction_evidence: []
-    last_verified_at: null
+    test_evidence: [packages/contracts/test/YDToken.test.ts, docs/evidence/testing/2026-08-26-chain-interaction-local-gates.json]
+    deployment_evidence: [docs/evidence/deployment/sepolia-workflow-v3.json, docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    transaction_evidence: [docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    last_verified_at: "2026-08-28T23:05:28.880Z"
     blockers: []
   - requirement_id: REQ-AM-09
-    status: IMPLEMENTED_UNVERIFIED
+    status: VERIFIED
     implementation_locations: [packages/contracts/contracts/AgentMarketEscrow.sol, packages/contracts/contracts/StakeYieldVault.sol]
-    test_evidence: [packages/contracts/test/SettlementFlow.test.ts]
-    deployment_evidence: []
-    transaction_evidence: []
-    last_verified_at: null
+    test_evidence: [packages/contracts/test/SettlementFlow.test.ts, docs/evidence/testing/2026-08-26-chain-interaction-local-gates.json]
+    deployment_evidence: [docs/evidence/deployment/sepolia-workflow-v3.json, docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    transaction_evidence: [docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    last_verified_at: "2026-08-28T23:05:28.880Z"
     blockers: []
   - requirement_id: REQ-AM-10
-    status: IMPLEMENTED_UNVERIFIED
+    status: VERIFIED
     implementation_locations: [apps/web/src/App.tsx, apps/web/src/hooks/useWallet.ts, apps/web/src/styles.css]
-    test_evidence: [apps/web/src/lib/domain.test.ts]
-    deployment_evidence: []
+    test_evidence: [apps/web/src/lib/domain.test.ts, docs/evidence/testing/2026-08-26-visual-route-audit.json]
+    deployment_evidence: [docs/evidence/testing/2026-08-26-external-chrome-full-workflow-recording.json]
     transaction_evidence: []
-    last_verified_at: null
+    last_verified_at: "2026-08-27T06:25:00.757Z"
     blockers: []
   - requirement_id: REQ-AM-11
     status: IMPLEMENTING
@@ -88,12 +88,12 @@ requirements:
     last_verified_at: null
     blockers: []
   - requirement_id: REQ-AM-12
-    status: IMPLEMENTED_UNVERIFIED
+    status: VERIFIED
     implementation_locations: [services/matcher-go/cmd/matcher/main.go, services/matcher-go/internal/ranking/rank.go]
-    test_evidence: [services/matcher-go/internal/contracts/events_test.go, services/matcher-go/internal/ranking/rank_test.go]
-    deployment_evidence: []
-    transaction_evidence: []
-    last_verified_at: null
+    test_evidence: [services/matcher-go/internal/contracts/events_test.go, services/matcher-go/internal/ranking/rank_test.go, docs/evidence/testing/2026-08-23-agent-market-v3-local-gates.json, docs/evidence/testing/2026-08-26-queen-terminal-matrix.json]
+    deployment_evidence: [docs/evidence/testing/2026-08-26-external-chrome-full-workflow-recording.json, docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    transaction_evidence: [docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json]
+    last_verified_at: "2026-08-28T23:05:28.880Z"
     blockers: []
   - requirement_id: REQ-AM-13
     status: VERIFIED
