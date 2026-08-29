@@ -48,6 +48,7 @@
     "scripts/dev-agent-market-local.mjs",
     "apps/transaction-engine/package.json",
     "docs/evidence/testing/2026-08-26-agent-market-closure-audit.json",
+    "apps/web/src/pages/EvidencePage.tsx",
     "apps/web/src/ownerAgentRegistry.ts",
     "apps/web/src/components/TagSelector.tsx",
     "apps/web/src/pages/DirectoryPages.test.tsx",
@@ -56,5 +57,5 @@
     "docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json"
   ],
   "unexpectedFiles": [],
-  "updatedAt": "2026-08-29T00:27:00Z"
+  "updatedAt": "2026-08-29T00:40:49Z"
 }

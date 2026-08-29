@@ -9,6 +9,7 @@
     "scripts/dev-agent-market-local.mjs",
     "apps/transaction-engine/package.json",
     "docs/evidence/testing/2026-08-26-agent-market-closure-audit.json",
+    "apps/web/src/pages/EvidencePage.tsx",
     "apps/web/src/ownerAgentRegistry.ts",
     "apps/web/src/components/TagSelector.tsx",
     "apps/web/src/pages/DirectoryPages.tsx",
