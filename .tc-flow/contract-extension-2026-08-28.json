@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "runId": "d6738bc2-0d2d-4d69-b040-3b485ce61d93",
+  "feature": "agent-market-live-agent-closure",
+  "parentContractHash": "4f6145fcbd0a1ee2f9e11f9385a407375fe7c0455932964051d60513e4ada79e",
+  "recordedAt": "2026-08-28T08:48:17Z",
+  "objective": "Close the remaining V3 Sepolia task, arbitration, and staking receipts while preserving the already verified GraphQL, AWS V2, Cocos, owner-trained Runtime, and bilingual route evidence.",
+  "allowedWritePaths": [
+    "scripts/dev-agent-market-local.mjs",
+    "apps/transaction-engine/package.json",
+    "docs/evidence/testing/2026-08-26-agent-market-closure-audit.json",
+    "apps/web/src/ownerAgentRegistry.ts",
+    "apps/web/src/components/TagSelector.tsx",
+    "apps/web/src/pages/DirectoryPages.tsx",
+    "apps/web/src/pages/DirectoryPages.test.tsx",
+    "apps/web/src/styles.css",
+    "docs/evidence/deployment/sepolia-workflow-v3.json",
+    "docs/evidence/deployment/2026-08-28-sepolia-v3-interaction-closure.json"
+  ],
+  "deterministicGates": [
+    "Transaction Engine local full-stack entry remains loopback-only",
+    "Agent and task tags are normalized arrays with bounded count and length",
+    "Every Sepolia mutation has a status-1 receipt and exact event readback",
+    "Pending or failed external actions never become verified UI or Evidence states",
+    "No signer material, RPC credential, private path, raw prompt, or model output is published"
+  ],
+  "blockedWithoutActionApproval": [
+    "Sepolia contract deployment or transaction submission",
+    "Cloudflare production configuration",
+    "production deployment",
+    "destructive cleanup"
+  ],
+  "approvalState": {
+    "sepoliaBatch": "authorized-and-verified-complete",
+    "tagSelectorDesign": "authorized-and-verified-complete"
+  }
+}
