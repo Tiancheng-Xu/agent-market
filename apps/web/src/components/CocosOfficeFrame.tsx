@@ -31,6 +31,17 @@ export function CocosOfficeFrame({
     locale,
   }), [desks, locale, statusFilter, viewerWallet]);
 
+  function syncFrameStatus(frame: Window): void {
+    try {
+      const runtimeState = frame.document.documentElement.dataset.officeRuntime;
+      if (runtimeState !== "ready" && runtimeState !== "degraded") return;
+      setStatus("ready");
+      postOfficeSnapshot(frame, expectedOrigin, snapshot);
+    } catch {
+      // postMessage remains authoritative if the frame ever moves cross-origin.
+    }
+  }
+
   useEffect(() => {
     const timer = window.setTimeout(() => setStatus((current) => current === "ready" ? current : "unavailable"), 20000);
     const onMessage = (event: MessageEvent<unknown>) => {
@@ -66,7 +77,11 @@ export function CocosOfficeFrame({
       sandbox="allow-scripts allow-same-origin"
       onLoad={() => {
         const frame = frameRef.current?.contentWindow;
-        if (frame) postOfficeSnapshot(frame, expectedOrigin, snapshot);
+        if (!frame) return;
+        postOfficeSnapshot(frame, expectedOrigin, snapshot);
+        syncFrameStatus(frame);
+        window.setTimeout(() => syncFrameStatus(frame), 250);
+        window.setTimeout(() => syncFrameStatus(frame), 1000);
       }}
       onError={() => setStatus("unavailable")}
     />

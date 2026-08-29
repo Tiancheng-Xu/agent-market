@@ -49,9 +49,12 @@ describe("full delivery chain evidence", () => {
 
     expect(page).toContain('className="evidence-trace-scroll"');
     expect(css).toContain(".evidence-trace{min-width:0;max-width:100%}");
-    expect(css).toContain(".evidence-trace-scroll{grid-column:1/-1;min-width:0;max-width:100%;overflow-x:auto");
-    expect(css).toContain("min-width:1220px;grid-template-columns:minmax(210px,1fr) minmax(260px,1.25fr) minmax(310px,1.5fr) minmax(260px,1.3fr) minmax(180px,.85fr)");
+    expect(css).toContain(".evidence-trace-scroll{grid-column:1/-1;min-width:0;max-width:100%;overflow:visible");
+    expect(css).toContain(".evidence-trace-scroll>dl{width:100%;min-width:0;grid-template-columns:repeat(2,minmax(0,1fr))");
+    expect(css).not.toContain("min-width:1220px");
     expect(css).toContain(".evidence-trace-scroll dd{word-break:normal;overflow-wrap:break-word;hyphens:none}");
     expect(css).not.toContain(".evidence-trace-scroll dd{word-break:break-all");
+    expect(page).not.toContain("Fresh AWS V2 Web Vitals writeback remains pending external readback");
+    expect(page).not.toContain("Sepolia V3 still requires a fresh deployment identifier and readback");
   });
 });
