@@ -1,4 +1,5 @@
-import { Route, Routes } from "react-router-dom";
+import { useLayoutEffect } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 
 import { Shell } from "./components/Shell";
 import { useWallet } from "./hooks/useWallet";
@@ -9,8 +10,30 @@ import { HomePage } from "./pages/HomePage";
 import { LocalAgentsPage } from "./pages/LocalAgentsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { DisputePage, StakingPage, WorkspacePage } from "./pages/WorkflowPages";
+import { resetRouteScroll } from "./routeScroll";
+
+function RouteScrollReset() {
+  const { pathname } = useLocation();
+
+  useLayoutEffect(() => {
+    const reset = () => resetRouteScroll(document, window);
+    window.history.scrollRestoration = "manual";
+    reset();
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      reset();
+      secondFrame = window.requestAnimationFrame(reset);
+    });
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [pathname]);
+
+  return null;
+}
 
 export default function App() {
   const { wallet, connect, switchToSepolia, isSepolia } = useWallet();
-  return <Shell wallet={wallet} isSepolia={isSepolia} onConnect={connect} onSwitch={switchToSepolia}><Routes><Route path="/" element={<HomePage />} /><Route path="/agents" element={<AgentsPage walletAddress={wallet.address} />} /><Route path="/agents/local" element={<LocalAgentsPage walletAddress={wallet.address} />} /><Route path="/agents/new" element={<AgentNewPage walletAddress={wallet.address} />} /><Route path="/agents/:id" element={<AgentDetailPage />} /><Route path="/tasks" element={<TasksPage />} /><Route path="/tasks/new" element={<TaskNewPage walletAddress={wallet.address} />} /><Route path="/tasks/:id" element={<TaskDetailPage />} /><Route path="/tasks/:id/matches" element={<MatchesPage />} /><Route path="/tasks/:id/workspace" element={<WorkspacePage walletAddress={wallet.address} />} /><Route path="/office" element={<WorkspacePage walletAddress={wallet.address} />} /><Route path="/disputes/:id" element={<DisputePage />} /><Route path="/staking" element={<StakingPage walletAddress={wallet.address} />} /><Route path="/dashboard" element={<DashboardPage />} /><Route path="/committee" element={<CommitteePage walletAddress={wallet.address} />} /><Route path="/ops" element={<OpsPage />} /><Route path="/evidence" element={<EvidencePage />} /><Route path="*" element={<NotFoundPage />} /></Routes></Shell>;
+  return <Shell wallet={wallet} isSepolia={isSepolia} onConnect={connect} onSwitch={switchToSepolia}><RouteScrollReset /><Routes><Route path="/" element={<HomePage />} /><Route path="/agents" element={<AgentsPage walletAddress={wallet.address} />} /><Route path="/agents/local" element={<LocalAgentsPage walletAddress={wallet.address} />} /><Route path="/agents/new" element={<AgentNewPage walletAddress={wallet.address} />} /><Route path="/agents/:id" element={<AgentDetailPage />} /><Route path="/tasks" element={<TasksPage />} /><Route path="/tasks/new" element={<TaskNewPage walletAddress={wallet.address} />} /><Route path="/tasks/:id" element={<TaskDetailPage />} /><Route path="/tasks/:id/matches" element={<MatchesPage />} /><Route path="/tasks/:id/workspace" element={<WorkspacePage walletAddress={wallet.address} />} /><Route path="/office" element={<WorkspacePage walletAddress={wallet.address} />} /><Route path="/disputes/:id" element={<DisputePage />} /><Route path="/staking" element={<StakingPage walletAddress={wallet.address} />} /><Route path="/dashboard" element={<DashboardPage />} /><Route path="/committee" element={<CommitteePage walletAddress={wallet.address} />} /><Route path="/ops" element={<OpsPage />} /><Route path="/evidence" element={<EvidencePage />} /><Route path="*" element={<NotFoundPage />} /></Routes></Shell>;
 }

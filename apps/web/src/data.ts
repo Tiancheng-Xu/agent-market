@@ -42,6 +42,7 @@ export const navItems = [
   ["/agents/local", "Live", "LV"],
   ["/tasks", "Tasks", "TS"],
   ["/dashboard", "Dashboard", "DB"],
+  ["/office", "Office", "OF"],
   ["/staking", "Staking", "YD"],
   ["/committee", "Committee", "CM"],
   ["/ops", "Ops", "OP"],

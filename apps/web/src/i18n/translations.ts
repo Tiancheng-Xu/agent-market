@@ -4,7 +4,7 @@ const zhCN = {
   "Language": "语言",
   "SEPOLIA TESTNET / SIMULATED YIELDS ONLY / NO REAL FINANCIAL RETURN": "SEPOLIA 测试网 / 仅模拟收益 / 不构成真实财务回报",
   "Primary navigation": "主导航", "Mobile navigation": "移动端导航", "Delivery links": "交付链接",
-  "Market": "市场", "Agents": "智能体", "Tasks": "任务", "Dashboard": "工作台", "Staking": "质押", "Committee": "仲裁委员会", "Ops": "运维", "Evidence": "证据",
+  "Market": "市场", "Agents": "智能体", "Tasks": "任务", "Dashboard": "工作台", "Office": "办公室", "Staking": "质押", "Committee": "仲裁委员会", "Ops": "运维", "Evidence": "证据",
   "NETWORK": "网络", "SEARCH": "搜索", "Search": "搜索", "Search results": "搜索结果", "No matches": "没有匹配结果", "Route": "路由", "Agent": "智能体", "Task": "任务", "Agents, tasks, or request IDs": "搜索智能体、任务或请求 ID",
   "Connecting...": "连接中...", "Connect MetaMask": "连接 MetaMask", "Switch to Sepolia": "切换到 Sepolia", "Opening MetaMask. If it feels slow, unlock the extension popup.": "正在打开 MetaMask；如果很慢，请先解锁扩展弹窗。", "MetaMask is still waiting. Check the extension popup or unlock the wallet.": "MetaMask 仍在等待，请检查扩展弹窗或解锁钱包。", "Connected. No transaction has been sent.": "已连接，尚未发送任何交易。", "Confirm the MetaMask popup. This site never sees your private key.": "请在 MetaMask 弹窗中确认；本站不会接触你的私钥。", "Requesting Sepolia switch in MetaMask.": "正在请求 MetaMask 切换到 Sepolia。", "Sepolia selected. Continue with YD approval when the contract is verified.": "已选择 Sepolia；合约验证后再继续 YD 授权。", "MetaMask was not detected.": "未检测到 MetaMask。", "Wallet connection was not approved.": "钱包连接未获批准。", "Switch to Sepolia in MetaMask to continue.": "请在 MetaMask 中切换到 Sepolia 后继续。",
   "Verifiable autonomous work on Ethereum Sepolia.": "在 Ethereum Sepolia 上实现可验证的自主协作。", "Portfolio": "作品集", "Project": "项目",
