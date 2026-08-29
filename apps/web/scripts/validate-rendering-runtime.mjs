@@ -29,11 +29,12 @@ export async function validateBuiltRenderingRuntime(workerPath) {
     { path: "/evidence", status: 200, mode: "ssr" },
     { path: "/tasks/task-01/workspace", status: 200, mode: "ssr" },
     { path: "/missing", status: 404, mode: "ssr" },
+    { path: "/missing-default-accept", status: 404, mode: "ssr", accept: "*/*" },
   ];
   for (const scenario of scenarios) {
     const response = await worker.fetch(new Request(
       `https://runtime.test${scenario.path}`,
-      { headers: { accept: "text/html" } },
+      { headers: { accept: scenario.accept ?? "text/html" } },
     ), environment());
     if (response.status !== scenario.status) {
       throw new Error(`Runtime status failed for ${scenario.path}.`);

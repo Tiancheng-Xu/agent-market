@@ -82,6 +82,30 @@ describe("Cloudflare Pages edge renderer", () => {
     expect(missing.status).toBe(404);
   });
 
+  it("preserves a real 404 for extensionless HTTP clients without an HTML accept header", async () => {
+    const handler = createPagesHandler({
+      version: "test",
+      async render(pathname) {
+        return stream(`<h1>${pathname}</h1>`);
+      },
+      logger: { info() {}, error() {} },
+    });
+
+    for (const headers of [undefined, { accept: "*/*" }]) {
+      const request = headers
+        ? new Request("https://agent-market.test/not-a-real-route", { headers })
+        : new Request("https://agent-market.test/not-a-real-route");
+      const response = await handler.fetch(
+        request,
+        environment(),
+      );
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get("x-agent-market-render-mode")).toBe("ssr");
+      expect(await response.text()).toContain("not-a-real-route");
+    }
+  });
+
   it("falls back to CSR when edge rendering fails", async () => {
     const handler = createPagesHandler({
       version: "test",
