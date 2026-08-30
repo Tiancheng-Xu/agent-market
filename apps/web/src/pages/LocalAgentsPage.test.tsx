@@ -105,14 +105,26 @@ describe("local agents Queen workflow", () => {
     expect(markup).toContain("Generate workflow plan");
     expect(markup).toContain("Start workflow");
     expect(markup).toContain("Auto-filled");
+    expect(markup).toContain('aria-label="Queen workflow diagram"');
+    expect(markup).toContain('aria-label="Graph edges"');
+    expect(markup).toContain("execute-1");
+    expect(markup).toContain("judge-1");
     expect(markup).not.toContain(">Rank<");
     expect(markup).not.toContain(">Accept<");
     expect(markup).not.toContain(">Run<");
-    expect(markup).not.toContain(">Judge<");
-    expect(markup).not.toContain(">Red team<");
-    expect(markup).not.toContain(">Repair<");
     expect(markup).not.toContain(">Arbitrate<");
     expect(markup).not.toContain(">Write loop<");
+  });
+
+  it("renders the canonical flow and keeps Runtime-dependent actions disabled while offline", () => {
+    const markup = renderToStaticMarkup(<LocalAgentsPage />);
+    expect(markup).toContain("Requirement");
+    expect(markup).toContain("Queen plan");
+    expect(markup).toContain("Final arbiter");
+    expect(markup).toContain("Red Team");
+    expect(markup).toContain("Repair");
+    expect(markup).toContain("RUNTIME_OFFLINE");
+    expect(markup).toMatch(/<button[^>]+disabled=""[^>]*>Generate workflow plan<\/button>/);
   });
 
   it.each(["succeeded", "error", "cancelled"] as const)(

@@ -110,6 +110,15 @@ type QueenWorkflowState = {
 
 const MAX_ORCHESTRATION_AGENTS = 3;
 const WORKFLOW_OPERATION_TIMEOUT_MS = 75_000;
+const CANONICAL_QUEEN_FLOW = [
+  { id: "requirement", label: "Requirement", type: "input" },
+  { id: "queen-plan", label: "Queen plan", type: "plan" },
+  { id: "agent-match", label: "Agent match", type: "match" },
+  { id: "execute", label: "Execution", type: "execute" },
+  { id: "judge", label: "Judge", type: "judge" },
+  { id: "final-arbiter", label: "Final arbiter", type: "synthesize" },
+  { id: "evidence", label: "Evidence", type: "deliver" },
+] as const;
 const ORCHESTRATE_AGENTS_MUTATION = `
 mutation OrchestrateAgents($input: AgentOrchestrationInput!) {
   orchestrateAgents(input: $input) {
@@ -274,6 +283,7 @@ const fallbackAgents: DisplayAgent[] = publicAgentCatalog.map((agent) => ({
 export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: { initialQueenWorkflow?: QueenWorkflowState; walletAddress?: string | null } = {}) {
   const [selectedId, setSelectedId] = useState<AgentId>("personal-ai-agent-runtime-v4-1");
   const [health, setHealth] = useState<Health>({ status: "offline", agents: [], reasonCode: "RUNTIME_OFFLINE" });
+  const [healthRevision, setHealthRevision] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: "Select an agent and send a short prompt. Live answers require the Cloudflare edge gateway and local runtime to be online." },
   ]);
@@ -307,7 +317,8 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
     && !orchestrationIds.includes(selectedAgent.id)
     && !orchestrationAgents.some((agent) => agent.model.toLowerCase() === selectedAgent.model.toLowerCase());
   const orchestrationModelConflict = hasDuplicateModels(orchestrationAgents);
-  const canRunOrchestration = !busy && orchestrationAgents.length >= 2 && !orchestrationModelConflict && draft.trim().length > 0;
+  const runtimeAvailable = health.status !== "offline";
+  const canRunOrchestration = runtimeAvailable && !busy && orchestrationAgents.length >= 2 && !orchestrationModelConflict && draft.trim().length > 0;
   const visibleQueenGraph = queenDraftGraph ?? queenWorkflow.graph;
 
   useEffect(() => {
@@ -324,12 +335,12 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
       .then((payload) => { if (active) setHealth(payload); })
       .catch(() => { if (active) setHealth({ status: "offline", agents: [], reasonCode: "RUNTIME_OFFLINE" }); });
     return () => { active = false; };
-  }, []);
+  }, [healthRevision]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const prompt = draft.trim();
-    if (!prompt || busy) return;
+    if (!prompt || busy || !runtimeAvailable) return;
 
     const requestId = crypto.randomUUID();
     const userMessage: ChatMessage = { role: "user", content: prompt };
@@ -878,6 +889,8 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
           actions={<Badge tone={health.status === "online" ? "cyan" : health.status === "degraded" ? "amber" : "rose"}>{health.status.toUpperCase()}</Badge>}
         />
 
+        {!runtimeAvailable ? <div className="runtime-offline-callout" role="status"><div><strong>Runtime unavailable</strong><span>{health.reasonCode ?? "RUNTIME_OFFLINE"}. Queen planning, chat, and orchestration stay disabled until the signed Runtime health check succeeds.</span></div><button type="button" className="button button-ghost" onClick={() => setHealthRevision((current) => current + 1)}>Retry runtime health</button></div> : null}
+
         <Panel className="queen-workflow-panel">
           <div className="panel-heading">
             <div>
@@ -888,14 +901,15 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
               {queenWorkflow.status.toUpperCase()}
             </Badge>
           </div>
+          <QueenFlowDiagram graph={visibleQueenGraph} activeNodeId={queenWorkflow.activeNodeId} status={queenWorkflow.status} />
           <div className="queen-workflow-grid">
             <div className="queen-workflow-copy">
               <strong>Hard flow</strong>
               <span>{"requirement -> task plan -> Auto-filled agents -> verified run -> delivery evidence"}</span>
-              <button type="button" className="button button-primary" disabled={queenWorkflow.status === "proposing" || queenBusy !== null} onClick={proposeQueenWorkflow}>
+              <button type="button" className="button button-primary" disabled={!runtimeAvailable || queenWorkflow.status === "proposing" || queenBusy !== null} onClick={proposeQueenWorkflow}>
                 {queenWorkflow.status === "proposing" || queenBusy === "prepare" ? "Planning..." : "Generate workflow plan"}
               </button>
-              <button type="button" className="button button-warning" disabled={!queenWorkflow.graph || queenBusy !== null || queenWorkflow.status === "succeeded"} onClick={startQueenWorkflow}>
+              <button type="button" className="button button-warning" disabled={!runtimeAvailable || !queenWorkflow.graph || queenBusy !== null || queenWorkflow.status === "succeeded"} onClick={startQueenWorkflow}>
                 {queenBusy === "workflow" ? "Running..." : queenWorkflow.status === "succeeded" ? "Workflow completed" : "Start workflow"}
               </button>
               {queenBusy === "workflow" ? <button type="button" className="button button-ghost" onClick={cancelQueenWorkflow}>Cancel workflow</button> : null}
@@ -1049,7 +1063,7 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
                 <span>{selectedAgent.model}</span>
                 <div className="button-row">
                   {busy ? <button type="button" className="button button-ghost" onClick={cancel}>Cancel</button> : null}
-                  <button className="button button-primary" disabled={busy || draft.trim().length === 0}>Send</button>
+                  <button className="button button-primary" disabled={!runtimeAvailable || busy || draft.trim().length === 0}>Send</button>
                   <button type="button" className="button button-warning" disabled={!canRunOrchestration} onClick={runOrchestration}>Run orchestration</button>
                 </div>
               </div>
@@ -1059,6 +1073,25 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
       </>
     </Localized>
   );
+}
+
+function QueenFlowDiagram({ graph, activeNodeId, status }: { graph: QueenTaskGraphResult | undefined; activeNodeId: string | undefined; status: QueenWorkflowState["status"] }) {
+  const stages = graph?.nodes.length ? graph.nodes.map((node) => ({ id: node.nodeId, label: node.title, type: node.type })) : [...CANONICAL_QUEEN_FLOW];
+  const fallbackActiveIndex = status === "proposing" ? 1 : status === "ready" ? 2 : status === "running" ? 3 : status === "succeeded" ? stages.length - 1 : status === "error" ? 4 : 0;
+  const matchedActiveIndex = activeNodeId ? stages.findIndex((stage) => stage.id === activeNodeId) : -1;
+  const activeIndex = matchedActiveIndex >= 0 ? matchedActiveIndex : fallbackActiveIndex;
+
+  return <section className="queen-flow-diagram" aria-label="Queen workflow diagram">
+    <ol className="queen-flow-track">
+      {stages.map((stage, index) => {
+        const stageState = status === "succeeded" || index < activeIndex ? "completed" : index === activeIndex ? status === "error" ? "error" : "active" : "waiting";
+        return <li key={stage.id} className={`queen-flow-stage queen-flow-${stageState}`} data-state={stageState}>
+          <span className="queen-flow-index">{String(index + 1).padStart(2, "0")}</span><strong>{stage.label}</strong><small>{stage.type} / {stageState}</small>
+        </li>;
+      })}
+    </ol>
+    {graph ? <ul className="queen-edge-list" aria-label="Graph edges">{graph.edges.map((edge) => <li key={`${edge.from}-${edge.to}-${edge.condition ?? "always"}`}><span>{edge.from}</span><b aria-hidden="true">→</b><span>{edge.to}</span><em>{edge.condition ?? "always"}</em></li>)}</ul> : <div className="queen-rescue-lane"><span>Judge</span><b aria-hidden="true">↘</b><span>Needs revision</span><b aria-hidden="true">→</b><span>Red Team</span><b aria-hidden="true">→</b><span>Repair</span><b aria-hidden="true">↗</b><span>Return to Judge</span></div>}
+  </section>;
 }
 
 async function runGraphqlOrchestration(options: {

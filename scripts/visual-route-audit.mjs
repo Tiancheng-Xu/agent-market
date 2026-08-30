@@ -190,6 +190,10 @@ const untranslatedEnglish = results
   .filter(({ locale }) => locale === "en")
   .map(({ width, route, locale, chinese }) => ({ width, route, locale, chinese }))
   .filter((result) => result.chinese.length > 0);
+const mixedLanguage = results
+  .filter(({ locale }) => locale === "zh-CN")
+  .map(({ width, route, locale, english }) => ({ width, route, locale, mixed: english.filter((line) => /[\u3400-\u9fff]/.test(line) && ((line.match(/\b(?:the|and|are|remains|until|with|without|only|from|into|lazy|weak|low|reduced|sanitized)\b/gi) ?? []).length >= 3)) }))
+  .filter((result) => result.mixed.length > 0);
 const summary = {
   checked: results.length,
   widths,
@@ -204,9 +208,10 @@ const summary = {
   pageErrors,
   untranslated,
   untranslatedEnglish,
+  mixedLanguage,
 };
 await writeFile(`${outputDirectory}/result.json`, `${JSON.stringify({ summary, results }, null, 2)}\n`);
 process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-if (summary.httpReadback.some((entry) => entry.status !== entry.expected) || summary.overflow.length || summary.brokenImages.length || summary.emptyButtons.length || summary.cocosReadyFailures.length || summary.cocosReadyMs.some((entry) => entry.cocosReadyMs === null || entry.cocosReadyMs > 5000) || summary.pageErrors.length || summary.untranslated.length || summary.untranslatedEnglish.length) {
+if (summary.httpReadback.some((entry) => entry.status !== entry.expected) || summary.overflow.length || summary.brokenImages.length || summary.emptyButtons.length || summary.cocosReadyFailures.length || summary.cocosReadyMs.some((entry) => entry.cocosReadyMs === null || entry.cocosReadyMs > 5000) || summary.pageErrors.length || summary.untranslated.length || summary.untranslatedEnglish.length || summary.mixedLanguage.length) {
   process.exitCode = 1;
 }
