@@ -35,6 +35,11 @@ describe("Shell visual gates", () => {
 
       expect(markup).toContain('aria-label="Primary navigation"');
       expect(markup).toContain('aria-label="Mobile navigation"');
+      expect(markup).toContain('aria-label="More navigation"');
+      expect(markup).toContain('aria-expanded="false"');
+      expect(markup).toContain('href="/office"');
+      expect(markup).toContain('href="/committee"');
+      expect(markup).toContain('href="/evidence"');
       expect(consoleError.mock.calls.flat().join(" ")).not.toContain('unique "key"');
     } finally {
       consoleError.mockRestore();

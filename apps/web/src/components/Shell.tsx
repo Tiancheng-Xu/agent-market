@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent, type PropsWithChildren } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { agents, navItems, tasks } from "../data";
 import { Localized, useLanguage } from "../i18n/LanguageProvider";
@@ -9,7 +9,9 @@ import type { WalletState } from "../types";
 export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: PropsWithChildren<{ wallet: WalletState; isSepolia: boolean; onConnect(): void; onSwitch(): void }>) {
   const { locale, setLocale, t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const walletLabel = wallet.status === "connecting" ? "Connecting..." : wallet.address ? shortAddress(wallet.address) : "Connect MetaMask";
   const walletMessage = wallet.message ?? (wallet.status === "connecting" ? "Confirm the MetaMask popup. This site never sees your private key." : null);
   const searchResults = useMemo(() => {
@@ -26,6 +28,9 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
       .map((task) => ({ path: `/tasks/${task.id}`, title: task.title, scope: "Task" }));
     return [...routeResults, ...agentResults, ...taskResults].slice(0, 6);
   }, [searchQuery]);
+  const mobilePrimaryItems = navItems.slice(0, 4);
+  const mobileMoreItems = navItems.slice(4);
+  const mobileMoreActive = mobileMoreItems.some(([path]) => location.pathname === path || (path !== "/" && location.pathname.startsWith(`${path}/`)));
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,8 +81,12 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
           <nav aria-label="Delivery links"><a href="https://baby2b.online/">Portfolio</a><NavLink to="/">Project</NavLink><NavLink to="/evidence">Evidence</NavLink></nav>
         </footer>
       </div>
+      <div id="mobile-more-navigation" className="mobile-more-menu" hidden={!mobileMoreOpen} aria-label="More navigation">
+        {mobileMoreItems.map(([path, label, glyph]) => <NavLink key={path} to={path} end={path === "/"} onClick={() => setMobileMoreOpen(false)}><span>{glyph}</span><strong>{label}</strong></NavLink>)}
+      </div>
       <nav className="mobile-nav" aria-label="Mobile navigation">
-        {navItems.slice(0, 5).map(([path, label, glyph]) => <NavLink key={path} to={path} end={path === "/"}><span>{glyph}</span><small>{label}</small></NavLink>)}
+        {mobilePrimaryItems.map(([path, label, glyph]) => <NavLink key={path} to={path} end={path === "/"} onClick={() => setMobileMoreOpen(false)}><span>{glyph}</span><small>{label}</small></NavLink>)}
+        <button type="button" className={mobileMoreActive ? "active" : ""} aria-expanded={mobileMoreOpen} aria-controls="mobile-more-navigation" onClick={() => setMobileMoreOpen((current) => !current)}><span>•••</span><small>More</small></button>
       </nav>
     </div></Localized>
   );

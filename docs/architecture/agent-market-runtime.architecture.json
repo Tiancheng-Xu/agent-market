@@ -1,0 +1,310 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agent Market 高层运行时架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "request-path",
+        "label": "主请求链",
+        "focus": ["browser", "edge", "transaction", "queen", "agentGateway", "providers", "localRuntime"],
+        "note": "从公开客户端进入签名控制面，再由 Queen 编排本地或 Provider Agent。"
+      },
+      {
+        "id": "async-path",
+        "label": "异步数据链",
+        "focus": ["edge", "queue", "awsWorkers", "postgres"],
+        "note": "受控事件经 AWS 入口进入队列，由短生命周期 Worker 消费并写入共享数据库。"
+      },
+      {
+        "id": "chain-path",
+        "label": "链上结算",
+        "focus": ["browser", "transaction", "sepolia", "evidence"],
+        "note": "钱包签名、服务端 unsigned intent、Sepolia 回执与 Evidence 各自保留事实边界。"
+      },
+      {
+        "id": "storage-path",
+        "label": "存储与证据",
+        "focus": ["browser", "queue", "postgres", "evidence"],
+        "note": "IndexedDB、消息队列、PostgreSQL 与公开 Evidence 承担不同数据职责。"
+      }
+    ]
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [70, 72],
+    "cols": 4,
+    "gapX": 30,
+    "gapY": 52,
+    "cellW": 230,
+    "cellH": 130
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "浏览器客户端",
+      "sublabel": "React UI · MetaMask · Cocos Office · IndexedDB",
+      "tag": "公开客户端",
+      "row": 0,
+      "col": 0,
+      "size": [220, 84]
+    },
+    {
+      "id": "edge",
+      "type": "cloud",
+      "label": "Cloudflare Edge",
+      "sublabel": "Pages Worker · SSR · 路由 · HMAC 网关",
+      "tag": "公开边缘",
+      "row": 0,
+      "col": 1,
+      "size": [220, 84]
+    },
+    {
+      "id": "transaction",
+      "type": "backend",
+      "label": "Transaction Engine",
+      "sublabel": "钱包会话 · unsigned intent · GraphQL/API",
+      "tag": "控制面",
+      "row": 0,
+      "col": 2,
+      "size": [220, 84]
+    },
+    {
+      "id": "sepolia",
+      "type": "external",
+      "label": "Ethereum Sepolia",
+      "sublabel": "Workflow Escrow · Stake Vault · YD Token",
+      "tag": "公开测试链",
+      "row": 0,
+      "col": 3,
+      "size": [220, 84]
+    },
+    {
+      "id": "evidence",
+      "type": "cloud",
+      "label": "Evidence 交付面",
+      "sublabel": "GitHub Actions · JSON 台账 · Cloudflare 公开页",
+      "tag": "脱敏公开证据",
+      "row": 1,
+      "col": 0,
+      "size": [220, 84]
+    },
+    {
+      "id": "queen",
+      "type": "backend",
+      "label": "Queen / LangGraph",
+      "sublabel": "DAG 规划 · 风险确认 · Judge · Final Arbiter",
+      "tag": "状态编排",
+      "row": 1,
+      "col": 1,
+      "size": [220, 84]
+    },
+    {
+      "id": "agentGateway",
+      "type": "security",
+      "label": "Agent Gateway",
+      "sublabel": "Owner Scope · HMAC · Adapter · SSE",
+      "tag": "信任边界",
+      "row": 1,
+      "col": 2,
+      "size": [220, 84]
+    },
+    {
+      "id": "providers",
+      "type": "external",
+      "label": "Provider APIs",
+      "sublabel": "DeepSeek · Kimi · Qwen · Zhipu",
+      "tag": "外部模型",
+      "row": 1,
+      "col": 3,
+      "size": [220, 84]
+    },
+    {
+      "id": "queue",
+      "type": "messagebus",
+      "label": "SNS / SQS / DLQ",
+      "sublabel": "API Gateway/Lambda → SNS/SQS/DLQ",
+      "tag": "AWS 消息层",
+      "row": 2,
+      "col": 0,
+      "size": [220, 84]
+    },
+    {
+      "id": "awsWorkers",
+      "type": "backend",
+      "label": "ECS Fargate Workers",
+      "sublabel": "Matcher · Performance Aggregator · Replay",
+      "tag": "短生命周期计算",
+      "row": 2,
+      "col": 1,
+      "size": [220, 84]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL + pgvector",
+      "sublabel": "任务 · 回执 · 匹配 · 性能聚合 · 训练摘要",
+      "tag": "共享私有存储",
+      "row": 2,
+      "col": 2,
+      "size": [220, 84]
+    },
+    {
+      "id": "localRuntime",
+      "type": "external",
+      "label": "Owner Local Runtime",
+      "sublabel": "Ollama · 本人训练 Agent · Provider Key 隔离",
+      "tag": "本机私有边界",
+      "row": 2,
+      "col": 3,
+      "size": [220, 84]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "公开客户端边界",
+      "wraps": ["browser"]
+    },
+    {
+      "kind": "security-group",
+      "label": "公开 Edge 与交付边界",
+      "wraps": ["edge", "evidence"]
+    },
+    {
+      "kind": "security-group",
+      "label": "应用控制面",
+      "wraps": ["transaction", "queen", "agentGateway"]
+    },
+    {
+      "kind": "security-group",
+      "label": "AWS 受控运行边界",
+      "wraps": ["queue", "awsWorkers", "postgres"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Owner 本地私有边界",
+      "wraps": ["localRuntime"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-edge",
+      "from": "browser",
+      "to": "edge",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "edge-transaction",
+      "from": "edge",
+      "to": "transaction",
+      "label": "SSR / API",
+      "variant": "emphasis",
+      "labelAt": [570, 68]
+    },
+    {
+      "id": "transaction-chain",
+      "from": "transaction",
+      "to": "sepolia",
+      "label": "钱包签名 / RPC",
+      "variant": "security",
+      "labelAt": [900, 170]
+    },
+    {
+      "id": "transaction-queen",
+      "from": "transaction",
+      "to": "queen",
+      "label": "GraphQL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "queen-agent",
+      "from": "queen",
+      "to": "agentGateway",
+      "label": "Envelope / Gate",
+      "variant": "security",
+      "labelAt": [612, 352]
+    },
+    {
+      "id": "agent-provider",
+      "from": "agentGateway",
+      "to": "providers",
+      "label": "Provider API",
+      "labelAt": [830, 250]
+    },
+    {
+      "id": "agent-local",
+      "from": "agentGateway",
+      "to": "localRuntime",
+      "label": "Owner HMAC",
+      "variant": "security"
+    },
+    {
+      "id": "edge-evidence",
+      "from": "edge",
+      "to": "evidence",
+      "label": "Evidence SSR",
+      "labelAt": [370, 205]
+    },
+    {
+      "id": "edge-queue",
+      "from": "edge",
+      "to": "queue",
+      "label": "HMAC event",
+      "variant": "dashed",
+      "fromSide": "left",
+      "toSide": "right",
+      "via": [[306, 114], [306, 478], [290, 478]],
+      "labelAt": [280, 392]
+    },
+    {
+      "id": "queue-workers",
+      "from": "queue",
+      "to": "awsWorkers",
+      "label": "batch",
+      "variant": "emphasis",
+      "labelAt": [324, 536]
+    },
+    {
+      "id": "workers-postgres",
+      "from": "awsWorkers",
+      "to": "postgres",
+      "label": "幂等写入",
+      "variant": "emphasis",
+      "labelAt": [570, 534]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "主要调用链",
+      "items": [
+        "浏览器 → Cloudflare Edge → Transaction Engine → Queen/LangGraph。",
+        "Queen 经 Agent Gateway 选择本地或 Provider Agent，再由 Judge 与 Final Arbiter 收口。",
+        "unsigned intent 经钱包签名写入 Sepolia，并独立回读 receipt 与事件。"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "异步链与数据存储",
+      "items": [
+        "事件经 API Gateway/Lambda、SNS/SQS/DLQ 进入 ECS Fargate Worker。",
+        "PostgreSQL/pgvector 保存任务、回执、匹配、性能与脱敏训练摘要。",
+        "IndexedDB 仅存公开 Agent 元数据；Evidence 与业务库不是同一真相源。"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "事实边界",
+      "items": [
+        "Cloudflare、AWS、本地 Runtime 与 Sepolia 必须分别验证，不能互相替代。",
+        "Provider Key、私有 Prompt、权重与本地路径不进入公开 Evidence。",
+        "AWS 性能 Runtime 按需创建和清理，不代表持续生产 SLO。"
+      ]
+    }
+  ]
+}
