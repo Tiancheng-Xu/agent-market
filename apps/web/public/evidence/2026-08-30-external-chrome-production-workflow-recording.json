@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "2.0",
+  "capturedAtUtc": "2026-08-30T21:31:02Z",
+  "status": "verified-production-ui",
+  "recordedTarget": {
+    "baseUrl": "https://agent-market.baby2b.online",
+    "sourceCommit": "2b4085fb7bfb1793a577f23394874227f0c7b68f",
+    "cloudflareProductionDeploymentId": "6a9d9c66-d0b6-4d8d-aa01-1c58e257ee69",
+    "mainVerifyRunId": "33318169706"
+  },
+  "artifact": {
+    "publicPath": "/evidence/agent-market-v3-full-workflow.mp4",
+    "sourceCapture": "external Google Chrome production window captured with ScreenCaptureKit",
+    "durationSeconds": 405.333008,
+    "width": 1280,
+    "height": 634,
+    "frameRate": 15,
+    "codec": "h264",
+    "pixelFormat": "yuv420p",
+    "audio": false,
+    "sizeBytes": 2209504,
+    "sha256": "b8a22ef43cb23fb78580f87c80dd1b54ac63b4d874e0d0bcecaa9c53374504af",
+    "posterPublicPath": "/evidence/agent-market-v3-full-workflow-poster.png",
+    "posterSizeBytes": 187027,
+    "posterSha256": "0b69cde37501735d26ade3bcad9e53104de05b18f9722b3dbbf0356d20079360"
+  },
+  "recordedFlow": [
+    "production marketplace home and explicit Sepolia testnet boundary",
+    "Agent directory and Agent registration form",
+    "Live Agent page with Queen-led GraphQL DAG generation and visible offline fail-closed state",
+    "task board and task publication form",
+    "publisher dashboard with explicit demonstration-data labels",
+    "Cocos virtual office with task desks and inspector",
+    "staking calculator and transaction boundary",
+    "sole-platform-arbiter review and arbitration interface",
+    "read-only operations state",
+    "Evidence sections and the high-level Archify runtime architecture",
+    "real application 404 followed by return to the marketplace"
+  ],
+  "deterministicObservations": {
+    "productionUiCaptured": true,
+    "queenWorkflowDagVisible": true,
+    "runtimeOfflineBoundaryVisible": true,
+    "cocosOfficeVisible": true,
+    "solePlatformArbiterUiVisible": true,
+    "runtimeArchitectureVisible": true,
+    "real404Visible": true,
+    "walletConnected": false,
+    "taskFormSubmitted": false,
+    "stakingTransactionSent": false,
+    "arbitrationTransactionSent": false,
+    "awsMutationPerformed": false,
+    "secretValuesVisible": false,
+    "languageToggleDemonstrated": false
+  },
+  "truthBoundary": [
+    "This recording proves visible Cloudflare production UI behavior for the recorded routes only; it does not prove that every backend dependency was online.",
+    "The Live Agent runtime remained visibly fail-closed and offline; no provider prompt or private runtime request was sent.",
+    "No wallet was connected and no task, staking, or arbitration transaction was submitted. Existing Sepolia V3 proof remains the separate 24-receipt RPC readback ledger.",
+    "No AWS, GitHub Actions, or Cloudflare mutation was performed during capture.",
+    "The recording remains Chinese-only. English and Chinese route rendering are proven separately by the deterministic 180-combination visual route Gate.",
+    "The silent audio track is omitted from the published MP4; this is visual workflow evidence, not narrated media."
+  ]
+}
