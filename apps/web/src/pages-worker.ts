@@ -31,6 +31,7 @@ const TRANSACTION_ENGINE_PATHS = new Set([
   "/api/auth/logout",
   "/api/tasks",
   "/api/chain/account",
+  "/api/chain/position",
   "/api/transactions/intents",
   "/api/transactions/verify",
 ]);
