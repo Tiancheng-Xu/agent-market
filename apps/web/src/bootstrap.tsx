@@ -25,6 +25,7 @@ interface BootstrapOptions {
     options: HydrateOptions,
   ) => ClientRootController;
   create?: (container: HTMLElement) => ClientRootController;
+  scheduleHydrationWatchdog?: (callback: () => void) => void;
   record(event: "hydration.recoverable_error" | "csr.fallback"): void;
 }
 
@@ -47,6 +48,8 @@ export function bootstrapClient(options: BootstrapOptions): {
     })
   ));
   const create = options.create ?? ((container) => createRoot(container));
+  const scheduleHydrationWatchdog = options.scheduleHydrationWatchdog
+    ?? ((callback) => { globalThis.setTimeout(callback, 3_000); });
   let recovered = false;
   let hydratedRoot: ClientRootController | undefined;
 
@@ -94,6 +97,11 @@ export function bootstrapClient(options: BootstrapOptions): {
         onUncaughtError: recoverToCsr,
       },
     );
+    scheduleHydrationWatchdog(() => {
+      if (options.root.querySelector('[data-route-fallback="true"]')) {
+        recoverToCsr();
+      }
+    });
     return { mode: "hydrate" };
   } catch {
     recoverToCsr();
