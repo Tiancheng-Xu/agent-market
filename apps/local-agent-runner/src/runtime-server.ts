@@ -16,6 +16,7 @@ import {
   type ProviderName,
 } from "./provider-api-client";
 import { createLocalStreamRuntime } from "./stream-runtime";
+import { openQueenRuntimePersistence } from "./queen-runtime-persistence";
 
 const env = loadRuntimeEnv();
 const config = parseRunnerConfig(env);
@@ -27,7 +28,9 @@ if (!signingSecret) {
   throw new Error("AGENT_RUNTIME_SHARED_SECRET is required for local stream runtime");
 }
 
+const persistence = await openQueenRuntimePersistence(env);
 const runtime = createLocalStreamRuntime({
+  ...(persistence ? { workflowStores: persistence.stores } : {}),
   manifests,
   ollamaClient,
   providerClients,
@@ -177,6 +180,11 @@ async function readBody(incoming: IncomingMessage): Promise<string> {
 
 function closeServer(): void {
   server.close(() => {
-    console.info(JSON.stringify({ event: "local-runtime.stopped" }));
+    void (persistence?.close() ?? Promise.resolve()).then(() => {
+      console.info(JSON.stringify({ event: "local-runtime.stopped" }));
+    }).catch(() => {
+      console.error(JSON.stringify({ event: "local-runtime.persistence-close-failed" }));
+      process.exitCode = 1;
+    });
   });
 }

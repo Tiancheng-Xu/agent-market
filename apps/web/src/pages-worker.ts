@@ -36,18 +36,40 @@ const TRANSACTION_ENGINE_PATHS = new Set([
   "/api/transactions/verify",
 ]);
 
-async function proxyTransactionEngine(request: Request, environment: PagesEnvironment, upstreamFetch: typeof fetch): Promise<Response> {
-  if (request.method !== "POST") return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405 });
+const UUID_SEGMENT = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+const TRANSACTION_ENGINE_DYNAMIC_PATHS = [
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}$`, "iu"), methods: ["GET"] },
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/commands$`, "iu"), methods: ["POST"] },
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/risk-context$`, "iu"), methods: ["GET"] },
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/risk-quote$`, "iu"), methods: ["POST"] },
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/risk-quote/confirm$`, "iu"), methods: ["POST"] },
+  { pattern: new RegExp(`^/api/agents/${UUID_SEGMENT}/reputation$`, "iu"), methods: ["GET"] },
+  { pattern: new RegExp(`^/api/orders/${UUID_SEGMENT}$`, "iu"), methods: ["GET"] },
+  { pattern: new RegExp(`^/api/orders/${UUID_SEGMENT}/commands$`, "iu"), methods: ["POST"] },
+] as const;
+
+function transactionEngineMethods(pathname: string): readonly string[] | null {
+  if (TRANSACTION_ENGINE_PATHS.has(pathname)) return ["POST"];
+  return TRANSACTION_ENGINE_DYNAMIC_PATHS.find(({ pattern }) => pattern.test(pathname))?.methods ?? null;
+}
+
+async function proxyTransactionEngine(
+  request: Request,
+  environment: PagesEnvironment,
+  upstreamFetch: typeof fetch,
+  allowedMethods: readonly string[],
+): Promise<Response> {
+  if (!allowedMethods.includes(request.method)) return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405 });
   const requestUrl = new URL(request.url);
-  if (request.headers.get("origin") !== requestUrl.origin) {
+  if (request.method !== "GET" && request.headers.get("origin") !== requestUrl.origin) {
     return Response.json({ error: "AUTH_ORIGIN_MISMATCH" }, { status: 403 });
   }
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (!Number.isFinite(contentLength) || contentLength > 32_768) {
     return Response.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
   }
-  const body = await request.arrayBuffer();
-  if (body.byteLength > 32_768) {
+  const body = request.method === "GET" ? undefined : await request.arrayBuffer();
+  if (body && body.byteLength > 32_768) {
     return Response.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
   }
   if (!environment.TRANSACTION_ENGINE_ORIGIN) {
@@ -62,12 +84,17 @@ async function proxyTransactionEngine(request: Request, environment: PagesEnviro
   headers.delete("x-forwarded-proto");
   headers.set("x-forwarded-host", requestUrl.host);
   headers.set("x-forwarded-proto", requestUrl.protocol.slice(0, -1));
-  const upstream = await upstreamFetch(new Request(new URL(requestUrl.pathname.slice(1), origin), {
-    method: "POST",
+  if (requestUrl.pathname.endsWith("/reputation")) headers.delete("cookie");
+  const upstreamRequest: RequestInit = {
+    method: request.method,
     headers,
-    body,
     redirect: "manual",
-  }));
+  };
+  if (body) upstreamRequest.body = body;
+  const upstream = await upstreamFetch(new Request(
+    new URL(requestUrl.pathname.slice(1), origin),
+    upstreamRequest,
+  ));
   const responseHeaders = new Headers(upstream.headers);
   responseHeaders.set("cache-control", "no-store");
   responseHeaders.delete("server");
@@ -205,8 +232,12 @@ export function createPagesHandler(options: HandlerOptions = {}) {
         return handleAgentGraphql(request, environment, upstreamFetch);
       }
 
-      if (TRANSACTION_ENGINE_PATHS.has(requestUrl.pathname)) {
-        return proxyTransactionEngine(request, environment, upstreamFetch);
+      const transactionMethods = transactionEngineMethods(requestUrl.pathname);
+      if (transactionMethods) {
+        return proxyTransactionEngine(request, environment, upstreamFetch, transactionMethods);
+      }
+      if (requestUrl.pathname.startsWith("/api/orders/")) {
+        return Response.json({ error: "NOT_FOUND" }, { status: 404, headers: { "cache-control": "no-store" } });
       }
 
       if (requestUrl.pathname === "/api/performance") {
@@ -355,7 +386,7 @@ async function handleAgentGraphql(
     ...parsed,
     variables: {
       ...parsed.variables,
-      input: { ...parsed.variables.input, requestId },
+      input: { ...parsed.variables.input, requestId, callerScope: "public" },
     },
   });
 

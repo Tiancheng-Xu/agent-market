@@ -1,12 +1,10 @@
 package ranking
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"math"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -64,63 +62,22 @@ type Candidate struct {
 	ScoreEvents  []ScoreEvent
 }
 
-// Select ranks a maximum four-candidate draw and returns three candidates
-// backed by distinct models. The third slot protects newcomer exploration.
+// Select preserves the original slice-returning API. New callers that need
+// status and audit evidence should use SelectWithPolicy.
 func Select(candidates []Candidate, requestID string, modelVersion string) []Candidate {
 	return SelectAt(candidates, requestID, modelVersion, time.Now().UTC())
 }
 
 func SelectAt(candidates []Candidate, requestID string, modelVersion string, now time.Time) []Candidate {
-	eligible := make([]Candidate, 0, len(candidates))
-	for _, candidate := range candidates {
-		if !candidate.Eligible {
-			continue
-		}
-		eligible = append(eligible, scored(candidate, modelVersion, now))
+	result, err := SelectWithPolicyAt(candidates, SelectionPolicy{
+		TaskID:        requestID,
+		MatchingRound: 0,
+		PolicyVersion: LegacySelectionPolicyVersion,
+	}, modelVersion, now)
+	if err != nil {
+		return []Candidate{}
 	}
-	sort.Slice(eligible, func(left, right int) bool {
-		if eligible[left].TotalScore != eligible[right].TotalScore {
-			return eligible[left].TotalScore > eligible[right].TotalScore
-		}
-		leftHash := stableHash(requestID, eligible[left].ID)
-		rightHash := stableHash(requestID, eligible[right].ID)
-		if comparison := bytes.Compare(leftHash[:], rightHash[:]); comparison != 0 {
-			return comparison < 0
-		}
-		return eligible[left].ID < eligible[right].ID
-	})
-
-	distinct := make([]Candidate, 0, CandidatePoolSize)
-	seenModels := make(map[string]struct{}, CandidatePoolSize)
-	for _, candidate := range eligible {
-		modelKey := strings.TrimSpace(candidate.ModelTag)
-		if modelKey == "" {
-			modelKey = candidate.ID
-		}
-		if _, exists := seenModels[modelKey]; exists {
-			continue
-		}
-		seenModels[modelKey] = struct{}{}
-		distinct = append(distinct, candidate)
-		if len(distinct) == CandidatePoolSize {
-			break
-		}
-	}
-	if len(distinct) <= 2 {
-		return distinct
-	}
-
-	selected := append([]Candidate(nil), distinct[:2]...)
-	third := distinct[2]
-	for _, candidate := range distinct[2:] {
-		if candidate.IsNewcomer {
-			third = candidate
-			third.Exploration = true
-			break
-		}
-	}
-	selected = append(selected, third)
-	return selected
+	return result.Candidates
 }
 
 // DecayedQualityScore applies a bounded 90-day/20-event sliding window and a

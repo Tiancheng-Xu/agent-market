@@ -31,6 +31,10 @@ export function useLanguage(): LanguageValue { return useContext(LanguageContext
 const stringProps = new Set(["alt", "aria-label", "description", "eyebrow", "label", "note", "placeholder", "title"]);
 export function translateLocalizedText(locale: Locale, text: string): string {
   if (locale === "zh-CN" && supplementalZhTranslations[text]) return supplementalZhTranslations[text];
+  if (locale === "zh-CN") {
+    const reliability = /^Reliability (\d+(?:\.\d+)?)% across (\d+) completed tasks$/.exec(text);
+    if (reliability) return `可靠性 ${reliability[1]}%，累计完成 ${reliability[2]} 项任务`;
+  }
   return translateVisibleText(locale, text);
 }
 function localizeNode(node: ReactNode, locale: Locale, path = "root"): ReactNode {

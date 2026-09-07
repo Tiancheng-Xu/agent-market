@@ -16,6 +16,7 @@ import {
 import type { ChatMessage, OllamaClient } from "./ollama-client";
 import type { ProviderApiClient, ProviderName } from "./provider-api-client";
 import { createQueenOrchestrator } from "./queen-orchestrator";
+import type { QueenWorkflowStore } from "./queen-workflow-store";
 import { NonceReplayStore, verifySignedRequest, type SigningKey } from "./signing";
 
 type OllamaStreamingClient = Pick<OllamaClient, "chatStream">;
@@ -28,6 +29,14 @@ export type LocalStreamRuntimeOptions = {
   signingKey?: SigningKey;
   now?: () => Date;
   requestTimeoutMs?: number;
+  workflowStores?: {
+    public: QueenWorkflowStore;
+    owner: QueenWorkflowStore;
+  };
+  authorizeQueenGraphql?: (context: {
+    request: ReturnType<typeof QueenGraphqlRequestSchema.parse>;
+    callerAccess: CallerAccess;
+  }) => boolean | Promise<boolean>;
 };
 
 type CallerAccess = {
@@ -35,11 +44,15 @@ type CallerAccess = {
 };
 
 export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
+  if (options.workflowStores && options.workflowStores.public === options.workflowStores.owner) {
+    throw new Error("QUEEN_WORKFLOW_SCOPE_STORE_COLLISION");
+  }
   const manifests = new Map(options.manifests.map((manifest) => [manifest.id, manifest]));
   const nonceStore = new NonceReplayStore();
   const now = options.now ?? (() => new Date());
   const queenAgents = agentCandidatesFromManifests([...manifests.values()], now);
   const publicQueenOrchestrator = createQueenOrchestrator({
+    ...(options.workflowStores ? { workflowStore: options.workflowStores.public } : {}),
     agents: queenAgents,
     queenAgentId: "queen-router-v1",
     now,
@@ -61,6 +74,7 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
     },
   });
   const ownerQueenOrchestrator = createQueenOrchestrator({
+    ...(options.workflowStores ? { workflowStore: options.workflowStores.owner } : {}),
     agents: agentCandidatesFromManifests([...manifests.values()], now),
     queenAgentId: "queen-router-v1",
     now,
@@ -112,6 +126,7 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
           ollamaClient: options.ollamaClient,
           providerClients: options.providerClients ?? {},
           callerAccess: callerAccessFromHeaders(request.headers),
+          authorizeQueenGraphql: options.authorizeQueenGraphql,
           queenOrchestrator: callerAccessFromHeaders(request.headers).scope === "owner" ? ownerQueenOrchestrator : publicQueenOrchestrator,
           requestSignal: request.signal,
           requestTimeoutMs: options.requestTimeoutMs ?? 120_000,
@@ -153,6 +168,7 @@ async function handleGraphqlOrchestration(options: {
   providerClients: ProviderClients;
   queenOrchestrator: ReturnType<typeof createQueenOrchestrator>;
   callerAccess: CallerAccess;
+  authorizeQueenGraphql?: LocalStreamRuntimeOptions["authorizeQueenGraphql"];
   requestSignal: AbortSignal;
   requestTimeoutMs: number;
 }): Promise<Response> {
@@ -165,6 +181,10 @@ async function handleGraphqlOrchestration(options: {
 
   const queenRequest = QueenGraphqlRequestSchema.safeParse(raw);
   if (queenRequest.success && isQueenGraphqlOperation(queenRequest.data)) {
+    if (!options.authorizeQueenGraphql
+        || !await options.authorizeQueenGraphql({ request: queenRequest.data, callerAccess: options.callerAccess })) {
+      return graphqlError("FORBIDDEN", "Queen workflow mutations require server-side task authorization", undefined, false, 403);
+    }
     const result = await options.queenOrchestrator.handleGraphql(queenRequest.data);
     return Response.json(result, {
       headers: { "cache-control": "no-store" },

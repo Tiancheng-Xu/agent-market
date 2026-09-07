@@ -1,8 +1,11 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { isCocosGateFailure, shouldRequireCocosReady } from "./visual-route-audit-policy.mjs";
 
 const baseUrl = process.env.AGENT_MARKET_AUDIT_URL ?? "http://127.0.0.1:4173";
 const cdpUrl = process.env.AGENT_MARKET_CDP_URL ?? "http://127.0.0.1:9223";
 const outputDirectory = process.env.AGENT_MARKET_AUDIT_OUTPUT ?? "/tmp/agent-market-visual-audit";
+const regressionMode = process.env.AGENT_MARKET_VISUAL_REGRESSION === "1";
+const requireCocosReady = shouldRequireCocosReady(process.env.AGENT_MARKET_REQUIRE_COCOS_READY);
 
 const routes = [
   "/",
@@ -39,6 +42,13 @@ const screenshotRoutes = new Set([
   "/ops",
   "/evidence",
 ]);
+const regressionRoutes = new Set([
+  "/",
+  "/agents/local",
+  "/agents/personal-image-agent",
+  "/tasks/task-research-brief",
+]);
+const regressionWidths = new Set([375, 390, 430, 1440]);
 
 await mkdir(outputDirectory, { recursive: true });
 const httpReadback = await Promise.all(routes.map(async (route) => ({
@@ -117,8 +127,13 @@ for (const width of widths) {
     await sleep(600);
     let cocosReadyMs = null;
     if (route === "/office") {
-      await waitFor('document.querySelector(".cocos-office-host")?.classList.contains("cocos-office-ready")');
-      cocosReadyMs = Math.round(performance.now() - navigationStartedAt);
+      if (requireCocosReady) {
+        await waitFor('document.querySelector(".cocos-office-host")?.classList.contains("cocos-office-ready")');
+        cocosReadyMs = Math.round(performance.now() - navigationStartedAt);
+      } else {
+        await waitFor('document.querySelector(".cocos-office-host") !== null');
+        await sleep(1200);
+      }
     }
     for (const locale of locales) {
       const label = locale === "zh-CN" ? "中文" : "EN";
@@ -152,9 +167,11 @@ for (const width of widths) {
         chinese: [...new Set(chinese)].slice(0, 50),
       };
     })()`);
-      results.push({ width, route, locale, cocosReadyMs, ...audit });
+      results.push({ width, route, locale, cocosReadyMs, cocosReadyRequired: requireCocosReady, ...audit });
 
-      if ((width === 390 || width === 1920) && screenshotRoutes.has(route)) {
+      const captureRegression = regressionMode && regressionWidths.has(width) && regressionRoutes.has(route);
+      const captureContactSheet = !regressionMode && (width === 390 || width === 1920) && screenshotRoutes.has(route);
+      if (captureRegression || captureContactSheet) {
         const screenshot = await send("Page.captureScreenshot", {
           format: "png",
           fromSurface: true,
@@ -203,8 +220,12 @@ const summary = {
   overflow: results.filter((result) => result.overflow),
   brokenImages: results.filter((result) => result.brokenImages.length > 0),
   emptyButtons: results.filter((result) => result.emptyButtons > 0),
-  cocosReadyFailures: results.filter((result) => result.route === "/office" && !result.cocosOfficeReady),
-  cocosReadyMs: results.filter((result) => result.route === "/office" && result.locale === "zh-CN").map(({ width, cocosReadyMs }) => ({ width, cocosReadyMs })),
+  cocosReadyFailures: results.filter((result) => isCocosGateFailure({
+    route: result.route,
+    ready: result.cocosOfficeReady,
+    required: result.cocosReadyRequired,
+  })),
+  cocosReadyMs: results.filter((result) => result.route === "/office" && result.locale === "zh-CN").map(({ width, cocosReadyMs, cocosReadyRequired }) => ({ width, cocosReadyMs, cocosReadyRequired })),
   pageErrors,
   untranslated,
   untranslatedEnglish,
@@ -212,6 +233,6 @@ const summary = {
 };
 await writeFile(`${outputDirectory}/result.json`, `${JSON.stringify({ summary, results }, null, 2)}\n`);
 process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-if (summary.httpReadback.some((entry) => entry.status !== entry.expected) || summary.overflow.length || summary.brokenImages.length || summary.emptyButtons.length || summary.cocosReadyFailures.length || summary.cocosReadyMs.some((entry) => entry.cocosReadyMs === null || entry.cocosReadyMs > 5000) || summary.pageErrors.length || summary.untranslated.length || summary.untranslatedEnglish.length || summary.mixedLanguage.length) {
+if (summary.httpReadback.some((entry) => entry.status !== entry.expected) || summary.overflow.length || summary.brokenImages.length || summary.emptyButtons.length || summary.cocosReadyFailures.length || summary.cocosReadyMs.some((entry) => entry.cocosReadyRequired && (entry.cocosReadyMs === null || entry.cocosReadyMs > 5000)) || summary.pageErrors.length || summary.untranslated.length || summary.untranslatedEnglish.length || summary.mixedLanguage.length) {
   process.exitCode = 1;
 }

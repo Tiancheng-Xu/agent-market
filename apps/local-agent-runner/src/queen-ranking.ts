@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { AgentCandidate, TaskNodeType } from "@agent-market/shared-contracts";
 
 const OLD_MODEL_DAYS = 7;
@@ -19,12 +21,28 @@ export type RankAgentCandidatesInput = {
   callerScope?: "public" | "owner";
   now: Date;
   candidates: AgentCandidate[];
+  selectionPolicy?: {
+    taskId: string;
+    matchingRound: number;
+    policyVersion: string;
+    disableColdStart?: boolean;
+  };
 };
 
 export type RankedAgentCandidate = AgentCandidate & {
   effectiveQualityScore: number;
   rankingScore: number;
   rankingReasons: string[];
+};
+
+export type QueenSelectionAudit = {
+  policyVersion: string;
+  eligibleCount: number;
+  historyCount: number;
+  coldStartCount: number;
+  selectedIds: string[];
+  selectionReasons: Array<"history-rank" | "history-fallback" | "cold-start-exploration">;
+  seedHash: string;
 };
 
 export function rankAgentCandidates(input: RankAgentCandidatesInput): RankedAgentCandidate[] {
@@ -42,16 +60,77 @@ export function rankAgentCandidates(input: RankAgentCandidatesInput): RankedAgen
 }
 
 export function selectThreeFromFour(input: RankAgentCandidatesInput): RankedAgentCandidate[] {
-  const pool = rankAgentCandidates(input).slice(0, 4);
-  if (pool.length <= 3) return pool;
+  return selectThreeWithAudit(input).candidates;
+}
 
-  const selected = pool.slice(0, 2);
-  const alreadyHasProtectedModel = selected.some((candidate) => isProtectedNewModel(candidate, input.now));
-  const third = alreadyHasProtectedModel
-    ? pool[2]
-    : pool.slice(2).find((candidate) => isProtectedNewModel(candidate, input.now)) ?? pool[2];
+export function selectThreeWithAudit(input: RankAgentCandidatesInput): {
+  candidates: RankedAgentCandidate[];
+  audit: QueenSelectionAudit;
+} {
+  const eligible = rankAgentCandidates(input);
+  const policy = input.selectionPolicy ?? {
+    taskId: `legacy:${input.nodeType}`,
+    matchingRound: 0,
+    policyVersion: "legacy-compatible-v1",
+    disableColdStart: false,
+  };
+  const seedContract = `${policy.taskId}\u0000${policy.matchingRound}\u0000${policy.policyVersion}`;
+  const seedHash = createHash("sha256").update(seedContract).digest("hex");
+  const history = eligible.filter((candidate) => !isNewWithoutHistory(candidate));
+  const coldStart = eligible.filter(isNewWithoutHistory);
+  const selected = history.slice(0, policy.disableColdStart ? 3 : 2);
+  const selectionReasons: QueenSelectionAudit["selectionReasons"] = selected.map(() => "history-rank");
+  const seenModels = new Set(selected.map((candidate) => candidate.modelTag.toLowerCase()));
 
-  return third === undefined ? selected : [...selected, third];
+  if (!policy.disableColdStart && selected.length < 3) {
+    for (const candidate of seededShuffle(coldStart, seedHash)) {
+      if (selected.length === 3) break;
+      const modelKey = candidate.modelTag.toLowerCase();
+      if (seenModels.has(modelKey)) continue;
+      selected.push(candidate);
+      selectionReasons.push("cold-start-exploration");
+      seenModels.add(modelKey);
+    }
+  }
+  if (selected.length < 3) {
+    for (const candidate of history) {
+      if (selected.length === 3) break;
+      const modelKey = candidate.modelTag.toLowerCase();
+      if (seenModels.has(modelKey) || selected.some((item) => item.agentId === candidate.agentId)) continue;
+      selected.push(candidate);
+      selectionReasons.push("history-fallback");
+      seenModels.add(modelKey);
+    }
+  }
+
+  return {
+    candidates: selected,
+    audit: {
+      policyVersion: policy.policyVersion,
+      eligibleCount: eligible.length,
+      historyCount: history.length,
+      coldStartCount: coldStart.length,
+      selectedIds: selected.map((candidate) => candidate.agentId),
+      selectionReasons,
+      seedHash,
+    },
+  };
+}
+
+function seededShuffle<T extends { agentId: string }>(values: readonly T[], seedHash: string): T[] {
+  const result = [...values].sort((left, right) => Buffer.compare(
+    Buffer.from(left.agentId, "utf8"),
+    Buffer.from(right.agentId, "utf8"),
+  ));
+  let state = Number.parseInt(seedHash.slice(0, 8), 16) || 1;
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    state = (state ^ (state << 13)) >>> 0;
+    state = (state ^ (state >>> 17)) >>> 0;
+    state = (state ^ (state << 5)) >>> 0;
+    const other = Number((BigInt(state) * BigInt(index + 1)) >> 32n);
+    [result[index], result[other]] = [result[other]!, result[index]!];
+  }
+  return result;
 }
 
 export function computeDecayedQualityScore(candidate: AgentCandidate, now: Date): number {

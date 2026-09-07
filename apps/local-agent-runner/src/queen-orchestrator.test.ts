@@ -43,6 +43,37 @@ describe("queen orchestrator state machine", () => {
     expect(ranked.data.rankNodeAgents.autoSelectedAgentId).toBe("cheap-executor");
   });
 
+  it("ignores a forged owner callerScope and gates owner-only auto-selection on the server scope", async () => {
+    const orchestrator = createQueenOrchestrator({
+      agents: [
+        ...agents(),
+        candidate("owner-local", {
+          provider: "ollama",
+          ownership: "owner-trained",
+          selectableBy: "owner-only",
+          costPer1kTokensUsd: 0,
+          qualityScore: 0.99,
+        }),
+      ],
+      now,
+      queenAgentId: "queen-router-v1",
+    });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+
+    const ranked = await mutate(orchestrator, "RankNodeAgents", {
+      taskId: proposed.data.proposeTaskGraph.taskId,
+      nodeId: "execute-1",
+      requiredCapabilities: ["completion"],
+      callerScope: "owner",
+    });
+
+    expect(ranked.data.rankNodeAgents.candidates.map((candidate: { agentId: string }) => candidate.agentId)).not.toContain("owner-local");
+    expect(ranked.data.rankNodeAgents.autoSelectedAgentId).not.toBe("owner-local");
+  });
+
   it("blocks start until every required node assignment is accepted", async () => {
     const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1" });
     const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
@@ -174,7 +205,7 @@ describe("queen orchestrator state machine", () => {
 
   it("rejects self-review aliases that use the same model tag", async () => {
     const orchestrator = createQueenOrchestrator({
-      agents: [...agents(), candidate("executor-alias", { modelTag: "cheap-executor", capabilities: ["judge", "completion"] })],
+      agents: [...agents(), candidate("executor-alias", { modelTag: " CHEAP-EXECUTOR ", capabilities: ["judge", "completion"] })],
       now,
       queenAgentId: "queen-router-v1",
     });
@@ -198,7 +229,11 @@ describe("queen orchestrator state machine", () => {
   });
 
   it("binds execution to accepted assignments and makes model-backed terminal mutations idempotent", async () => {
-    const executeAgentText = vi.fn(async (request: { role: string }) => request.role === "judge" ? "verdict: approved\nscore: 0.91" : `${request.role} output`);
+    const executeAgentText = vi.fn(async (request: { role: string }) => {
+      if (request.role === "judge") return "verdict: approved\nscore: 0.91";
+      if (request.role === "final_arbiter") return "verdict: approved\nfinal output";
+      return `${request.role} output`;
+    });
     const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1", executeAgentText });
     const proposed = await mutate(orchestrator, "ProposeTaskGraph", { requirement: "Write a plan", queenAgentId: "queen-router-v1" });
     const graph = proposed.data.proposeTaskGraph;
@@ -261,7 +296,7 @@ describe("queen orchestrator state machine", () => {
       if (request.role === "judge") return "verdict: needs_revision\nscore: 0.52";
       if (request.role === "red_team") return "finding: missing evidence";
       if (request.role === "repair") return "repair output";
-      if (request.role === "final_arbiter") return "final approved output";
+      if (request.role === "final_arbiter") return "verdict: approved\nfinal approved output";
       return "unknown";
     });
     const orchestrator = createQueenOrchestrator({
@@ -308,7 +343,7 @@ describe("queen orchestrator state machine", () => {
     expect(redTeamed.data.requestAdversarialReview).toMatchObject({ reviewNodeId: "red_team-execute-1-1", graphRevision: 2 });
     expect(repaired.data.repairNode.output).toBe("repair output");
     expect(repaired.data.repairNode).toMatchObject({ repairNodeId: "repair-execute-1-1", graphRevision: 3 });
-    expect(final.data.finalArbitrate.finalOutput).toBe("final approved output");
+    expect(final.data.finalArbitrate.finalOutput).toBe("verdict: approved\nfinal approved output");
     expect(executeAgentText.mock.calls.map(([request]) => request.role)).toEqual([
       "executor",
       "judge",
@@ -382,6 +417,68 @@ describe("queen orchestrator state machine", () => {
 
     expect(selected.errors[0].extensions.code).toBe("STATE_ERROR");
     expect(selected.errors[0].message).toContain("owner-only");
+  });
+
+  it("fails closed when Judge or Final Arbiter output has no explicit verdict", async () => {
+    const executeAgentText = vi.fn(async ({ role }: { role: string }) => `${role} returned unstructured prose`);
+    const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1", executeAgentText });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+    const graph = proposed.data.proposeTaskGraph;
+    await startGraph(orchestrator, graph);
+    await mutate(orchestrator, "SubmitNodeOutput", {
+      taskId: graph.taskId,
+      nodeId: "execute-1",
+      executorAgentId: "cheap-executor",
+      output: "executor output",
+    });
+
+    const judged = await mutate(orchestrator, "JudgeNodeOutput", {
+      taskId: graph.taskId,
+      nodeId: "execute-1",
+      judgeAgentId: "judge-agent",
+    });
+    const final = await mutate(orchestrator, "FinalArbitrate", {
+      taskId: graph.taskId,
+      finalArbiterAgentId: "final-arbiter-agent",
+    });
+
+    expect(judged.errors[0].message).toContain("JUDGE_RESULT_INVALID");
+    expect(final.errors[0].extensions.code).toBe("FINAL_ARBITER_RESULT_INVALID");
+  });
+
+  it("rejects Red Team and Final Arbiter identities that overlap reviewed roles", async () => {
+    const orchestrator = createQueenOrchestrator({ agents: agents(), now, queenAgentId: "queen-router-v1" });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Move funds on chain with independent review",
+      queenAgentId: "queen-router-v1",
+    });
+    const graph = proposed.data.proposeTaskGraph;
+    await acceptRequiredAssignments(orchestrator, graph);
+    await mutate(orchestrator, "AcceptNodeAssignment", { taskId: graph.taskId, nodeId: "final-1", agentId: "red-team-agent" });
+    await mutate(orchestrator, "ConfirmTaskGraph", { taskId: graph.taskId });
+    await mutate(orchestrator, "StartTaskRun", { taskId: graph.taskId, manualApproval: true });
+    await mutate(orchestrator, "SubmitNodeOutput", {
+      taskId: graph.taskId, nodeId: "execute-1", executorAgentId: "cheap-executor", output: "output",
+    });
+    await mutate(orchestrator, "JudgeNodeOutput", {
+      taskId: graph.taskId, nodeId: "execute-1", judgeAgentId: "judge-agent", score: 0.4, verdict: "needs_revision",
+    });
+    const invalidRedTeam = await mutate(orchestrator, "RequestAdversarialReview", {
+      taskId: graph.taskId, nodeId: "execute-1", redTeamAgentId: "judge-agent", findings: "verdict: approved",
+    });
+    const validRedTeam = await mutate(orchestrator, "RequestAdversarialReview", {
+      taskId: graph.taskId, nodeId: "execute-1", redTeamAgentId: "red-team-agent", findings: "verdict: approved",
+    });
+    const invalidFinal = await mutate(orchestrator, "FinalArbitrate", {
+      taskId: graph.taskId, finalArbiterAgentId: "red-team-agent", verdict: "approved", finalOutput: "output",
+    });
+
+    expect(invalidRedTeam.errors[0].extensions.code).toBe("RED_TEAM_NOT_INDEPENDENT");
+    expect(validRedTeam.errors).toBeUndefined();
+    expect(invalidFinal.errors[0].extensions.code).toBe("FINAL_ARBITER_NOT_INDEPENDENT");
   });
 });
 

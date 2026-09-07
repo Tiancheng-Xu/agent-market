@@ -1,10 +1,18 @@
-import { useMemo, useState, type FormEvent, type PropsWithChildren } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type PropsWithChildren } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { agents, navItems, tasks } from "../data";
 import { Localized, useLanguage } from "../i18n/LanguageProvider";
 import { shortAddress } from "../lib/domain";
 import type { WalletState } from "../types";
+
+type ScrollToRouteTop = (options: ScrollToOptions) => void;
+
+export function restoreRouteScroll(hash: string, scrollTo: ScrollToRouteTop): boolean {
+  if (hash) return false;
+  scrollTo({ behavior: "auto", left: 0, top: 0 });
+  return true;
+}
 
 export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: PropsWithChildren<{ wallet: WalletState; isSepolia: boolean; onConnect(): void; onSwitch(): void }>) {
   const { locale, setLocale, t } = useLanguage();
@@ -31,6 +39,13 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
   const mobilePrimaryItems = navItems.slice(0, 4);
   const mobileMoreItems = navItems.slice(4);
   const mobileMoreActive = mobileMoreItems.some(([path]) => location.pathname === path || (path !== "/" && location.pathname.startsWith(`${path}/`)));
+
+  useEffect(() => {
+    setMobileMoreOpen(false);
+    if (typeof window !== "undefined") {
+      restoreRouteScroll(location.hash, window.scrollTo.bind(window));
+    }
+  }, [location.hash, location.pathname, location.search]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +90,7 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
         </header>
         {wallet.error ? <div className="wallet-error" role="alert">{wallet.error}</div> : null}
         {walletMessage ? <div className="wallet-status" role="status">{walletMessage}</div> : null}
-        <main>{children}</main>
+        <main id="main-content" tabIndex={-1}>{children}</main>
         <footer className="site-footer">
           <div><strong>Agent Market</strong><span>Verifiable autonomous work on Ethereum Sepolia.</span></div>
           <nav aria-label="Delivery links"><a href="https://baby2b.online/">Portfolio</a><NavLink to="/">Project</NavLink><NavLink to="/evidence">Evidence</NavLink></nav>

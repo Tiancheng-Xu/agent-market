@@ -47,6 +47,35 @@ export const AssignmentStatusSchema = z.enum([
   "timeout",
 ]);
 
+export const NodePermissionSchema = z.enum([
+  "read_context",
+  "write_artifact",
+  "call_provider",
+  "call_local_runtime",
+  "request_review",
+]);
+
+export const NodeFailureRouteSchema = z.enum([
+  "retry",
+  "repair",
+  "red_team",
+  "manual_review",
+  "stop",
+]);
+
+export const NodeContractSchema = z.strictObject({
+  schemaVersion: z.literal("1"),
+  contextInputs: z.array(z.string().min(1).max(96)).max(32),
+  outputKeys: z.array(z.string().min(1).max(96)).min(1).max(32),
+  artifactMediaTypes: z.array(z.string().min(1).max(120)).max(12),
+  milestone: z.string().min(1).max(240),
+  acceptanceCriteria: z.array(z.string().min(1).max(240)).min(1).max(12),
+  budgetAtomic: z.string().regex(/^[0-9]+$/u),
+  permissions: z.array(NodePermissionSchema).max(8),
+  timeoutSeconds: z.number().int().min(1).max(3600),
+  failureRoute: NodeFailureRouteSchema,
+});
+
 export const QueenMutationNameSchema = z.enum([
   "ProposeTaskGraph",
   "AmendTaskGraph",
@@ -72,6 +101,18 @@ export const TaskNodeSchema = z.strictObject({
   judgesNodeId: z.string().min(1).max(96).optional(),
   repairsNodeId: z.string().min(1).max(96).optional(),
   assignedAgentId: z.string().min(1).max(160).optional(),
+  contract: NodeContractSchema.default({
+    schemaVersion: "1",
+    contextInputs: [],
+    outputKeys: ["result"],
+    artifactMediaTypes: [],
+    milestone: "Complete the node contract",
+    acceptanceCriteria: ["Output satisfies the declared schema"],
+    budgetAtomic: "0",
+    permissions: ["read_context", "write_artifact"],
+    timeoutSeconds: 300,
+    failureRoute: "stop",
+  }),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -141,6 +182,29 @@ export const TaskGraphSchema = z.strictObject({
       ctx.addIssue({ code: "custom", message: `Unknown edge target: ${edge.to}` });
     }
   }
+
+  const adjacency = new Map<string, string[]>();
+  for (const nodeId of nodeIds) adjacency.set(nodeId, []);
+  for (const edge of graph.edges) adjacency.get(edge.from)?.push(edge.to);
+  for (const node of graph.nodes) {
+    for (const dependency of node.dependencies) adjacency.get(dependency)?.push(node.nodeId);
+  }
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (nodeId: string): boolean => {
+    if (visiting.has(nodeId)) return true;
+    if (visited.has(nodeId)) return false;
+    visiting.add(nodeId);
+    for (const next of adjacency.get(nodeId) ?? []) {
+      if (visit(next)) return true;
+    }
+    visiting.delete(nodeId);
+    visited.add(nodeId);
+    return false;
+  };
+  if ([...nodeIds].some(visit)) {
+    ctx.addIssue({ code: "custom", message: "Task graph must be acyclic" });
+  }
 });
 
 const AgentScoreEventSchema = z.strictObject({
@@ -181,6 +245,104 @@ export const NodeAssignmentSchema = z.strictObject({
   riskCodes: z.array(z.string().min(1).max(80)).max(24).default([]),
 });
 
+const ApprovalDigestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
+
+export const QueenPlanningApprovalPayloadSchema = z.strictObject({
+  version: z.literal("queen-planning-approval.v1"),
+  action: z.literal("approve"),
+  requestId: z.string().uuid(),
+  taskId: z.string().uuid(),
+  taskVersion: z.number().int().positive(),
+  graphRevision: z.number().int().positive(),
+  taskFingerprint: ApprovalDigestSchema,
+  graphHash: ApprovalDigestSchema,
+  assignmentHash: ApprovalDigestSchema,
+  approved: z.boolean(),
+});
+
+const SnapshotAssignmentsSchema = z.array(z.tuple([z.string().min(1), NodeAssignmentSchema]));
+
+function canonicalizeApprovalValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalizeApprovalValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => [key, canonicalizeApprovalValue(item)]));
+  }
+  return value;
+}
+
+export function canonicalQueenPlanningApprovalBinding(input: {
+  graph: unknown;
+  assignments: unknown;
+  approvedRevision: number;
+  allowSystemAppended: boolean;
+}): { graph: unknown; assignments: unknown } {
+  if (!Number.isSafeInteger(input.approvedRevision) || input.approvedRevision < 1) {
+    throw new Error("QUEEN_APPROVAL_REVISION_INVALID");
+  }
+  const graph = TaskGraphSchema.parse(input.graph);
+  const assignments = SnapshotAssignmentsSchema.parse(input.assignments);
+  const systemNodes = graph.nodes.filter((node) => node.metadata?.systemAppended === true);
+  if (graph.graphRevision < input.approvedRevision
+      || (!input.allowSystemAppended && (graph.graphRevision !== input.approvedRevision || systemNodes.length > 0))
+      || (input.allowSystemAppended && graph.graphRevision - input.approvedRevision !== systemNodes.length)) {
+    throw new Error("QUEEN_APPROVAL_GRAPH_INCREMENT_INVALID");
+  }
+
+  const nodeIds = new Set(graph.nodes.map((node) => node.nodeId));
+  for (const node of systemNodes) {
+    const attempt = node.metadata?.attempt;
+    const parentNodeId = node.dependencies[0];
+    const matchingEdges = graph.edges.filter((edge) => edge.to === node.nodeId);
+    if ((node.type !== "repair" && node.type !== "red_team")
+        || node.dependencies.length !== 1 || parentNodeId === undefined
+        || !Number.isSafeInteger(attempt) || Number(attempt) < 1
+        || matchingEdges.length !== 1 || matchingEdges[0]?.from !== parentNodeId
+        || matchingEdges[0]?.condition !== "needs_revision"
+        || (node.type === "repair" && node.repairsNodeId !== parentNodeId)) {
+      throw new Error("QUEEN_APPROVAL_SYSTEM_INCREMENT_INVALID");
+    }
+  }
+  if (graph.edges.some((edge) => {
+    const fromSystem = systemNodes.some((node) => node.nodeId === edge.from);
+    const toSystem = systemNodes.some((node) => node.nodeId === edge.to);
+    return fromSystem || (toSystem && !systemNodes.some((node) =>
+      node.nodeId === edge.to && node.dependencies[0] === edge.from));
+  })) {
+    throw new Error("QUEEN_APPROVAL_SYSTEM_EDGE_INVALID");
+  }
+
+  const assignmentMap = new Map<string, z.infer<typeof NodeAssignmentSchema>>();
+  for (const [nodeId, assignment] of assignments) {
+    if (assignmentMap.has(nodeId) || assignment.nodeId !== nodeId || !nodeIds.has(nodeId)) {
+      throw new Error("QUEEN_APPROVAL_ASSIGNMENT_INVALID");
+    }
+    assignmentMap.set(nodeId, assignment);
+  }
+  for (const node of graph.nodes.filter((item) => item.required)) {
+    if (assignmentMap.get(node.nodeId)?.status !== "accepted") {
+      throw new Error("QUEEN_APPROVAL_REQUIRED_ASSIGNMENT_MISSING");
+    }
+  }
+
+  const baseNodes = graph.nodes.filter((node) => node.metadata?.systemAppended !== true);
+  const baseNodeIds = new Set(baseNodes.map((node) => node.nodeId));
+  const baseEdges = graph.edges.filter((edge) => baseNodeIds.has(edge.from) && baseNodeIds.has(edge.to));
+  const baseAssignments = assignments
+    .filter(([nodeId]) => baseNodeIds.has(nodeId))
+    .sort(([left], [right]) => left.localeCompare(right));
+  return {
+    graph: canonicalizeApprovalValue({
+      ...graph,
+      graphRevision: input.approvedRevision,
+      nodes: baseNodes,
+      edges: baseEdges,
+    }),
+    assignments: canonicalizeApprovalValue(baseAssignments),
+  };
+}
+
 export const QueenWorkflowEventSchema = z.strictObject({
   eventId: z.string().uuid(),
   taskId: z.string().uuid(),
@@ -219,6 +381,9 @@ export type TaskNodeType = z.infer<typeof TaskNodeTypeSchema>;
 export type RiskLevel = z.infer<typeof RiskLevelSchema>;
 export type StartPolicy = z.infer<typeof StartPolicySchema>;
 export type AssignmentStatus = z.infer<typeof AssignmentStatusSchema>;
+export type NodePermission = z.infer<typeof NodePermissionSchema>;
+export type NodeFailureRoute = z.infer<typeof NodeFailureRouteSchema>;
+export type NodeContract = z.infer<typeof NodeContractSchema>;
 export type QueenMutationName = z.infer<typeof QueenMutationNameSchema>;
 export type TaskNode = z.infer<typeof TaskNodeSchema>;
 export type TaskEdge = z.infer<typeof TaskEdgeSchema>;
@@ -226,5 +391,6 @@ export type RescuePolicy = z.infer<typeof RescuePolicySchema>;
 export type TaskGraph = z.infer<typeof TaskGraphSchema>;
 export type AgentCandidate = z.infer<typeof AgentCandidateSchema>;
 export type NodeAssignment = z.infer<typeof NodeAssignmentSchema>;
+export type QueenPlanningApprovalPayload = z.infer<typeof QueenPlanningApprovalPayloadSchema>;
 export type QueenWorkflowEvent = z.infer<typeof QueenWorkflowEventSchema>;
 export type QueenGraphqlRequest = z.infer<typeof QueenGraphqlRequestSchema>;

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { TransactionIntentV1 } from "@agent-market/shared-contracts";
 
+import { FairnessTrustSection } from "../components/FairnessTrustSection";
 import { Badge, DemoNotice, EmptyState, PageHeader, Panel } from "../components/Ui";
 import { TagSelector } from "../components/TagSelector";
-import { Localized } from "../i18n/LanguageProvider";
+import { Localized, useLanguage } from "../i18n/LanguageProvider";
 import { agents, tasks } from "../data";
 import {
   createOwnerAgentRecord,
@@ -32,6 +33,7 @@ function FilterBar({ query, setQuery, action }: { query: string; setQuery(value:
 }
 
 export function AgentsPage({ walletAddress = null }: { walletAddress?: string | null }) {
+  const { locale } = useLanguage();
   const [searchParams] = useSearchParams();
   const queryFromRoute = searchParams.get("q") ?? "";
   const [query, setQuery] = useState(queryFromRoute);
@@ -62,7 +64,7 @@ export function AgentsPage({ walletAddress = null }: { walletAddress?: string | 
   })), [ownerAgents]);
   const catalogAgents = useMemo(() => [...agents, ...visibleOwnerAgents], [visibleOwnerAgents]);
   const filtered = useMemo(() => catalogAgents.filter((agent) => `${agent.name} ${agent.category} ${agent.provider ?? ""} ${agent.modelTag ?? ""} ${agent.ownership ?? ""} ${agent.verification ?? ""} ${agent.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())), [catalogAgents, query]);
-  return <Localized><><PageHeader eyebrow="AGENT REGISTRY" title="Find a qualified operator" description="Public-safe catalog for installed local models and configured provider API models. Readiness reflects smoke evidence; pending models are listed but not claimed online." actions={<Link className="button button-primary" to="/agents/new">Register agent</Link>} /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="cyan">{filtered.length} RESULTS</Badge>} />{filtered.length ? <div className="card-grid stagger">{filtered.map((agent) => <Panel className="agent-card" key={agent.id}><div className="card-top"><div className="agent-avatar">{agent.name.slice(0, 2).toUpperCase()}</div><Badge tone={agent.verification === "verified" ? "cyan" : agent.verification === "implemented" ? "amber" : "neutral"}>{(agent.verification ?? agent.status).toUpperCase()}</Badge></div><h2>{agent.name}</h2><p>{agent.description}</p><div className="tag-row">{agent.tags.slice(0, 7).map((tag) => <span key={tag}>{tag}</span>)}</div><dl><div><dt>Provider</dt><dd>{agent.provider ?? "-"}</dd></div><div><dt>Model</dt><dd>{agent.modelTag ?? "-"}</dd></div><div><dt>Readiness</dt><dd>{agent.reliability}%</dd></div><div><dt>Verified ops</dt><dd>{agent.completed}</dd></div></dl><Link className="text-link" to={`/agents/${agent.id}`}>View public profile</Link></Panel>)}</div> : <EmptyState title="No eligible agents" description="Adjust filters or publish the task without forcing an invalid match." />}</></Localized>;
+  return <Localized><><PageHeader eyebrow="AGENT REGISTRY" title="Find a qualified operator" description="Public-safe catalog for installed local models and configured provider API models. Readiness reflects smoke evidence; pending models are listed but not claimed online." actions={<Link className="button button-primary" to="/agents/new">Register agent</Link>} /><FairnessTrustSection locale={locale} /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="cyan">{filtered.length} RESULTS</Badge>} />{filtered.length ? <div className="card-grid stagger">{filtered.map((agent) => <Panel className="agent-card" key={agent.id}><div className="card-top"><div className="agent-avatar">{agent.name.slice(0, 2).toUpperCase()}</div><Badge tone={agent.verification === "verified" ? "cyan" : agent.verification === "implemented" ? "amber" : "neutral"}>{(agent.verification ?? agent.status).toUpperCase()}</Badge></div><h2>{agent.name}</h2><p>{agent.description}</p><div className="tag-row">{agent.tags.slice(0, 7).map((tag) => <span key={tag}>{tag}</span>)}</div><dl><div><dt>Provider</dt><dd>{agent.provider ?? "-"}</dd></div><div><dt>Model</dt><dd>{agent.modelTag ?? "-"}</dd></div><div><dt>Readiness</dt><dd>{agent.reliability}%</dd></div><div><dt>Verified ops</dt><dd>{agent.completed}</dd></div></dl><Link className="text-link" to={`/agents/${agent.id}`}>View public profile</Link></Panel>)}</div> : <EmptyState title="No eligible agents" description="Adjust filters or publish the task without forcing an invalid match." />}</></Localized>;
 }
 
 export function AgentNewPage({ walletAddress = null }: { walletAddress?: string | null }) {

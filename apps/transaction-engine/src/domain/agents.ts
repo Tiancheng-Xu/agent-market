@@ -1,67 +1,132 @@
-export type AgentStatus = "draft" | "active" | "suspended";
+import {
+  beginAgentRevision,
+  createAgentLifecycle,
+  transitionAgentLifecycle,
+  type AgentLifecycle,
+  type AgentLifecycleActorRole,
+  type AgentLifecycleStatus,
+} from "@agent-market/shared-contracts";
 
-export interface Agent {
+export type AgentStatus = AgentLifecycleStatus;
+
+export type Agent = {
   id: string;
   ownerId: string;
   name: string;
   description: string;
   capabilities: string[];
   endpoint?: string;
-  status: AgentStatus;
+  lifecycle: AgentLifecycle;
+  status: AgentLifecycleStatus;
   version: number;
-}
+};
 
-export interface CreateAgentInput {
-  id: string;
-  ownerId: string;
-  name: string;
-  description: string;
-  capabilities: string[];
-  endpoint?: string;
-}
+export type CreateAgentInput = Omit<Agent, "lifecycle" | "status" | "version"> & {
+  occurredAt?: string;
+};
 
-function required(value: string, code: string): string {
-  const normalized = value.trim();
-  if (!normalized) {
-    throw new Error(code);
-  }
-  return normalized;
-}
+type TransitionMetadata = {
+  actorRole: AgentLifecycleActorRole;
+  reasonCode: string;
+  occurredAt?: string;
+};
+
+const normalizeCapabilities = (values: string[]) =>
+  [...new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean))].sort();
+
+const metadata = ({ actorRole, reasonCode, occurredAt }: TransitionMetadata) => ({
+  actorRole,
+  reasonCode,
+  occurredAt: occurredAt ?? new Date().toISOString(),
+});
+
+const withLifecycle = (agent: Agent, lifecycle: AgentLifecycle): Agent => ({
+  ...agent,
+  lifecycle,
+  status: lifecycle.status,
+  version: lifecycle.version,
+});
 
 export function createAgent(input: CreateAgentInput): Agent {
-  const capabilities = [...new Set(
-    input.capabilities
-      .map((capability) => capability.trim().toLowerCase())
-      .filter(Boolean),
-  )].sort();
-
+  const capabilities = normalizeCapabilities(input.capabilities);
+  if (!input.id.trim() || !input.ownerId.trim() || !input.name.trim() || !input.description.trim()) {
+    throw new Error("AGENT_FIELDS_REQUIRED");
+  }
   if (capabilities.length === 0) {
     throw new Error("AGENT_CAPABILITY_REQUIRED");
   }
 
+  const lifecycle = createAgentLifecycle({
+    actorRole: "owner",
+    reasonCode: "owner_created",
+    occurredAt: input.occurredAt ?? new Date().toISOString(),
+  });
+
   return {
-    id: required(input.id, "AGENT_ID_REQUIRED"),
-    ownerId: required(input.ownerId, "AGENT_OWNER_REQUIRED"),
-    name: required(input.name, "AGENT_NAME_REQUIRED"),
-    description: required(input.description, "AGENT_DESCRIPTION_REQUIRED"),
+    ...input,
+    id: input.id.trim(),
+    ownerId: input.ownerId.trim(),
+    name: input.name.trim(),
+    description: input.description.trim(),
     capabilities,
-    ...(input.endpoint?.trim() ? { endpoint: input.endpoint.trim() } : {}),
-    status: "draft",
-    version: 1,
+    lifecycle,
+    status: lifecycle.status,
+    version: lifecycle.version,
   };
 }
 
-export function publishAgent(agent: Agent): Agent {
-  if (agent.status !== "draft") {
-    throw new Error("AGENT_STATUS_INVALID");
-  }
+export function submitAgentForReview(agent: Agent, input: Omit<TransitionMetadata, "actorRole">): Agent {
   if (!agent.endpoint) {
     throw new Error("AGENT_ENDPOINT_REQUIRED");
   }
+  return withLifecycle(
+    agent,
+    transitionAgentLifecycle(agent.lifecycle, "reviewing", metadata({ ...input, actorRole: "owner" })),
+  );
+}
 
-  return {
-    ...agent,
-    status: "active",
-    version: agent.version + 1,
-  };
+export function publishAgent(agent: Agent, input?: Omit<TransitionMetadata, "actorRole">): Agent {
+  if (!agent.endpoint) {
+    throw new Error("AGENT_ENDPOINT_REQUIRED");
+  }
+  return withLifecycle(
+    agent,
+    transitionAgentLifecycle(
+      agent.lifecycle,
+      "published",
+      metadata({
+        actorRole: "reviewer",
+        reasonCode: input?.reasonCode ?? "review_passed",
+        ...(input?.occurredAt ? { occurredAt: input.occurredAt } : {}),
+      }),
+    ),
+  );
+}
+
+export function pauseAgent(agent: Agent, input: Omit<TransitionMetadata, "actorRole">): Agent {
+  return withLifecycle(
+    agent,
+    transitionAgentLifecycle(agent.lifecycle, "paused", metadata({ ...input, actorRole: "owner" })),
+  );
+}
+
+export function resumeAgent(agent: Agent, input: Omit<TransitionMetadata, "actorRole">): Agent {
+  return withLifecycle(
+    agent,
+    transitionAgentLifecycle(agent.lifecycle, "published", metadata({ ...input, actorRole: "owner" })),
+  );
+}
+
+export function retireAgent(agent: Agent, input: Omit<TransitionMetadata, "actorRole">): Agent {
+  return withLifecycle(
+    agent,
+    transitionAgentLifecycle(agent.lifecycle, "retired", metadata({ ...input, actorRole: "owner" })),
+  );
+}
+
+export function startAgentRevision(agent: Agent, input: Omit<TransitionMetadata, "actorRole">): Agent {
+  return withLifecycle(
+    agent,
+    beginAgentRevision(agent.lifecycle, metadata({ ...input, actorRole: "owner" })),
+  );
 }

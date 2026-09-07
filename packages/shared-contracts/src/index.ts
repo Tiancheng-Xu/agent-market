@@ -63,6 +63,7 @@ export {
   AgentCandidateSchema,
   AssignmentStatusSchema,
   NodeAssignmentSchema,
+  QueenPlanningApprovalPayloadSchema,
   QueenGraphqlRequestSchema,
   QueenMutationNameSchema,
   QueenWorkflowEventSchema,
@@ -75,9 +76,11 @@ export {
   TaskNodeSchema,
   TaskNodeTypeSchema,
   WorkflowStageSchema,
+  canonicalQueenPlanningApprovalBinding,
   type AgentCandidate,
   type AssignmentStatus,
   type NodeAssignment,
+  type QueenPlanningApprovalPayload,
   type QueenGraphqlRequest,
   type QueenMutationName,
   type QueenWorkflowEvent,
@@ -100,3 +103,7 @@ export {
   type TransactionVerificationV1,
 } from "./transactions";
 export * from "./office";
+export * from "./agent-lifecycle";
+export * from "./orders";
+export * from "./reputation";
+export * from "./risk-pricing";

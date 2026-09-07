@@ -11,6 +11,7 @@ const FrameworkStateSchema = z.object({
 
 export type QueenFrameworkRuntime = {
   execute(input: z.infer<typeof FrameworkStateSchema>): Promise<z.infer<typeof FrameworkStateSchema>>;
+  executeOperation?(input: z.infer<typeof FrameworkStateSchema>, operation: () => Promise<void>): Promise<z.infer<typeof FrameworkStateSchema>>;
 };
 
 export function createQueenFrameworkRuntime(): QueenFrameworkRuntime {
@@ -36,7 +37,49 @@ export function createQueenFrameworkRuntime(): QueenFrameworkRuntime {
 
   return {
     execute: async (input) => graph.invoke(input),
+    executeOperation: async (input, operation) => {
+      // Each invocation owns its callback; concurrent requests never share mutable dispatch state.
+      const execute = async (state: z.infer<typeof FrameworkStateSchema>) => {
+        await operation();
+        return { ...state, stages: [...state.stages, `langgraph:executed:${executionNode(state.operationName)}`] };
+      };
+      const executionGraph = new StateGraph(FrameworkStateSchema)
+        .addNode("policy", async (state) => graph.invoke(state))
+        .addNode("queen", execute)
+        .addNode("agent", execute)
+        .addNode("judge", execute)
+        .addNode("red_team", execute)
+        .addNode("repair", execute)
+        .addNode("final_arbiter", execute)
+        .addNode("learning", execute)
+        .addEdge(START, "policy")
+        .addConditionalEdges("policy", (state) => executionNode(state.operationName), {
+          queen: "queen", agent: "agent", judge: "judge", red_team: "red_team",
+          repair: "repair", final_arbiter: "final_arbiter", learning: "learning",
+        })
+        .addEdge("queen", END)
+        .addEdge("agent", END)
+        .addEdge("judge", END)
+        .addEdge("red_team", END)
+        .addEdge("repair", END)
+        .addEdge("final_arbiter", END)
+        .addEdge("learning", END)
+        .compile();
+      return executionGraph.invoke(input);
+    },
   };
+}
+
+function executionNode(operationName: string) {
+  switch (operationName) {
+    case "SubmitNodeOutput": return "agent";
+    case "JudgeNodeOutput": return "judge";
+    case "RequestAdversarialReview": return "red_team";
+    case "RepairNode": return "repair";
+    case "FinalArbitrate": return "final_arbiter";
+    case "WriteLearningLoop": return "learning";
+    default: return "queen";
+  }
 }
 
 function operationToPolicy(operationName: string): string {
