@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "agent-market.local-browser-gate.v1",
+  "date": "2026-09-04",
+  "provenance": "controlled-browser",
+  "environment": "local",
+  "status": "passed",
+  "runner": "scripts/visual-route-audit.mjs",
+  "routeCount": 18,
+  "widths": [375, 390, 430, 1440, 1920],
+  "locales": ["zh-CN", "en"],
+  "checked": 180,
+  "failures": {
+    "httpSemantics": 0,
+    "horizontalOverflow": 0,
+    "brokenImages": 0,
+    "emptyButtons": 0,
+    "pageExceptions": 0,
+    "cocosReady": 0,
+    "untranslatedChineseMode": 0,
+    "untranslatedEnglishMode": 0,
+    "mixedLanguage": 0
+  },
+  "localCompatibilityDate": "2026-07-29",
+  "productionCompatibilityDate": "2026-08-20",
+  "limits": [
+    "Local headless Chrome against local Edge SSR; not production or real-user evidence.",
+    "Does not prove authenticated order completion, wallet transactions, AWS execution, or production Risk Assessor availability.",
+    "Does not replace reviewed visual baselines, performance traces, independent review, or a complete feature recording."
+  ]
+}

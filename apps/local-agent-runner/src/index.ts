@@ -48,3 +48,10 @@ export { ControlPlaneClient, type ControlPlaneClientOptions, type ControlPlaneFe
 export { MockControlPlane } from "./mock-control-plane";
 export { LocalAgentRunner, type LocalAgentRunnerOptions, type PollStatus } from "./runner";
 export { createLocalStreamRuntime, type LocalStreamRuntimeOptions } from "./stream-runtime";
+export {
+  assessTaskRisk,
+  assessTaskRiskWithFallback,
+  conservativeRiskFallback,
+  type RiskAssessorExecutionRequest,
+  type RiskAssessorExecutor,
+} from "./risk-assessor";

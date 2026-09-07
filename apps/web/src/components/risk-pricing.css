@@ -1,0 +1,309 @@
+.risk-quote-panel,
+.reputation-v2-panel {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.risk-panel-heading,
+.risk-statuses,
+.risk-confirm-row,
+.risk-yield-boundary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.risk-panel-heading {
+  align-items: flex-start;
+}
+
+.risk-panel-heading h2 {
+  margin: 7px 0 0;
+}
+
+.risk-statuses {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.risk-quote-meta,
+.risk-money-grid,
+.risk-factor-grid,
+.risk-detail-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.risk-quote-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(6, 14, 30, .38);
+}
+
+.risk-quote-meta span,
+.risk-money-grid > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.risk-quote-meta small,
+.risk-money-grid span,
+.risk-yield-boundary small,
+.reputation-policy,
+.reputation-privacy-note {
+  color: var(--muted);
+}
+
+.risk-quote-meta strong,
+.risk-confirm-row code,
+.risk-allocation-list dt {
+  overflow-wrap: anywhere;
+}
+
+.risk-money-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.risk-money-grid > div {
+  min-height: 96px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--cyan);
+  border-radius: 10px;
+  background: rgba(9, 19, 38, .72);
+}
+
+.risk-money-grid strong {
+  align-self: end;
+  font-size: clamp(17px, 1.8vw, 23px);
+}
+
+.risk-money-grid .risk-money-total {
+  border-top-color: var(--primary);
+  background: rgba(119, 120, 255, .1);
+}
+
+.risk-factor-section h3,
+.risk-detail-grid h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.risk-factor-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.risk-factor,
+.reputation-dimensions > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(6, 14, 30, .36);
+}
+
+.risk-factor span,
+.reputation-dimensions span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.risk-factor i,
+.reputation-dimensions i {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, .18);
+}
+
+.risk-factor i b,
+.reputation-dimensions i b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cyan), var(--indigo));
+}
+
+.risk-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.risk-detail-grid > section,
+.risk-yield-boundary {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(6, 14, 30, .3);
+}
+
+.risk-reason-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.risk-reason-list code,
+.risk-confirm-row code,
+.reputation-policy code {
+  color: var(--cyan);
+  font: 600 10px "IBM Plex Mono", monospace;
+}
+
+.risk-reason-list code {
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: rgba(76, 219, 247, .07);
+}
+
+.risk-allocation-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.risk-allocation-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.risk-allocation-list dd {
+  flex: none;
+  margin: 0;
+  color: var(--text);
+}
+
+.risk-yield-boundary {
+  border-left: 3px solid var(--amber);
+}
+
+.risk-yield-boundary p {
+  margin: 9px 0 0;
+}
+
+.risk-confirm-row {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.risk-confirm-row .button {
+  min-width: min(100%, 260px);
+}
+
+.reputation-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.reputation-score-row > strong {
+  font-size: clamp(42px, 7vw, 72px);
+  line-height: .95;
+}
+
+.reputation-score-row > span {
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.reputation-score-row > div {
+  display: grid;
+  gap: 3px;
+  margin-left: 12px;
+}
+
+.reputation-score-row small {
+  color: var(--muted);
+}
+
+.reputation-dimensions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reputation-policy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 12px;
+}
+
+.reputation-privacy-note {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .risk-money-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .risk-factor-grid,
+  .reputation-dimensions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .risk-panel-heading,
+  .risk-confirm-row,
+  .risk-yield-boundary > div,
+  .reputation-score-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .risk-statuses {
+    justify-content: flex-start;
+  }
+
+  .risk-quote-meta,
+  .risk-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reputation-score-row > div {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .risk-quote-panel,
+  .reputation-v2-panel {
+    gap: 15px;
+  }
+
+  .risk-money-grid,
+  .risk-factor-grid,
+  .reputation-dimensions {
+    grid-template-columns: 1fr;
+  }
+
+  .risk-money-grid > div {
+    min-height: 82px;
+  }
+
+  .risk-allocation-list div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .risk-confirm-row .button {
+    width: 100%;
+  }
+}

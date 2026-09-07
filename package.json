@@ -10,11 +10,16 @@
 		"check": "node scripts/validate-repository.mjs && node scripts/validate-evidence.mjs && pnpm -r --if-present check",
 		"test": "node --test scripts/*.test.mjs && pnpm -r --if-present test",
 		"typecheck": "pnpm -r --if-present typecheck",
-    "build": "pnpm -r --if-present build",
-    "build:cocos-office": "node scripts/build-cocos-office.mjs",
-		"verify": "node scripts/verify-all.mjs"
+		"build": "pnpm -r --if-present build",
+		"build:cocos-office": "node scripts/build-cocos-office.mjs",
+    "verify": "node scripts/verify-all.mjs",
+    "visual:audit": "node scripts/visual-route-audit.mjs",
+    "visual:compare": "node scripts/compare-visual-route-audit.mjs"
 	},
 	"devDependencies": {
+		"@types/pngjs": "^6.0.5",
+		"pixelmatch": "^7.2.0",
+		"pngjs": "^7.0.0",
 		"yaml": "2.8.1"
 	}
 }

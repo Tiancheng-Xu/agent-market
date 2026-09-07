@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AgentCandidate } from "@agent-market/shared-contracts";
 
-import { computeDecayedQualityScore, rankAgentCandidates, selectThreeFromFour } from "./queen-ranking";
+import { computeDecayedQualityScore, rankAgentCandidates, selectThreeFromFour, selectThreeWithAudit } from "./queen-ranking";
 
 describe("queen agent ranking", () => {
   it("prioritizes lower cost after capability match and minimum quality", () => {
@@ -170,6 +170,74 @@ describe("queen agent ranking", () => {
     expect(selected).toHaveLength(3);
     expect(selected.map((item) => item.agentId)).toEqual(["stable-a", "stable-b", "new-agent"]);
     expect(new Set(selected.map((item) => item.modelTag)).size).toBe(3);
+  });
+
+  it("fills all three seats reproducibly during a pure cold start", () => {
+    const base = {
+      nodeType: "execute" as const,
+      requiredCapabilities: ["completion"],
+      now: new Date("2026-09-01T12:00:00.000Z"),
+      selectionPolicy: { taskId: "task-cold", matchingRound: 1, policyVersion: "fair-v1" },
+      candidates: ["a", "b", "c", "d"].map((id) => candidate(`new-${id}`, {
+        modelTag: `model-${id}`,
+        costPer1kTokensUsd: 0.01,
+        qualityScore: 0,
+        firstSeenAt: "2026-09-01T11:00:00.000Z",
+        scoreEvents: [],
+      })),
+    };
+    const first = selectThreeWithAudit(base);
+    const second = selectThreeWithAudit(base);
+    expect(first.candidates).toHaveLength(3);
+    expect(first.audit).toEqual(second.audit);
+    expect(first.audit.selectionReasons).toEqual([
+      "cold-start-exploration",
+      "cold-start-exploration",
+      "cold-start-exploration",
+    ]);
+  });
+
+  it.each([
+    {
+      taskId: "task-cold",
+      matchingRound: 1,
+      policyVersion: "fair-v1",
+      agentIds: ["new-d", "new-b", "new-a", "new-c"],
+      seedHash: "aa366ba1cb7874f091fec6e0fed3b293766ec340a53a89171f54b45568bb255a",
+      selectedIds: ["new-d", "new-b", "new-a"],
+    },
+    {
+      taskId: "任务-42",
+      matchingRound: 12,
+      policyVersion: "公平-v2",
+      agentIds: ["agent-𐀀", "agent-", "agent-a", "agent-Z"],
+      seedHash: "efb6c5da19c3e9a2e64c8af2d8d4ff3902d874df74e17a8facd6996e1f6805f7",
+      selectedIds: ["agent-", "agent-Z", "agent-a"],
+    },
+  ])("matches the shared seeded Fisher-Yates vector for $taskId", ({
+    taskId,
+    matchingRound,
+    policyVersion,
+    agentIds,
+    seedHash,
+    selectedIds,
+  }) => {
+    const result = selectThreeWithAudit({
+      nodeType: "execute",
+      requiredCapabilities: ["completion"],
+      now: new Date("2026-09-01T12:00:00.000Z"),
+      selectionPolicy: { taskId, matchingRound, policyVersion },
+      candidates: agentIds.map((agentId) => candidate(agentId, {
+        modelTag: agentId,
+        costPer1kTokensUsd: 0.01,
+        qualityScore: 0,
+        firstSeenAt: "2026-09-01T11:00:00.000Z",
+        scoreEvents: [],
+      })),
+    });
+
+    expect(result.audit.seedHash).toBe(seedHash);
+    expect(result.audit.selectedIds).toEqual(selectedIds);
   });
 
   it("allows owner-only candidates only under an authenticated owner scope", () => {

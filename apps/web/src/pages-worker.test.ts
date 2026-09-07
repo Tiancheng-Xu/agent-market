@@ -174,6 +174,121 @@ describe("Cloudflare Pages edge renderer", () => {
     await expect(response.json()).resolves.toMatchObject({ error: "TRANSACTION_ENGINE_OFFLINE" });
   });
 
+  it("proxies only the allowlisted public reputation GET without forwarding cookies", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        const request = new Request(input, init);
+        calls.push(request);
+        return Response.json({ reputation: {}, requestId: "7dc42790-a91c-4d62-9d5d-a08bb5211141" });
+      },
+    });
+    const agentId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(`https://agent-market.test/api/agents/${agentId}/reputation`, {
+      headers: { cookie: "__Host-agent_market_session=opaque" },
+    }), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(200);
+    expect(calls[0]?.method).toBe("GET");
+    expect(calls[0]?.headers.get("cookie")).toBeNull();
+    expect(calls[0]?.url).toBe(`https://transaction.internal/api/agents/${agentId}/reputation`);
+  });
+
+  it("rejects unsupported methods on dynamic transaction routes", async () => {
+    const taskId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const handler = createPagesHandler({ logger: { info() {}, error() {} } });
+    const response = await handler.fetch(new Request(`https://agent-market.test/api/tasks/${taskId}/risk-quote`), environment());
+    expect(response.status).toBe(405);
+  });
+
+  it("proxies authenticated risk-context GET with the session cookie intact", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        const request = new Request(input, init);
+        calls.push(request);
+        return Response.json({ taskId: "safe" }, { headers: { "cache-control": "no-store" } });
+      },
+    });
+    const taskId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(
+      `https://agent-market.test/api/tasks/${taskId}/risk-context`,
+      { headers: { cookie: "__Host-agent_market_session=opaque" } },
+    ), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(200);
+    expect(calls[0]?.method).toBe("GET");
+    expect(calls[0]?.headers.get("cookie")).toBe("__Host-agent_market_session=opaque");
+    expect(calls[0]?.url).toBe(`https://transaction.internal/api/tasks/${taskId}/risk-context`);
+  });
+
+  it("proxies the exact authenticated order GET without requiring Origin and preserves its cookie", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        const request = new Request(input, init);
+        calls.push(request);
+        return Response.json({ order: { orderId: "7dc42790-a91c-4d62-9d5d-a08bb5211141" } });
+      },
+    });
+    const orderId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(`https://agent-market.test/api/orders/${orderId}`, {
+      headers: { cookie: "__Host-agent_market_session=opaque" },
+    }), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(200);
+    expect(calls[0]?.method).toBe("GET");
+    expect(calls[0]?.headers.get("cookie")).toBe("__Host-agent_market_session=opaque");
+    expect(calls[0]?.url).toBe(`https://transaction.internal/api/orders/${orderId}`);
+  });
+
+  it("proxies exact same-origin order commands and rejects wrong origins", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        calls.push(new Request(input, init));
+        return Response.json({ order: { status: "accepted" } });
+      },
+    });
+    const orderId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const environmentWithEngine = { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" };
+    const accepted = await handler.fetch(new Request(`https://agent-market.test/api/orders/${orderId}/commands`, {
+      method: "POST",
+      headers: { origin: "https://agent-market.test", cookie: "__Host-agent_market_session=opaque", "content-type": "application/json" },
+      body: JSON.stringify({ command: "accept" }),
+    }), environmentWithEngine);
+    const rejected = await handler.fetch(new Request(`https://agent-market.test/api/orders/${orderId}/commands`, {
+      method: "POST",
+      headers: { origin: "https://attacker.test", "content-type": "application/json" },
+      body: JSON.stringify({ command: "accept" }),
+    }), environmentWithEngine);
+
+    expect(accepted.status).toBe(200);
+    expect(calls[0]?.headers.get("cookie")).toBe("__Host-agent_market_session=opaque");
+    expect(calls[0]?.url).toBe(`https://transaction.internal/api/orders/${orderId}/commands`);
+    expect(rejected.status).toBe(403);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("returns 405 for unsupported exact order methods and 404 for unknown order paths", async () => {
+    const handler = createPagesHandler({ logger: { info() {}, error() {} } });
+    const orderId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const unsupported = await handler.fetch(new Request(`https://agent-market.test/api/orders/${orderId}`, {
+      method: "POST",
+      headers: { origin: "https://agent-market.test" },
+    }), environment());
+    const unknown = await handler.fetch(new Request(`https://agent-market.test/api/orders/${orderId}/unknown`, {
+      headers: { accept: "application/json" },
+    }), environment());
+
+    expect(unsupported.status).toBe(405);
+    expect(unknown.status).toBe(404);
+  });
+
   it("serves a public-safe agent catalog contract", async () => {
     const handler = createPagesHandler({ logger: { info() {}, error() {} } });
 
@@ -323,6 +438,35 @@ describe("Cloudflare Pages edge renderer", () => {
     expect(new URL(calls[0]?.url ?? "https://missing.test").pathname).toBe("/graphql");
     expect(calls[0]?.headers.get("x-agent-signature")).toMatch(/^[0-9a-f]{64}$/);
     expect(payload.data.proposeTaskGraph.rescuePolicy).toMatchObject({ mode: "auto", visibleToUser: false });
+  });
+
+  it("overrides a forged owner callerScope on the public GraphQL boundary", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        calls.push(new Request(input, init));
+        return Response.json({ data: { rankNodeAgents: { candidates: [] } } });
+      },
+    });
+    const response = await handler.fetch(new Request("https://agent-market.test/agent/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://agent-market.test" },
+      body: JSON.stringify({
+        query: "mutation RankNodeAgents($input: RankNodeAgentsInput!) { rankNodeAgents(input: $input) { candidates { agentId } } }",
+        operationName: "RankNodeAgents",
+        variables: { input: { taskId: "11111111-1111-4111-8111-111111111111", nodeId: "execute-1", callerScope: "owner" } },
+      }),
+    }), {
+      ...environment(),
+      AGENT_RUNTIME_ORIGIN: "https://runtime.agent-market.test",
+      AGENT_RUNTIME_SHARED_SECRET: "runtime-secret",
+    });
+    const forwarded = await calls[0]!.json() as { variables: { input: { callerScope: string } } };
+
+    expect(response.status).toBe(200);
+    expect(calls[0]?.headers.get("x-agent-caller-scope")).toBe("public");
+    expect(forwarded.variables.input.callerScope).toBe("public");
   });
 
   it("returns GraphQL errors for Queen mutations when runtime is offline", async () => {

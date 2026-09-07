@@ -1,0 +1,90 @@
+{
+  "scope": "controlled-browser/local; real OrderDetailRoute with synthetic delayed order query",
+  "passed": true,
+  "requests": [
+    "A",
+    "B",
+    "guest",
+    "A"
+  ],
+  "abortedA": true,
+  "mismatches": [],
+  "errors": [],
+  "events": [
+    {
+      "kind": "request",
+      "owner": "A"
+    },
+    {
+      "kind": "render",
+      "owner": "A",
+      "data": null
+    },
+    {
+      "kind": "abort",
+      "owner": "A"
+    },
+    {
+      "kind": "request",
+      "owner": "B"
+    },
+    {
+      "kind": "render",
+      "owner": "B",
+      "data": null
+    },
+    {
+      "kind": "response",
+      "owner": "B"
+    },
+    {
+      "kind": "render",
+      "owner": "B",
+      "data": "B"
+    },
+    {
+      "kind": "response",
+      "owner": "A"
+    },
+    {
+      "kind": "request",
+      "owner": "guest"
+    },
+    {
+      "kind": "render",
+      "owner": "guest",
+      "data": null
+    },
+    {
+      "kind": "response",
+      "owner": "guest"
+    },
+    {
+      "kind": "render",
+      "owner": "guest",
+      "data": "guest"
+    },
+    {
+      "kind": "request",
+      "owner": "A"
+    },
+    {
+      "kind": "render",
+      "owner": "A",
+      "data": null
+    },
+    {
+      "kind": "response",
+      "owner": "A"
+    },
+    {
+      "kind": "render",
+      "owner": "A",
+      "data": "A"
+    }
+  ],
+  "limitations": [
+    "No authenticated API or wallet extension",
+    "Does not prove cookie-session rotation safety or production behavior"
+  ]
+}

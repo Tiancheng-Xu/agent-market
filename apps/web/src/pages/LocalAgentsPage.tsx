@@ -1,4 +1,10 @@
+import {
+  QueenReactFlow,
+  type GraphEdge,
+  type QueenNodePositions,
+} from "./QueenReactFlow";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import type { EdgeChange, NodeChange } from "@xyflow/react";
 
 import { Badge, PageHeader, Panel } from "../components/Ui";
 import { agentProviderLabel, publicAgentCatalog } from "../agentCatalog";
@@ -62,6 +68,15 @@ type QueenRankResult = {
   nodeId: string;
   autoSelectedAgentId?: string;
   candidates: QueenRankCandidate[];
+  matchingAudit?: {
+    policyVersion: string;
+    eligibleCount: number;
+    selectedIds: string[];
+    selectionReasons: Array<"history-rank" | "history-fallback" | "cold-start-exploration">;
+    seedHash: string;
+    historyCount: number;
+    coldStartCount: number;
+  };
 };
 type QueenRankCandidate = {
   agentId: string;
@@ -165,6 +180,15 @@ mutation RankNodeAgents($input: RankNodeAgentsInput!) {
     nodeId
     autoSelectedAgentId
     rankingPolicy
+    matchingAudit {
+      policyVersion
+      eligibleCount
+      selectedIds
+      selectionReasons
+      seedHash
+      historyCount
+      coldStartCount
+    }
     candidates { agentId displayName modelTag costPer1kTokensUsd qualityScore status rankingScore }
   }
 }
@@ -280,7 +304,15 @@ const fallbackAgents: DisplayAgent[] = publicAgentCatalog.map((agent) => ({
   verification: agent.verification,
 }));
 
-export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: { initialQueenWorkflow?: QueenWorkflowState; walletAddress?: string | null } = {}) {
+export function LocalAgentsPage({
+  initialQueenWorkflow,
+  initialQueenRanks = {},
+  walletAddress = null,
+}: {
+  initialQueenWorkflow?: QueenWorkflowState;
+  initialQueenRanks?: Record<string, QueenRankResult>;
+  walletAddress?: string | null;
+} = {}) {
   const [selectedId, setSelectedId] = useState<AgentId>("personal-ai-agent-runtime-v4-1");
   const [health, setHealth] = useState<Health>({ status: "offline", agents: [], reasonCode: "RUNTIME_OFFLINE" });
   const [healthRevision, setHealthRevision] = useState(0);
@@ -292,11 +324,12 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
   const [lastError, setLastError] = useState<string | null>(null);
   const [orchestrationIds, setOrchestrationIds] = useState<AgentId[]>([]);
   const [queenWorkflow, setQueenWorkflow] = useState<QueenWorkflowState>(initialQueenWorkflow ?? { status: "idle", log: [] });
-  const [queenRanks, setQueenRanks] = useState<Record<string, QueenRankResult>>({});
+  const [queenRanks, setQueenRanks] = useState<Record<string, QueenRankResult>>(initialQueenRanks);
   const [queenAssignments, setQueenAssignments] = useState<Record<string, QueenAssignmentResult>>({});
   const [queenNodeOutputs, setQueenNodeOutputs] = useState<Record<string, string>>({});
   const [queenBusy, setQueenBusy] = useState<string | null>(null);
   const [queenDraftGraph, setQueenDraftGraph] = useState<QueenTaskGraphResult | null>(null);
+  const [queenNodePositions, setQueenNodePositions] = useState<QueenNodePositions>({});
   const [ownerAgents, setOwnerAgents] = useState<OwnerAgentRecord[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -320,6 +353,7 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
   const runtimeAvailable = health.status !== "offline";
   const canRunOrchestration = runtimeAvailable && !busy && orchestrationAgents.length >= 2 && !orchestrationModelConflict && draft.trim().length > 0;
   const visibleQueenGraph = queenDraftGraph ?? queenWorkflow.graph;
+  const queenGraphEditable = canEditQueenDraft(queenWorkflow.status, queenBusy);
 
   useEffect(() => {
     let active = true;
@@ -502,12 +536,13 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
   }
 
   function beginQueenWorkflowEdit() {
-    if (!queenWorkflow.graph || queenBusy) return;
+    if (!queenWorkflow.graph || !queenGraphEditable) return;
     setQueenDraftGraph({
       ...queenWorkflow.graph,
       nodes: queenWorkflow.graph.nodes.map((node) => ({ ...node, dependencies: [...node.dependencies] })),
       edges: queenWorkflow.graph.edges.map((edge) => ({ ...edge })),
     });
+    setQueenNodePositions({});
   }
 
   async function saveQueenWorkflowEdit() {
@@ -537,11 +572,13 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
         log: [...current.log, `Workflow revision ${data.amendTaskGraph.graphRevision} saved; confirmation is pending.`].slice(-10),
       }));
       setQueenDraftGraph(null);
+      setQueenNodePositions({});
     } catch (error) {
       if (!abort.signal.aborted) {
-        const message = error instanceof Error ? error.message : "Workflow amendment failed";
-        setLastError(message);
-        appendQueenLog(`Workflow amendment failed: ${message}`);
+        const failure = preserveQueenDraftAfterSaveFailure(queenDraftGraph, error);
+        setQueenDraftGraph(failure.graph);
+        setLastError(failure.reason);
+        appendQueenLog(`Workflow amendment failed: ${failure.reason}`);
       }
     } finally {
       setQueenBusy(null);
@@ -901,7 +938,23 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
               {queenWorkflow.status.toUpperCase()}
             </Badge>
           </div>
-          <QueenFlowDiagram graph={visibleQueenGraph} activeNodeId={queenWorkflow.activeNodeId} status={queenWorkflow.status} />
+          <div className="runtime-boundary" aria-label="Risk Assessor preflight">
+            <span>Risk Assessor preflight</span>
+            <p><strong>Outside Queen DAG.</strong> The deterministic risk protocol and engine are <strong>verified-local</strong>. Production assessor unavailable because no production RiskAssessorClient is configured; this lane cannot claim a production assessment.</p>
+          </div>
+          <QueenReactFlow
+            graph={visibleQueenGraph}
+            activeNodeId={queenWorkflow.activeNodeId}
+            status={queenWorkflow.status}
+            editMode={queenDraftGraph !== null && queenGraphEditable}
+            locked={!queenGraphEditable}
+            nodePositions={queenNodePositions}
+            onNodePositionsChange={setQueenNodePositions}
+            onNodesChange={(changes) => setQueenDraftGraph((current) => current ? applyQueenNodeChangesToDraft(current, changes) : current)}
+            onEdgesChange={(changes) => setQueenDraftGraph((current) => current ? applyQueenEdgeChangesToDraft(current, changes) : current)}
+            onConnect={(edge) => setQueenDraftGraph((current) => current ? appendQueenDraftEdge(current, edge) : current)}
+            onValidationError={(error) => setLastError(`${error.code}: ${error.message}`)}
+          />
           <div className="queen-workflow-grid">
             <div className="queen-workflow-copy">
               <strong>Hard flow</strong>
@@ -909,7 +962,7 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
               <button type="button" className="button button-primary" disabled={!runtimeAvailable || queenWorkflow.status === "proposing" || queenBusy !== null} onClick={proposeQueenWorkflow}>
                 {queenWorkflow.status === "proposing" || queenBusy === "prepare" ? "Planning..." : "Generate workflow plan"}
               </button>
-              <button type="button" className="button button-warning" disabled={!runtimeAvailable || !queenWorkflow.graph || queenBusy !== null || queenWorkflow.status === "succeeded"} onClick={startQueenWorkflow}>
+              <button type="button" className="button button-warning" disabled={!runtimeAvailable || !queenWorkflow.graph || queenBusy !== null || queenWorkflow.status === "succeeded" || queenDraftGraph !== null} onClick={startQueenWorkflow}>
                 {queenBusy === "workflow" ? "Running..." : queenWorkflow.status === "succeeded" ? "Workflow completed" : "Start workflow"}
               </button>
               {queenBusy === "workflow" ? <button type="button" className="button button-ghost" onClick={cancelQueenWorkflow}>Cancel workflow</button> : null}
@@ -932,10 +985,10 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
                 {queenDraftGraph ? (
                   <>
                     <button type="button" className="button button-primary" disabled={queenBusy !== null} onClick={saveQueenWorkflowEdit}>Save workflow changes</button>
-                    <button type="button" className="button button-ghost" disabled={queenBusy !== null} onClick={() => setQueenDraftGraph(null)}>Cancel editing</button>
+                    <button type="button" className="button button-ghost" disabled={queenBusy !== null} onClick={() => { setQueenDraftGraph(null); setQueenNodePositions({}); }}>Cancel editing</button>
                   </>
                 ) : (
-                  <button type="button" className="button button-ghost" disabled={queenBusy !== null} onClick={beginQueenWorkflowEdit}>Edit workflow</button>
+                  <button type="button" className="button button-ghost" disabled={!queenGraphEditable} onClick={beginQueenWorkflowEdit}>Edit workflow</button>
                 )}
               </div>
               <div className="queen-node-list">
@@ -959,6 +1012,15 @@ export function LocalAgentsPage({ initialQueenWorkflow, walletAddress = null }: 
                       <em>{node.dependencies.length > 0 ? `after ${node.dependencies.join(", ")}` : "entry"}</em>
                       <small>agent: {selectedAgentId ?? "Auto-fill pending"}</small>
                       <small>status: {nodeStatus}</small>
+                      {queenRanks[node.nodeId]?.matchingAudit ? (
+                        <div className="runtime-boundary" aria-label={`Matching audit for ${node.nodeId}`}>
+                          <span>Matching audit / {queenRanks[node.nodeId]!.matchingAudit!.policyVersion}</span>
+                          <small>selected: {queenRanks[node.nodeId]!.matchingAudit!.selectedIds.join(", ")}</small>
+                          <small>reasons: {queenRanks[node.nodeId]!.matchingAudit!.selectionReasons.join(", ")}</small>
+                          <small>seed: {summarizeSeedHash(queenRanks[node.nodeId]!.matchingAudit!.seedHash)}</small>
+                          <small>eligible {queenRanks[node.nodeId]!.matchingAudit!.eligibleCount} / history {queenRanks[node.nodeId]!.matchingAudit!.historyCount} / cold {queenRanks[node.nodeId]!.matchingAudit!.coldStartCount}</small>
+                        </div>
+                      ) : <small>matching audit: unavailable</small>}
                       <select
                         aria-label={`Select agent for ${node.nodeId}`}
                         disabled={queenBusy !== null || (queenRanks[node.nodeId]?.candidates.length ?? 0) === 0}
@@ -1286,6 +1348,85 @@ export function updateQueenNodeTitle(graph: QueenTaskGraphResult, nodeId: string
     ...graph,
     nodes: graph.nodes.map((node) => node.nodeId === nodeId ? { ...node, title } : node),
   };
+}
+
+export function canEditQueenDraft(status: string, busy: string | null): boolean {
+  return busy === null && (status === "idle" || status === "ready");
+}
+
+function queenDraftEdgeId(edge: QueenTaskGraphResult["edges"][number]): string {
+  return `${edge.from}-${edge.to}-${edge.condition ?? "always"}`;
+}
+
+export function applyQueenNodeChangesToDraft(
+  graph: QueenTaskGraphResult,
+  changes: NodeChange[],
+): QueenTaskGraphResult {
+  const removedNodeIds = new Set(changes.filter((change) => change.type === "remove").map((change) => change.id));
+  if (removedNodeIds.size === 0) return graph;
+  return {
+    ...graph,
+    nodes: graph.nodes
+      .filter((node) => !removedNodeIds.has(node.nodeId))
+      .map((node) => {
+        const nextNode = {
+          ...node,
+          dependencies: node.dependencies.filter((dependency) => !removedNodeIds.has(dependency)),
+        };
+        if (nextNode.judgesNodeId && removedNodeIds.has(nextNode.judgesNodeId)) delete nextNode.judgesNodeId;
+        if (nextNode.repairsNodeId && removedNodeIds.has(nextNode.repairsNodeId)) delete nextNode.repairsNodeId;
+        return nextNode;
+      }),
+    edges: graph.edges.filter((edge) => !removedNodeIds.has(edge.from) && !removedNodeIds.has(edge.to)),
+  };
+}
+
+export function applyQueenEdgeChangesToDraft(
+  graph: QueenTaskGraphResult,
+  changes: EdgeChange[],
+): QueenTaskGraphResult {
+  const removedEdgeIds = new Set(changes.filter((change) => change.type === "remove").map((change) => change.id));
+  if (removedEdgeIds.size === 0) return graph;
+  const removedEdges = graph.edges.filter((edge) => removedEdgeIds.has(queenDraftEdgeId(edge)));
+  return {
+    ...graph,
+    edges: graph.edges.filter((edge) => !removedEdgeIds.has(queenDraftEdgeId(edge))),
+    nodes: graph.nodes.map((node) => ({
+      ...node,
+      dependencies: node.dependencies.filter((dependency) => !removedEdges.some((edge) => edge.from === dependency && edge.to === node.nodeId)),
+    })),
+  };
+}
+
+export function appendQueenDraftEdge(graph: QueenTaskGraphResult, edge: GraphEdge): QueenTaskGraphResult {
+  if (graph.edges.some((candidate) => candidate.from === edge.from && candidate.to === edge.to)) return graph;
+  const condition = edge.condition === "always" || edge.condition === "approved" || edge.condition === "needs_revision" || edge.condition === "rejected"
+    ? edge.condition
+    : undefined;
+  const nextEdge: QueenTaskGraphResult["edges"][number] = condition
+    ? { from: edge.from, to: edge.to, condition }
+    : { from: edge.from, to: edge.to };
+  return {
+    ...graph,
+    edges: [...graph.edges, nextEdge],
+    nodes: graph.nodes.map((node) => node.nodeId === edge.to && !node.dependencies.includes(edge.from)
+      ? { ...node, dependencies: [...node.dependencies, edge.from] }
+      : node),
+  };
+}
+
+export function preserveQueenDraftAfterSaveFailure(
+  graph: QueenTaskGraphResult,
+  error: unknown,
+): { graph: QueenTaskGraphResult; reason: string } {
+  return {
+    graph,
+    reason: error instanceof Error ? error.message : "Workflow amendment failed",
+  };
+}
+
+function summarizeSeedHash(seedHash: string): string {
+  return seedHash.length > 12 ? `${seedHash.slice(0, 12)}…` : seedHash;
 }
 
 function firstNodeId(graph: QueenTaskGraphResult, type: string): string {

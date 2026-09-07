@@ -1,0 +1,189 @@
+.fairness-trust {
+  position: relative;
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+  padding: clamp(22px, 3vw, 38px);
+  overflow: hidden;
+  border: 1px solid rgba(76, 219, 247, .23);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(76, 219, 247, .12), transparent 28%),
+    linear-gradient(145deg, rgba(9, 20, 40, .96), rgba(8, 15, 31, .94));
+}
+
+.fairness-trust::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(76, 219, 247, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(76, 219, 247, .035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.fairness-trust > * {
+  position: relative;
+}
+
+.fairness-trust-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, .7fr);
+  align-items: end;
+  gap: 24px;
+}
+
+.fairness-trust-heading h2 {
+  max-width: 760px;
+  margin: 9px 0 0;
+  font-size: clamp(27px, 3.2vw, 48px);
+  line-height: 1.08;
+  letter-spacing: -.035em;
+}
+
+.fairness-trust-heading p,
+.fairness-trust-disclosure {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.fairness-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  min-width: 0;
+}
+
+.fairness-trust-card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 17px;
+  min-width: 0;
+  padding: clamp(17px, 2vw, 23px);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--cyan);
+  border-radius: 13px;
+  background: rgba(7, 16, 32, .8);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .16);
+}
+
+.fairness-trust-card:nth-child(2n) {
+  border-top-color: var(--indigo);
+}
+
+.fairness-trust-card > header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.fairness-trust-card > header > span {
+  color: var(--cyan);
+  font: 700 10px "IBM Plex Mono", monospace;
+  letter-spacing: .12em;
+}
+
+.fairness-trust-card h3 {
+  margin: 0;
+  font-size: clamp(18px, 1.8vw, 23px);
+}
+
+.fairness-trust-card dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.fairness-trust-card dl > div {
+  display: grid;
+  grid-template-columns: minmax(88px, .25fr) minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.fairness-trust-card dt {
+  color: var(--cyan);
+  font: 600 9px "IBM Plex Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.fairness-trust-card dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.fairness-trust-card .fairness-trust-boundary {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.fairness-trust-card .fairness-trust-boundary dt {
+  color: var(--amber);
+}
+
+.fairness-trust-card > a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 13px;
+  border: 1px solid rgba(76, 219, 247, .3);
+  border-radius: 9px;
+  color: var(--cyan);
+  background: rgba(76, 219, 247, .055);
+  font: 600 11px "IBM Plex Mono", monospace;
+  text-decoration: none;
+  transition: border-color .18s ease, background-color .18s ease;
+}
+
+.fairness-trust-card > a:hover,
+.fairness-trust-card > a:focus-visible {
+  border-color: var(--cyan);
+  background: rgba(76, 219, 247, .1);
+}
+
+.fairness-trust-disclosure {
+  padding: 13px 15px;
+  border-left: 3px solid var(--amber);
+  background: rgba(255, 180, 84, .055);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .fairness-trust {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .fairness-trust-heading,
+  .fairness-trust-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fairness-trust-heading {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 430px) {
+  .fairness-trust-card dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .fairness-trust-card > a {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fairness-trust-card > a {
+    transition: none;
+  }
+}

@@ -253,6 +253,7 @@ describe("local stream runtime", () => {
       ollamaClient: { chatStream: vi.fn() },
       signingKey,
       now,
+      authorizeQueenGraphql: async () => true,
     });
     const body = JSON.stringify({
       query: "mutation ProposeTaskGraph($input: ProposeTaskGraphInput!) { proposeTaskGraph(input: $input) { taskId } }",
@@ -302,6 +303,31 @@ describe("local stream runtime", () => {
     expect(response.status).toBe(401);
   });
 
+  it("rejects signed Queen GraphQL when no server-side authorizer is configured", async () => {
+    const runtime = createLocalStreamRuntime({
+      manifests: [manifest()],
+      ollamaClient: { chatStream: vi.fn() },
+      signingKey,
+      now,
+    });
+    const body = JSON.stringify({
+      query: "mutation ProposeTaskGraph($input: ProposeTaskGraphInput!) { proposeTaskGraph(input: $input) { taskId } }",
+      operationName: "ProposeTaskGraph",
+      variables: { input: { requirement: "Build workflow" } },
+    });
+    const signed = signRequest("POST", "/graphql", body, { key: signingKey, now, nonce: () => "nonce-queen-denied" });
+    const response = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...signedHeaders(signed) },
+      body,
+    }));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      errors: [{ extensions: { code: "FORBIDDEN" } }],
+    });
+  });
+
   it("executes Queen node output through the configured local agent client", async () => {
     const runtime = createLocalStreamRuntime({
       manifests: [manifest()],
@@ -312,6 +338,7 @@ describe("local stream runtime", () => {
       },
       signingKey,
       now,
+      authorizeQueenGraphql: async () => true,
     });
     let nonceIndex = 0;
     const mutateRuntime = async (operationName: string, query: string, input: Record<string, unknown>) => {

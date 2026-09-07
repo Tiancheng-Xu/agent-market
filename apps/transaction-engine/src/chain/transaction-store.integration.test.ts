@@ -70,6 +70,8 @@ integration.sequential("PostgreSQL transaction store", () => {
       await sql.unsafe(migration("0002_performance_observability.sql"));
       await sql.unsafe(migration("0003_phase2_lifecycle.sql"));
       await sql.unsafe(migration("0004_chain_reconciliation.sql"));
+      await sql.unsafe(migration("0008_chain_account_resources.sql"));
+      await sql.unsafe(migration("0009_v3_workflow_transactions.sql"));
       await sql`
         INSERT INTO agent_market.tasks (
           id, publisher_wallet, title, description, requirements,

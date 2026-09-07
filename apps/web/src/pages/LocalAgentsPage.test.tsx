@@ -2,15 +2,28 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import {
+  appendQueenDraftEdge,
+  applyQueenEdgeChangesToDraft,
+  applyQueenNodeChangesToDraft,
+  canEditQueenDraft,
   createWorkflowOperationSignal,
   finalizeQueenWorkflowState,
   isIndependentQueenCandidate,
   LocalAgentsPage,
   parseGraphqlResponse,
+  preserveQueenDraftAfterSaveFailure,
   updateQueenNodeTitle,
 } from "./LocalAgentsPage";
 
 describe("local agents Queen workflow", () => {
+  it("only enables draft graph editing before a workflow starts or locks", () => {
+    expect(canEditQueenDraft("ready", null)).toBe(true);
+    expect(canEditQueenDraft("idle", null)).toBe(true);
+    expect(canEditQueenDraft("running", null)).toBe(false);
+    expect(canEditQueenDraft("succeeded", null)).toBe(false);
+    expect(canEditQueenDraft("ready", "amend")).toBe(false);
+  });
+
   it("keeps Judge and Final Arbiter on independent model tags", () => {
     const graph = {
       taskId: "task-1",
@@ -72,6 +85,108 @@ describe("local agents Queen workflow", () => {
       { nodeId: "deliver-1", type: "deliver", title: "Deliver", dependencies: ["execute-1"], required: true },
     ]);
     expect(updated.edges).toBe(graph.edges);
+  });
+
+  it("translates XYFlow removals and connections back into the current typed graph draft", () => {
+    const graph = {
+      taskId: "11111111-1111-4111-8111-111111111111",
+      graphRevision: 1,
+      riskLevel: "low" as const,
+      startPolicy: "auto" as const,
+      rescuePolicy: { mode: "auto" as const, visibleToUser: false as const, evidenceVisible: true as const },
+      nodes: [
+        { nodeId: "plan", type: "plan", title: "Plan", dependencies: [], required: true },
+        { nodeId: "execute", type: "execute", title: "Execute", dependencies: ["plan"], required: true },
+        { nodeId: "repair", type: "repair", title: "Repair", dependencies: ["execute"], required: false },
+        { nodeId: "deliver", type: "deliver", title: "Deliver", dependencies: ["repair"], required: true },
+      ],
+      edges: [
+        { from: "plan", to: "execute" },
+        { from: "execute", to: "repair" },
+        { from: "repair", to: "deliver" },
+      ],
+    };
+
+    const withoutRepair = applyQueenNodeChangesToDraft(graph, [{ id: "repair", type: "remove" }]);
+    expect(withoutRepair.nodes.map((node) => node.nodeId)).toEqual(["plan", "execute", "deliver"]);
+    expect(withoutRepair.edges).toEqual([{ from: "plan", to: "execute" }]);
+    expect(withoutRepair.nodes.find((node) => node.nodeId === "deliver")?.dependencies).toEqual([]);
+
+    const withoutPlanEdge = applyQueenEdgeChangesToDraft(withoutRepair, [{ id: "plan-execute-always", type: "remove" }]);
+    expect(withoutPlanEdge.edges).toEqual([]);
+    expect(withoutPlanEdge.nodes.find((node) => node.nodeId === "execute")?.dependencies).toEqual([]);
+
+    const reconnected = appendQueenDraftEdge(withoutPlanEdge, { from: "plan", to: "deliver", condition: "always" });
+    expect(reconnected.edges).toEqual([{ from: "plan", to: "deliver", condition: "always" }]);
+    expect(reconnected.nodes.find((node) => node.nodeId === "deliver")?.dependencies).toEqual(["plan"]);
+  });
+
+  it("keeps the same graph draft and exposes the amendment failure reason", () => {
+    const graph = {
+      taskId: "11111111-1111-4111-8111-111111111111",
+      graphRevision: 1,
+      riskLevel: "low" as const,
+      startPolicy: "auto" as const,
+      rescuePolicy: { mode: "auto" as const, visibleToUser: false as const, evidenceVisible: true as const },
+      nodes: [
+        { nodeId: "plan", type: "plan", title: "Plan", dependencies: [], required: true },
+        { nodeId: "deliver", type: "deliver", title: "Deliver", dependencies: ["plan"], required: true },
+      ],
+      edges: [{ from: "plan", to: "deliver" }],
+    };
+
+    const result = preserveQueenDraftAfterSaveFailure(graph, new Error("GRAPH_REVISION_CONFLICT"));
+    expect(result.graph).toBe(graph);
+    expect(result.reason).toBe("GRAPH_REVISION_CONFLICT");
+  });
+
+  it("renders real matching audit fields and keeps the Risk Assessor outside the Queen DAG", () => {
+    const markup = renderToStaticMarkup(
+      <LocalAgentsPage
+        initialQueenWorkflow={{
+          status: "ready",
+          log: [],
+          graph: {
+            taskId: "11111111-1111-4111-8111-111111111111",
+            graphRevision: 1,
+            riskLevel: "medium",
+            startPolicy: "manualRequired",
+            rescuePolicy: { mode: "auto", visibleToUser: false, evidenceVisible: true },
+            nodes: [
+              { nodeId: "plan", type: "plan", title: "Plan", dependencies: [], required: true },
+              { nodeId: "deliver", type: "deliver", title: "Deliver", dependencies: ["plan"], required: true },
+            ],
+            edges: [{ from: "plan", to: "deliver" }],
+          },
+        }}
+        initialQueenRanks={{
+          plan: {
+            nodeId: "plan",
+            autoSelectedAgentId: "agent-a",
+            candidates: [],
+            matchingAudit: {
+              policyVersion: "fair-exploration-v1",
+              eligibleCount: 7,
+              selectedIds: ["agent-a", "agent-b"],
+              selectionReasons: ["history-rank", "cold-start-exploration"],
+              seedHash: "0123456789abcdef0123456789abcdef",
+              historyCount: 5,
+              coldStartCount: 2,
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Risk Assessor preflight");
+    expect(markup).toContain("Outside Queen DAG");
+    expect(markup).toContain("verified-local");
+    expect(markup).toContain("Production assessor unavailable");
+    expect(markup).toContain("fair-exploration-v1");
+    expect(markup).toContain("agent-a, agent-b");
+    expect(markup).toContain("history-rank, cold-start-exploration");
+    expect(markup).toContain("0123456789ab…");
+    expect(markup).toContain("eligible 7 / history 5 / cold 2");
   });
 
   it("keeps internal GraphQL state-machine actions out of the user-facing page", () => {

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   QueenGraphqlRequestSchema,
   RequiredWorkflowStages,
@@ -10,11 +12,16 @@ import {
   type TaskNode,
 } from "@agent-market/shared-contracts";
 
-import { selectThreeFromFour } from "./queen-ranking";
+import { selectThreeWithAudit } from "./queen-ranking";
 import { createQueenFrameworkRuntime, type QueenFrameworkRuntime } from "./queen-workflow-runtime";
+import type { QueenWorkflowSnapshot, QueenWorkflowStore } from "./queen-workflow-store";
+
+const canonicalModelIdentity = (modelTag: string) => modelTag.trim().toLowerCase();
 
 type QueenTaskRecord = {
   taskId: string;
+  recordVersion: number;
+  operationResults: Map<string, { agentId: string; result: Record<string, unknown> }>;
   requirement: string;
   queenAgentId: string;
   graph: TaskGraph;
@@ -35,6 +42,7 @@ export type QueenAgentExecutionRequest = {
   nodeId?: string;
   agentId: string;
   role: QueenAgentExecutionRole;
+  operationKey: string;
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
 };
 
@@ -45,6 +53,7 @@ export type QueenOrchestratorOptions = {
   executeAgentText?: (request: QueenAgentExecutionRequest) => Promise<string>;
   frameworkRuntime?: QueenFrameworkRuntime;
   allowOwnerOnlyAgents?: boolean;
+  workflowStore?: QueenWorkflowStore;
 };
 
 export type QueenGraphqlResponse = {
@@ -58,6 +67,7 @@ export type QueenGraphqlResponse = {
 export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
   const now = options.now ?? (() => new Date());
   const tasks = new Map<string, QueenTaskRecord>();
+  const operationTasks = new WeakMap<Record<string, unknown>, Map<string, QueenTaskRecord>>();
   const frameworkRuntime = options.frameworkRuntime ?? createQueenFrameworkRuntime();
 
   return {
@@ -70,62 +80,110 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       const input = parsed.data.variables.input;
 
       try {
-        await frameworkRuntime.execute({
+        await hydrateTask(input);
+        const stagedTasks = new Map(tasks);
+        const requestedTaskId = optionalStringInput(input, "taskId");
+        if (requestedTaskId !== undefined) {
+          const existing = tasks.get(requestedTaskId);
+          if (existing !== undefined) stagedTasks.set(requestedTaskId, structuredClone(existing));
+        }
+        operationTasks.set(input, stagedTasks);
+        const frameworkInput = {
           operationName,
           taskId: typeof input["taskId"] === "string" ? input["taskId"] : undefined,
           nodeId: typeof input["nodeId"] === "string" ? input["nodeId"] : undefined,
           stages: [],
-        });
+        };
+        let response!: QueenGraphqlResponse;
+        const executeOperation = async () => {
         switch (operationName) {
           case "ProposeTaskGraph":
-            return data("proposeTaskGraph", proposeTaskGraph(input));
+            response = data("proposeTaskGraph", proposeTaskGraph(input));
+            break;
           case "AmendTaskGraph":
-            return data("amendTaskGraph", amendTaskGraph(input));
+            response = data("amendTaskGraph", amendTaskGraph(input));
+            break;
           case "RankNodeAgents":
-            return data("rankNodeAgents", rankNodeAgents(input));
+            response = data("rankNodeAgents", rankNodeAgents(input));
+            break;
           case "SelectNodeAgent":
-            return data("selectNodeAgent", selectNodeAgent(input));
+            response = data("selectNodeAgent", selectNodeAgent(input));
+            break;
           case "AcceptNodeAssignment":
-            return data("acceptNodeAssignment", acceptNodeAssignment(input));
+            response = data("acceptNodeAssignment", acceptNodeAssignment(input));
+            break;
           case "ConfirmTaskGraph":
-            return data("confirmTaskGraph", confirmTaskGraph(input));
+            response = data("confirmTaskGraph", confirmTaskGraph(input));
+            break;
           case "StartTaskRun":
-            return data("startTaskRun", startTaskRun(input));
+            response = data("startTaskRun", startTaskRun(input));
+            break;
           case "SubmitNodeOutput":
-            return data("submitNodeOutput", await submitNodeOutput(input));
+            response = data("submitNodeOutput", await submitNodeOutput(input));
+            break;
           case "JudgeNodeOutput":
-            return await judgeNodeOutput(input);
+            response = await judgeNodeOutput(input);
+            break;
           case "RequestAdversarialReview":
-            return data("requestAdversarialReview", await requestAdversarialReview(input));
+            response = await requestAdversarialReview(input);
+            break;
           case "RepairNode":
-            return data("repairNode", await repairNode(input));
+            response = data("repairNode", await repairNode(input));
+            break;
           case "FinalArbitrate":
-            return await finalArbitrate(input);
+            response = await finalArbitrate(input);
+            break;
           case "WriteLearningLoop":
-            return data("writeLearningLoop", writeLearningLoop(input));
+            response = data("writeLearningLoop", writeLearningLoop(input));
+            break;
         }
+        };
+        if (frameworkRuntime.executeOperation) {
+          await frameworkRuntime.executeOperation(frameworkInput, executeOperation);
+        } else {
+          // Compatibility for explicitly injected runtimes; not a durable-execution claim.
+          await frameworkRuntime.execute(frameworkInput);
+          await executeOperation();
+        }
+        if (response.data !== null) {
+          await persistTask(input, response);
+          const taskId = optionalStringInput(input, "taskId") ?? findResponseTaskId(response);
+          const stagedTask = taskId === undefined ? undefined : stagedTasks.get(taskId);
+          if (stagedTask !== undefined) tasks.set(stagedTask.taskId, stagedTask);
+        }
+        operationTasks.delete(input);
+        return response;
       } catch (error) {
+        operationTasks.delete(input);
         return graphqlError("STATE_ERROR", safeMessage(error));
       }
     },
   };
 
   function proposeTaskGraph(input: Record<string, unknown>) {
+    const taskRecords = taskRecordsFor(input);
     const requirement = stringInput(input, "requirement");
     const queenAgentId = optionalStringInput(input, "queenAgentId") ?? options.queenAgentId;
     const taskId = optionalStringInput(input, "taskId") ?? crypto.randomUUID();
+    const existing = taskRecords.get(taskId);
+    if (existing !== undefined) {
+      if (existing.requirement !== requirement || existing.queenAgentId !== queenAgentId) {
+        throw new Error(`Task ${taskId} already exists with a different proposal`);
+      }
+      return existing.graph;
+    }
     const riskLevel = inferRiskLevel(requirement);
     const startPolicy = riskLevel === "high" ? "manualRequired" : "auto";
     const nodes: TaskNode[] = [
-      { nodeId: "plan-1", type: "plan", title: "Plan", dependencies: [], required: true },
-      { nodeId: "execute-1", type: "execute", title: "Execute", dependencies: ["plan-1"], required: true },
-      { nodeId: "judge-1", type: "judge", title: "Judge execute", dependencies: ["execute-1"], required: true, judgesNodeId: "execute-1" },
-      { nodeId: "repair-1", type: "repair", title: "Repair fallback", dependencies: ["judge-1"], required: false, repairsNodeId: "execute-1" },
+      { nodeId: "plan-1", type: "plan", title: "Plan", dependencies: [], required: true, contract: contractFor("plan") },
+      { nodeId: "execute-1", type: "execute", title: "Execute", dependencies: ["plan-1"], required: true, contract: contractFor("execute") },
+      { nodeId: "judge-1", type: "judge", title: "Judge execute", dependencies: ["execute-1"], required: true, judgesNodeId: "execute-1", contract: contractFor("judge") },
+      { nodeId: "repair-1", type: "repair", title: "Repair fallback", dependencies: ["judge-1"], required: false, repairsNodeId: "execute-1", contract: contractFor("repair") },
       ...(riskLevel === "high"
-        ? [{ nodeId: "redteam-1", type: "red_team" as const, title: "Red-team review", dependencies: ["judge-1"], required: true }]
+        ? [{ nodeId: "redteam-1", type: "red_team" as const, title: "Red-team review", dependencies: ["judge-1"], required: true, contract: contractFor("red_team") }]
         : []),
-      { nodeId: "final-1", type: "synthesize", title: "Final arbitration", dependencies: riskLevel === "high" ? ["redteam-1"] : ["judge-1"], required: true },
-      { nodeId: "deliver-1", type: "deliver", title: "Deliver", dependencies: ["final-1"], required: true },
+      { nodeId: "final-1", type: "synthesize", title: "Final arbitration", dependencies: riskLevel === "high" ? ["redteam-1"] : ["judge-1"], required: true, contract: contractFor("synthesize") },
+      { nodeId: "deliver-1", type: "deliver", title: "Deliver", dependencies: ["final-1"], required: true, contract: contractFor("deliver") },
     ];
     const graph = TaskGraphSchema.parse({
       taskId,
@@ -148,8 +206,10 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       ],
       rescuePolicy: { mode: "auto", visibleToUser: false, evidenceVisible: true },
     });
-    tasks.set(taskId, {
+    taskRecords.set(taskId, {
       taskId,
+      recordVersion: 0,
+      operationResults: new Map(),
       requirement,
       queenAgentId,
       graph,
@@ -201,13 +261,20 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const nodeId = stringInput(input, "nodeId");
     const node = nodeFor(task, nodeId);
     const requiredCapabilities = stringArrayInput(input, "requiredCapabilities", capabilitiesForNode(node));
-    const eligibleAgents = node.type === "plan"
-      ? options.agents
-      : options.agents.filter((agent) => agent.agentId !== task.queenAgentId);
+    const excludedAgentIds = new Set(stringArrayInput(input, "excludedAgentIds", []));
+    const excludedModelTags = new Set(stringArrayInput(input, "excludedModelTags", [])
+      .map(canonicalModelIdentity));
+    const queen = options.agents.find((agent) => agent.agentId === task.queenAgentId);
+    if (node.type !== "plan") {
+      excludedAgentIds.add(task.queenAgentId);
+      if (queen) excludedModelTags.add(canonicalModelIdentity(queen.modelTag));
+    }
+    const eligibleAgents = options.agents.filter((agent) => !excludedAgentIds.has(agent.agentId)
+      && !excludedModelTags.has(canonicalModelIdentity(agent.modelTag)));
     const category = optionalStringInput(input, "category");
     const requiredTags = stringArrayInput(input, "requiredTags", []);
-    const callerScope = optionalStringInput(input, "callerScope") === "owner" ? "owner" : "public";
-    const candidates = selectThreeFromFour({
+    const callerScope = options.allowOwnerOnlyAgents === true ? "owner" : "public";
+    const selection = selectThreeWithAudit({
       nodeType: node.type,
       ...(category === undefined ? {} : { category }),
       requiredTags,
@@ -215,9 +282,17 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       callerScope,
       now: now(),
       candidates: eligibleAgents,
+      selectionPolicy: {
+        taskId: task.taskId,
+        matchingRound: task.graph.graphRevision,
+        policyVersion: "fair-exploration-v1",
+        disableColdStart: task.graph.riskLevel === "high",
+      },
     });
+    const candidates = selection.candidates;
     const autoSelectedAgentId = candidates[0]?.agentId;
     if (autoSelectedAgentId !== undefined) {
+      assertSelectableAgent(autoSelectedAgentId);
       task.assignments.set(nodeId, {
         nodeId,
         selectedAgentId: autoSelectedAgentId,
@@ -232,7 +307,8 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       nodeId,
       candidates,
       autoSelectedAgentId,
-      rankingPolicy: "category-tags-hard-filter-four-candidate-pool-select-three-decayed-window-quality-owner-scope-distinct-model",
+      rankingPolicy: "hard-filter-two-history-one-seeded-cold-start-decayed-window-quality-owner-scope-distinct-model-v1",
+      matchingAudit: selection.audit,
     };
   }
 
@@ -338,6 +414,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       nodeId,
       agentId: executorAgentId,
       role: "executor",
+      operationKey: operationKeyFor(task, input, "executor", nodeId),
       messages: [{ role: "user", content: buildExecutorPrompt(task, nodeId) }],
     });
     const outputId = crypto.randomUUID();
@@ -369,12 +446,17 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
           nodeId,
           agentId: judgeAgentId,
           role: "judge",
+          operationKey: operationKeyFor(task, input, "judge", nodeId),
           messages: [{ role: "user", content: buildJudgePrompt(task, nodeId, output.output) }],
         })
       : undefined;
     const parsedJudge = judgeText !== undefined ? parseJudgeText(judgeText) : undefined;
-    const score = typeof input["score"] === "number" ? numberInput(input, "score") : parsedJudge?.score ?? 1;
-    const verdict = optionalStringInput(input, "verdict") ?? parsedJudge?.verdict ?? "approved";
+    const explicitVerdict = optionalStringInput(input, "verdict");
+    if (explicitVerdict !== undefined && !isReviewVerdict(explicitVerdict)) throw new Error("JUDGE_RESULT_INVALID");
+    if (judgeText !== undefined && parsedJudge === undefined) throw new Error("JUDGE_RESULT_INVALID");
+    const score = typeof input["score"] === "number" ? numberInput(input, "score") : parsedJudge?.score;
+    const verdict = explicitVerdict ?? parsedJudge?.verdict;
+    if (score === undefined || score < 0 || score > 1 || verdict === undefined) throw new Error("JUDGE_RESULT_INVALID");
     const redTeamRequired = score < 0.65 || verdict !== "approved";
     const judgment = {
       nodeId,
@@ -388,21 +470,39 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     return data("judgeNodeOutput", judgment);
   }
 
-  async function requestAdversarialReview(input: Record<string, unknown>) {
+  async function requestAdversarialReview(input: Record<string, unknown>): Promise<QueenGraphqlResponse> {
     const task = taskFor(input);
     assertRunStarted(task);
     const nodeId = stringInput(input, "nodeId");
     const redTeamAgentId = stringInput(input, "redTeamAgentId");
     assertSelectableAgent(redTeamAgentId);
+    const reviewedAgentIds = [
+      task.queenAgentId,
+      ...[...task.outputs.values()].map((output) => output.executorAgentId),
+      ...[...task.judgments.values()].map((judgment) => judgment.judgeAgentId),
+    ];
+    if (!isIndependentAgent(redTeamAgentId, reviewedAgentIds)) {
+      return graphqlError("RED_TEAM_NOT_INDEPENDENT", "Red Team must be independent from Queen, executors, and judges");
+    }
+    const redTeamNode = task.graph.nodes.find((node) => node.type === "red_team" && node.metadata?.systemAppended !== true);
+    if (redTeamNode !== undefined) assertAcceptedAssignment(task, redTeamNode.nodeId, redTeamAgentId);
+    const attempt = optionalNumberInput(input, "attempt") ?? 1;
+    const resultKey = JSON.stringify(["red_team", nodeId, attempt]);
+    const previous = task.operationResults.get(resultKey);
+    if (previous) {
+      if (previous.agentId !== redTeamAgentId) throw new Error("QUEEN_OPERATION_AGENT_CONFLICT");
+      return data("requestAdversarialReview", structuredClone(previous.result));
+    }
     const findings = optionalStringInput(input, "findings") ?? await executeAgentText({
       taskId: task.taskId,
       nodeId,
       agentId: redTeamAgentId,
       role: "red_team",
+      operationKey: operationKeyFor(task, input, "red_team", nodeId, attempt),
       messages: [{ role: "user", content: buildRedTeamPrompt(task, nodeId) }],
     });
-    const appended = appendSystemNode(task, "red_team", nodeId, redTeamAgentId, optionalNumberInput(input, "attempt") ?? 1);
-    return {
+    const appended = appendSystemNode(task, "red_team", nodeId, redTeamAgentId, attempt);
+    const result = {
       taskId: task.taskId,
       nodeId,
       reviewNodeId: appended.nodeId,
@@ -411,6 +511,8 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       findings,
       status: "adversarial_reviewing",
     };
+    task.operationResults.set(resultKey, { agentId: redTeamAgentId, result });
+    return data("requestAdversarialReview", result);
   }
 
   async function repairNode(input: Record<string, unknown>) {
@@ -420,15 +522,31 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     const repairAgentId = optionalStringInput(input, "repairAgentId") ?? optionalStringInput(input, "agentId") ?? task.outputs.get(parentNodeId)?.executorAgentId;
     if (repairAgentId === undefined) throw new Error("Repair agent is required");
     assertSelectableAgent(repairAgentId);
+    const attempt = optionalNumberInput(input, "attempt") ?? 1;
+    const resultKey = JSON.stringify(["repair", parentNodeId, attempt]);
+    const previous = task.operationResults.get(resultKey);
+    if (previous) {
+      if (previous.agentId !== repairAgentId) throw new Error("QUEEN_OPERATION_AGENT_CONFLICT");
+      return structuredClone(previous.result);
+    }
     const output = optionalStringInput(input, "output") ?? await executeAgentText({
       taskId: task.taskId,
       nodeId: parentNodeId,
       agentId: repairAgentId,
       role: "repair",
+      operationKey: operationKeyFor(task, input, "repair", parentNodeId, attempt),
       messages: [{ role: "user", content: buildRepairPrompt(task, parentNodeId) }],
     });
-    const appended = appendSystemNode(task, "repair", parentNodeId, repairAgentId, optionalNumberInput(input, "attempt") ?? 1);
-    return { taskId: task.taskId, parentNodeId, repairNodeId: appended.nodeId, graphRevision: appended.graphRevision, output, status: "planned" };
+    const appended = appendSystemNode(task, "repair", parentNodeId, repairAgentId, attempt);
+    const result = { taskId: task.taskId, parentNodeId, repairNodeId: appended.nodeId, graphRevision: appended.graphRevision, output, status: "planned" };
+    task.operationResults.set(resultKey, { agentId: repairAgentId, result });
+    task.outputs.set(parentNodeId, {
+      executorAgentId: repairAgentId,
+      output,
+      outputId: crypto.randomUUID(),
+    });
+    task.judgments.delete(parentNodeId);
+    return result;
   }
 
   async function finalArbitrate(input: Record<string, unknown>): Promise<QueenGraphqlResponse> {
@@ -440,6 +558,9 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       task.queenAgentId,
       ...[...task.outputs.values()].map((output) => output.executorAgentId),
       ...[...task.judgments.values()].map((judgment) => judgment.judgeAgentId),
+      ...task.graph.nodes
+        .filter((node) => node.type === "red_team")
+        .flatMap((node) => task.assignments.get(node.nodeId)?.selectedAgentId ?? []),
     ];
     if (!isIndependentAgent(finalArbiterAgentId, reviewedAgentIds)) {
       return graphqlError("FINAL_ARBITER_NOT_INDEPENDENT", "Final Arbiter must be independent from Queen, executors, and judges");
@@ -450,17 +571,28 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       if (task.finalArbitration.finalArbiterAgentId !== finalArbiterAgentId) return graphqlError("FINAL_ARBITER_NOT_INDEPENDENT", "Final Arbiter cannot change after arbitration");
       return data("finalArbitrate", task.finalArbitration);
     }
-    const finalOutput = optionalStringInput(input, "finalOutput") ?? await executeAgentText({
+    const explicitVerdict = optionalStringInput(input, "verdict");
+    if (explicitVerdict !== undefined && !isReviewVerdict(explicitVerdict)) {
+      return graphqlError("FINAL_ARBITER_RESULT_INVALID", "Final Arbiter verdict is invalid");
+    }
+    const suppliedOutput = optionalStringInput(input, "finalOutput");
+    const modelOutput = suppliedOutput ?? await executeAgentText({
       taskId: task.taskId,
       agentId: finalArbiterAgentId,
       role: "final_arbiter",
+      operationKey: operationKeyFor(task, input, "final_arbiter"),
       messages: [{ role: "user", content: buildFinalArbiterPrompt(task) }],
     });
+    const parsedVerdict = parseVerdict(modelOutput);
+    const verdict = explicitVerdict ?? parsedVerdict;
+    if (verdict === undefined) {
+      return graphqlError("FINAL_ARBITER_RESULT_INVALID", "Final Arbiter must return an explicit verdict");
+    }
     const arbitration = {
       taskId: task.taskId,
       finalArbiterAgentId,
-      verdict: optionalStringInput(input, "verdict") ?? "approved",
-      finalOutput,
+      verdict,
+      finalOutput: modelOutput,
     };
     task.finalArbitration = arbitration;
     return data("finalArbitrate", arbitration);
@@ -477,9 +609,64 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
 
   function taskFor(input: Record<string, unknown>): QueenTaskRecord {
     const taskId = stringInput(input, "taskId");
-    const task = tasks.get(taskId);
+    const task = taskRecordsFor(input).get(taskId);
     if (task === undefined) throw new Error(`Task ${taskId} does not exist`);
     return task;
+  }
+
+  function taskRecordsFor(input: Record<string, unknown>): Map<string, QueenTaskRecord> {
+    return operationTasks.get(input) ?? tasks;
+  }
+
+  async function hydrateTask(input: Record<string, unknown>): Promise<void> {
+    const taskId = optionalStringInput(input, "taskId");
+    if (taskId === undefined || tasks.has(taskId) || options.workflowStore === undefined) return;
+    const snapshot = await options.workflowStore.load(taskId);
+    if (snapshot === null) return;
+    tasks.set(taskId, {
+      taskId: snapshot.taskId,
+      recordVersion: snapshot.recordVersion,
+      operationResults: new Map(snapshot.operationResults ?? []),
+      requirement: snapshot.requirement,
+      queenAgentId: snapshot.queenAgentId,
+      graph: TaskGraphSchema.parse(snapshot.graph),
+      assignments: new Map(snapshot.assignments),
+      outputs: new Map(snapshot.outputs),
+      judgments: new Map(snapshot.judgments),
+      finalArbitration: snapshot.finalArbitration ?? undefined,
+      learningRecords: snapshot.learningRecords,
+      systemNodeIds: new Map(snapshot.systemNodeIds),
+      graphConfirmedRevision: snapshot.graphConfirmedRevision ?? undefined,
+      runId: snapshot.runId ?? undefined,
+    });
+  }
+
+  async function persistTask(input: Record<string, unknown>, response: QueenGraphqlResponse): Promise<void> {
+    if (options.workflowStore === undefined) return;
+    const taskId = optionalStringInput(input, "taskId") ?? findResponseTaskId(response);
+    if (taskId === undefined) return;
+    const task = taskRecordsFor(input).get(taskId);
+    if (task === undefined) return;
+    const expectedRecordVersion = task.recordVersion;
+    const snapshot: QueenWorkflowSnapshot = {
+      taskId: task.taskId,
+      recordVersion: expectedRecordVersion + 1,
+      operationResults: [...task.operationResults.entries()],
+      requirement: task.requirement,
+      queenAgentId: task.queenAgentId,
+      graph: task.graph,
+      assignments: [...task.assignments.entries()],
+      outputs: [...task.outputs.entries()],
+      judgments: [...task.judgments.entries()],
+      finalArbitration: task.finalArbitration ?? null,
+      learningRecords: task.learningRecords,
+      systemNodeIds: [...task.systemNodeIds.entries()],
+      graphConfirmedRevision: task.graphConfirmedRevision ?? null,
+      runId: task.runId ?? null,
+      updatedAt: now().toISOString(),
+    };
+    await options.workflowStore.save(snapshot, expectedRecordVersion);
+    task.recordVersion = snapshot.recordVersion;
   }
 
   function missingRequiredAssignments(task: QueenTaskRecord): string[] {
@@ -514,9 +701,27 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     if (candidate === undefined) return false;
     const blockedModelTags = new Set(blockedAgentIds.flatMap((blockedId) => {
       const blocked = options.agents.find((agent) => agent.agentId === blockedId);
-      return blocked === undefined ? [] : [blocked.modelTag];
+      return blocked === undefined ? [] : [canonicalModelIdentity(blocked.modelTag)];
     }));
-    return !blockedAgentIds.includes(agentId) && !blockedModelTags.has(candidate.modelTag);
+    return !blockedAgentIds.includes(agentId)
+      && !blockedModelTags.has(canonicalModelIdentity(candidate.modelTag));
+  }
+
+  function operationKeyFor(
+    task: QueenTaskRecord,
+    input: Record<string, unknown>,
+    role: QueenAgentExecutionRole,
+    nodeId = "task",
+    attempt = 1,
+  ): string {
+    const supplied = optionalStringInput(input, "operationKey");
+    if (supplied !== undefined) {
+      if (supplied.length > 192 || !/^[A-Za-z0-9:._-]+$/u.test(supplied)) throw new Error("QUEEN_OPERATION_KEY_INVALID");
+      return supplied;
+    }
+    return `sha256:${createHash("sha256").update(JSON.stringify([
+      "queen-node-operation.v1", task.taskId, task.graph.graphRevision, role, nodeId, attempt,
+    ])).digest("hex")}`;
   }
 
   function appendSystemNode(
@@ -541,6 +746,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       required: true,
       ...(type === "repair" ? { repairsNodeId: parentNodeId } : {}),
       assignedAgentId: agentId,
+      contract: contractFor(type),
       metadata: { systemAppended: true, attempt: normalizedAttempt },
     };
     task.graph = TaskGraphSchema.parse({
@@ -579,6 +785,16 @@ function data(fieldName: string, value: unknown): QueenGraphqlResponse {
   return { data: { [fieldName]: value } };
 }
 
+function findResponseTaskId(response: QueenGraphqlResponse): string | undefined {
+  if (response.data === null) return undefined;
+  for (const value of Object.values(response.data)) {
+    if (typeof value === "object" && value !== null && typeof (value as { taskId?: unknown }).taskId === "string") {
+      return (value as { taskId: string }).taskId;
+    }
+  }
+  return undefined;
+}
+
 function graphqlError(code: string, message: string): QueenGraphqlResponse {
   return {
     data: null,
@@ -603,6 +819,32 @@ function capabilitiesForNode(node: TaskNode): string[] {
   if (node.type === "synthesize" || node.type === "deliver") return ["final_arbitration"];
   if (node.type === "plan") return ["plan"];
   return ["completion"];
+}
+
+function contractFor(type: TaskNode["type"]): TaskNode["contract"] {
+  const failureRoute = type === "execute"
+    ? "repair"
+    : type === "judge"
+      ? "red_team"
+      : type === "red_team"
+        ? "repair"
+        : type === "repair"
+          ? "manual_review"
+          : "stop";
+  return {
+    schemaVersion: "1",
+    contextInputs: type === "plan" ? ["requirement"] : ["requirement", "dependency_outputs"],
+    outputKeys: type === "judge" ? ["verdict", "score"] : ["result"],
+    artifactMediaTypes: type === "deliver" ? ["application/json"] : [],
+    milestone: `Complete ${type} node`,
+    acceptanceCriteria: ["Output satisfies the declared schema", "No deterministic Gate is bypassed"],
+    budgetAtomic: "0",
+    permissions: type === "judge"
+      ? ["read_context", "write_artifact", "request_review"]
+      : ["read_context", "write_artifact"],
+    timeoutSeconds: 300,
+    failureRoute,
+  };
 }
 
 function nodeFor(task: QueenTaskRecord, nodeId: string): TaskNode {
@@ -662,17 +904,22 @@ function buildFinalArbiterPrompt(task: QueenTaskRecord): string {
   return `Final arbitrate task ${task.taskId} for requirement:\n${task.requirement}\nUse isolated context and decide the final output.`;
 }
 
-function parseJudgeText(value: string): { verdict: "approved" | "needs_revision" | "rejected"; score: number } {
+function isReviewVerdict(value: string): value is "approved" | "needs_revision" | "rejected" {
+  return value === "approved" || value === "needs_revision" || value === "rejected";
+}
+
+function parseVerdict(value: string): "approved" | "needs_revision" | "rejected" | undefined {
   const verdictMatch = value.match(/\b(approved|needs_revision|rejected)\b/i);
+  const verdict = verdictMatch?.[1]?.toLowerCase();
+  return verdict !== undefined && isReviewVerdict(verdict) ? verdict : undefined;
+}
+
+function parseJudgeText(value: string): { verdict: "approved" | "needs_revision" | "rejected"; score: number } | undefined {
+  const verdict = parseVerdict(value);
   const scoreMatch = value.match(/score:\s*([0-9]+(?:\.[0-9]+)?)/i);
-  return {
-    verdict: verdictMatch?.[1]?.toLowerCase() === "rejected"
-      ? "rejected"
-      : verdictMatch?.[1]?.toLowerCase() === "needs_revision"
-        ? "needs_revision"
-        : "approved",
-    score: scoreMatch?.[1] !== undefined ? Number(scoreMatch[1]) : 1,
-  };
+  if (verdict === undefined || scoreMatch?.[1] === undefined) return undefined;
+  const score = Number(scoreMatch[1]);
+  return Number.isFinite(score) && score >= 0 && score <= 1 ? { verdict, score } : undefined;
 }
 
 function safeMessage(error: unknown): string {
