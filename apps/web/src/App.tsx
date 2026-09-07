@@ -24,6 +24,7 @@ function RouteFallback() {
       aria-busy="true"
       aria-label="Loading route"
       className="panel"
+      data-route-fallback="true"
       style={{ minHeight: "680px" }}
     >
       <span className="eyebrow">LOADING MODULE</span>

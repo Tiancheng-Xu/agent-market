@@ -79,4 +79,45 @@ describe("client bootstrap", () => {
     expect(rendered).toBe(1);
     expect(events).toEqual(["csr.fallback"]);
   });
+
+  it("remounts once when a lazy route fallback remains after hydration", async () => {
+    let watchdog: (() => void) | undefined;
+    let fallbackVisible = true;
+    let created = 0;
+    let rendered = 0;
+    let unmounted = 0;
+    const events: string[] = [];
+    const { root, replacements } = rootWithMarkup();
+    root.querySelector = () => fallbackVisible ? ({} as Element) : null;
+
+    bootstrapClient({
+      root,
+      state: { mode: "ssr", pathname: "/agents/local", version: "v1" },
+      currentPathname: "/agents/local",
+      buildVersion: "v1",
+      buildApplication: () => null,
+      hydrate() {
+        return { render() {}, unmount() { unmounted += 1; } };
+      },
+      create() {
+        created += 1;
+        return { render() { rendered += 1; }, unmount() {} };
+      },
+      scheduleHydrationWatchdog(callback) {
+        watchdog = callback;
+      },
+      record(event) { events.push(event); },
+    });
+
+    expect(typeof watchdog).toBe("function");
+    watchdog?.();
+    fallbackVisible = false;
+    await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
+
+    expect(unmounted).toBe(1);
+    expect(replacements()).toBe(1);
+    expect(created).toBe(1);
+    expect(rendered).toBe(1);
+    expect(events).toEqual(["csr.fallback"]);
+  });
 });
