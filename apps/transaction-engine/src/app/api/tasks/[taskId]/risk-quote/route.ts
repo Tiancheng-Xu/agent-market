@@ -34,7 +34,7 @@ export function createRiskQuoteHandler(input: {
         expectedTaskFingerprint: parsed.data.taskFingerprint,
         actorWallet: session.walletAddress,
       });
-      return Response.json({ quoteId: record.id, quote: record.quote, version: record.version, requestId }, {
+      return Response.json({ quoteId: record.id, quoteHash: record.basisFingerprint, quote: record.quote, version: record.version, requestId }, {
         status: 201, headers: headers(requestId),
       });
     } catch (error) {
@@ -60,5 +60,37 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
     return Response.json({ error: "RISK_QUOTE_UNAVAILABLE", requestId }, {
       status: 503, headers: headers(requestId),
     });
+  }
+}
+
+export function createRiskQuoteReadHandler(input: {
+  auth: SessionAuthenticator;
+  service: Pick<RiskPricingService, 'readCurrentQuote'>;
+}) {
+  return async function GET(request: Request, taskId: string): Promise<Response> {
+    const requestId = resolveRequestId(request.headers);
+    try {
+      const token = readSessionCookie(request.headers);
+      if (!token) throw new AuthError('AUTH_SESSION_INVALID');
+      const session = await input.auth.authenticateSession(token);
+      if (!isUuid(taskId)) throw new RiskPricingServiceError('RISK_TASK_ID_INVALID', 400);
+      const result = await input.service.readCurrentQuote({ taskId, actorWallet: session.walletAddress });
+      return Response.json({ ...result, requestId }, { headers: headers(requestId) });
+    } catch (error) {
+      const known = error instanceof AuthError || error instanceof RiskPricingServiceError ? error : null;
+      return Response.json({ error: known?.code ?? 'RISK_QUOTE_UNAVAILABLE', requestId }, {
+        status: known?.status ?? 503, headers: headers(requestId),
+      });
+    }
+  };
+}
+
+export async function GET(request: Request, context: RouteContext): Promise<Response> {
+  const { taskId } = await context.params;
+  const requestId = resolveRequestId(request.headers);
+  try {
+    return await createRiskQuoteReadHandler({ auth: getAuthService(), service: getOrderRuntime().riskPricing })(request, taskId);
+  } catch {
+    return Response.json({ error: 'RISK_QUOTE_UNAVAILABLE', requestId }, { status: 503, headers: headers(requestId) });
   }
 }

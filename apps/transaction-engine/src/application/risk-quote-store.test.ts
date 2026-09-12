@@ -19,6 +19,7 @@ const agentB = "0x3333333333333333333333333333333333333333";
 const taskId = "11111111-1111-4111-8111-111111111111";
 const fingerprintA = `sha256:${"a".repeat(64)}`;
 const fingerprintB = `sha256:${"b".repeat(64)}`;
+const assetId = `eip155:11155111/erc20:0x${"5".repeat(40)}`;
 const now = "2026-09-01T12:00:00.000Z";
 const future = "2026-09-01T13:00:00.000Z";
 const migrationSql = readFileSync(
@@ -27,6 +28,8 @@ const migrationSql = readFileSync(
 );
 
 const quote = (overrides: Partial<RiskQuote> = {}): RiskQuote => ({
+  schemaVersion: 2,
+  assetId,
   phase: "preliminary",
   policyVersion: "risk-v1",
   taskFingerprint: fingerprintA,
@@ -119,6 +122,7 @@ describe("MemoryRiskQuoteStore", () => {
 
     await store.confirm({
       quoteId: issued.id,
+      quoteHash: issued.basisFingerprint,
       actorType: "publisher",
       actorWallet: publisher,
       taskFingerprint: fingerprintA,
@@ -147,6 +151,7 @@ describe("MemoryRiskQuoteStore", () => {
     }));
     await store.confirm({
       quoteId: issued.id,
+      quoteHash: issued.basisFingerprint,
       actorType: "publisher",
       actorWallet: publisher,
       taskFingerprint: fingerprintA,
@@ -175,15 +180,15 @@ describe("MemoryRiskQuoteStore", () => {
   it("requires publisher and every unique assigned Agent on the same final quote", async () => {
     const store = new MemoryRiskQuoteStore();
     const issued = await store.issue(finalQuote());
-    await store.confirm({ quoteId: issued.id, actorType: "publisher", actorWallet: publisher, taskFingerprint: fingerprintA, confirmedAt: now });
-    await store.confirm({ quoteId: issued.id, actorType: "agent", actorWallet: agentA, agentId: "agent-a", taskFingerprint: fingerprintA, confirmedAt: now });
+    await store.confirm({ quoteId: issued.id, quoteHash: issued.basisFingerprint, actorType: "publisher", actorWallet: publisher, taskFingerprint: fingerprintA, confirmedAt: now });
+    await store.confirm({ quoteId: issued.id, quoteHash: issued.basisFingerprint, actorType: "agent", actorWallet: agentA, agentId: "agent-a", taskFingerprint: fingerprintA, confirmedAt: now });
     expect((await store.evaluateFunding({ taskId, quoteId: issued.id, taskFingerprint: fingerprintA, evaluatedAt: now })).code)
       .toBe("RISK_QUOTE_AGENT_CONFIRMATIONS_REQUIRED");
 
-    await store.confirm({ quoteId: issued.id, actorType: "agent", actorWallet: agentB, agentId: "agent-b", taskFingerprint: fingerprintA, confirmedAt: now });
+    await store.confirm({ quoteId: issued.id, quoteHash: issued.basisFingerprint, actorType: "agent", actorWallet: agentB, agentId: "agent-b", taskFingerprint: fingerprintA, confirmedAt: now });
     expect((await store.evaluateFunding({ taskId, quoteId: issued.id, taskFingerprint: fingerprintA, evaluatedAt: now })).status)
       .toBe("ready");
-    await expect(store.confirm({ quoteId: issued.id, actorType: "agent", actorWallet: agentB, agentId: "agent-b", taskFingerprint: fingerprintA, confirmedAt: now }))
+    await expect(store.confirm({ quoteId: issued.id, quoteHash: issued.basisFingerprint, actorType: "agent", actorWallet: agentB, agentId: "agent-b", taskFingerprint: fingerprintA, confirmedAt: now }))
       .rejects.toThrow("RISK_QUOTE_CONFIRMATION_DUPLICATE");
   });
 
@@ -250,15 +255,15 @@ describe("OrderService risk quote gates", () => {
     const pre = await quotes.issue(preliminary());
     await expect(service.execute(taskId, command({ type: "start_matching", actorWallet: null, quoteId: pre.id, taskFingerprint: fingerprintA })))
       .rejects.toThrow("RISK_QUOTE_PUBLISHER_CONFIRMATION_REQUIRED");
-    await quotes.confirm({ quoteId: pre.id, actorType: "publisher", actorWallet: publisher, taskFingerprint: fingerprintA, confirmedAt: now });
+    await quotes.confirm({ quoteId: pre.id, quoteHash: pre.basisFingerprint, actorType: "publisher", actorWallet: publisher, taskFingerprint: fingerprintA, confirmedAt: now });
     const matching = await service.execute(taskId, command({ type: "start_matching", actorWallet: null, quoteId: pre.id, taskFingerprint: fingerprintA }));
     expect(matching.snapshot.status).toBe("matching");
 
     const assigned = await service.execute(taskId, command({ type: "assign_agent", actorWallet: null, agentId: "33333333-3333-4333-8333-333333333333", agentWallet: agentA }));
     const final = await quotes.issue(finalQuote());
-    await quotes.confirm({ quoteId: final.id, actorType: "publisher", actorWallet: publisher, taskFingerprint: fingerprintA, confirmedAt: now });
-    await quotes.confirm({ quoteId: final.id, actorType: "agent", actorWallet: agentA, agentId: "agent-a", taskFingerprint: fingerprintA, confirmedAt: now });
-    await quotes.confirm({ quoteId: final.id, actorType: "agent", actorWallet: agentB, agentId: "agent-b", taskFingerprint: fingerprintA, confirmedAt: now });
+    await quotes.confirm({ quoteId: final.id, quoteHash: final.basisFingerprint, actorType: "publisher", actorWallet: publisher, taskFingerprint: fingerprintA, confirmedAt: now });
+    await quotes.confirm({ quoteId: final.id, quoteHash: final.basisFingerprint, actorType: "agent", actorWallet: agentA, agentId: "agent-a", taskFingerprint: fingerprintA, confirmedAt: now });
+    await quotes.confirm({ quoteId: final.id, quoteHash: final.basisFingerprint, actorType: "agent", actorWallet: agentB, agentId: "agent-b", taskFingerprint: fingerprintA, confirmedAt: now });
     const pending = await service.execute(taskId, command({ type: "mark_funding_pending", actorWallet: publisher, quoteId: final.id, taskFingerprint: fingerprintA }));
     expect([assigned.snapshot.status, pending.snapshot.status]).toEqual(["assigned", "funding_pending"]);
   });
@@ -364,6 +369,7 @@ describe.skipIf(!sql)("PostgresRiskQuoteStore integration (requires TEST_DATABAS
       const first = await store.issue(preliminary({ taskId: fixtureTaskId }));
       await store.confirm({
         quoteId: first.id,
+        quoteHash: first.basisFingerprint,
         actorType: "publisher",
         actorWallet: publisher,
         taskFingerprint: fingerprintA,

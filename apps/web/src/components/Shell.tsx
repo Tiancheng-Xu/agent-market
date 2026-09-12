@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState, type FormEvent, type PropsWithChildren } 
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { agents, navItems, tasks } from "../data";
-import { Localized, useLanguage } from "../i18n/LanguageProvider";
+import { Localized, translateLocalizedText, useLanguage } from "../i18n/LanguageProvider";
 import { shortAddress } from "../lib/domain";
+import { activeNavigationPath } from "../lib/navigation";
 import type { WalletState } from "../types";
 
 type ScrollToRouteTop = (options: ScrollToOptions) => void;
@@ -18,6 +19,7 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
   const { locale, setLocale, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const activePath = activeNavigationPath(location.pathname, navItems.map(([path]) => path));
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const walletLabel = wallet.status === "connecting" ? "Connecting..." : wallet.address ? shortAddress(wallet.address) : "Connect MetaMask";
@@ -26,19 +28,19 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
     const value = searchQuery.trim().toLowerCase();
     if (!value) return [];
     const routeResults = navItems
-      .filter(([, label]) => label.toLowerCase().includes(value))
+      .filter(([, label]) => `${label} ${translateLocalizedText("zh-CN", label)}`.toLowerCase().includes(value))
       .map(([path, label]) => ({ path, title: label, scope: "Route" }));
     const agentResults = agents
-      .filter((agent) => `${agent.name} ${agent.category} ${agent.tags.join(" ")}`.toLowerCase().includes(value))
+      .filter((agent) => [agent.name, agent.category, ...agent.tags].flatMap((label) => [label, translateLocalizedText("zh-CN", label)]).join(" ").toLowerCase().includes(value))
       .map((agent) => ({ path: `/agents/${agent.id}`, title: agent.name, scope: "Agent" }));
     const taskResults = tasks
-      .filter((task) => `${task.id} ${task.title} ${task.category} ${task.tags.join(" ")}`.toLowerCase().includes(value))
+      .filter((task) => [task.id, task.title, task.category, ...task.tags].flatMap((label) => [label, translateLocalizedText("zh-CN", label)]).join(" ").toLowerCase().includes(value))
       .map((task) => ({ path: `/tasks/${task.id}`, title: task.title, scope: "Task" }));
     return [...routeResults, ...agentResults, ...taskResults].slice(0, 6);
   }, [searchQuery]);
   const mobilePrimaryItems = navItems.slice(0, 4);
   const mobileMoreItems = navItems.slice(4);
-  const mobileMoreActive = mobileMoreItems.some(([path]) => location.pathname === path || (path !== "/" && location.pathname.startsWith(`${path}/`)));
+  const mobileMoreActive = mobileMoreItems.some(([path]) => path === activePath);
 
   useEffect(() => {
     setMobileMoreOpen(false);
@@ -60,7 +62,7 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
       <aside className="sidebar">
         <NavLink to="/" className="brand"><span className="brand-mark">AM</span><span>Agent<br /><small>MARKET</small></span></NavLink>
         <nav aria-label="Primary navigation">
-          {navItems.map(([path, label, glyph]) => <NavLink key={path} to={path} end={path === "/"}><span className="nav-glyph">{glyph}</span>{label}</NavLink>)}
+          {navItems.map(([path, label, glyph]) => <NavLink key={path} to={path} end={path !== activePath}><span className="nav-glyph">{glyph}</span>{label}</NavLink>)}
         </nav>
         <div className="network-card"><span className="status-dot" /> <div><small>NETWORK</small><strong>Sepolia</strong></div></div>
       </aside>
@@ -97,10 +99,10 @@ export function Shell({ children, wallet, isSepolia, onConnect, onSwitch }: Prop
         </footer>
       </div>
       <div id="mobile-more-navigation" className="mobile-more-menu" hidden={!mobileMoreOpen} aria-label="More navigation">
-        {mobileMoreItems.map(([path, label, glyph]) => <NavLink key={path} to={path} end={path === "/"} onClick={() => setMobileMoreOpen(false)}><span>{glyph}</span><strong>{label}</strong></NavLink>)}
+        {mobileMoreItems.map(([path, label, glyph]) => <NavLink key={path} to={path} end={path !== activePath} onClick={() => setMobileMoreOpen(false)}><span>{glyph}</span><strong>{label}</strong></NavLink>)}
       </div>
       <nav className="mobile-nav" aria-label="Mobile navigation">
-        {mobilePrimaryItems.map(([path, label, glyph]) => <NavLink key={path} to={path} end={path === "/"} onClick={() => setMobileMoreOpen(false)}><span>{glyph}</span><small>{label}</small></NavLink>)}
+        {mobilePrimaryItems.map(([path, label, glyph]) => <NavLink key={path} to={path} end={path !== activePath} onClick={() => setMobileMoreOpen(false)}><span>{glyph}</span><small>{label}</small></NavLink>)}
         <button type="button" className={mobileMoreActive ? "active" : ""} aria-expanded={mobileMoreOpen} aria-controls="mobile-more-navigation" onClick={() => setMobileMoreOpen((current) => !current)}><span>•••</span><small>More</small></button>
       </nav>
     </div></Localized>

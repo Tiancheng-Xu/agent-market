@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "agent-market.recording-coverage-plan.v1",
+  "status": "planned-not-recorded",
+  "authority": "docs/delivery/todolist.md",
+  "purpose": "Acceptance coverage for the final non-AWS delivery recording; this document is not execution evidence.",
+  "release": { "commit": null, "actionsRun": null, "deployment": null },
+  "recording": { "path": null, "sha256": null, "durationSeconds": null },
+  "preconditions": [
+    "Complete the relevant functionality and fresh acceptance gates before recording it as working",
+    "Coordinate with other tasks and establish exclusive ownership of one dedicated visible window and recorder",
+    "Follow the applicable recording authorization window and freshly identify the intended window",
+    "Use a new output directory; preserve historical and partial media",
+    "Keep private prompts, secrets, session cookies, provider keys and unrelated windows outside capture",
+    "Pin the build under test and distinguish a local build from the released production deployment"
+  ],
+  "coverage": [
+    {
+      "id": "presentation-navigation",
+      "routes": ["/", "/agents", "/dashboard"],
+      "requiredObservation": "Readable desktop/mobile typography, independent card heights, working route navigation and correct scroll reset",
+      "status": "pending"
+    },
+    {
+      "id": "wallet-session",
+      "routes": ["/agents/local"],
+      "requiredObservation": "Explicit authentication state, disconnect and account/network changes revoke old UI results; failures do not become signed-in success",
+      "boundary": "A mock wallet video does not prove an external wallet signature; signature evidence is a separate requirement",
+      "status": "pending"
+    },
+    {
+      "id": "queen-planning",
+      "routes": ["/agents/local"],
+      "requiredObservation": "An authenticated task-bound request proceeds from queued to a persisted plan readback; graph branches, node assignments and exact-version confirmation are visible",
+      "boundary": "Queued, committed planning and approved planning do not imply completed Agent execution",
+      "status": "pending"
+    },
+    {
+      "id": "checkpoint-recovery",
+      "routes": ["/agents/local"],
+      "requiredObservation": "A previously persisted task can be read after reconnect; show the matching task/version and the separate restart acceptance record",
+      "boundary": "A browser reload alone is not proof of a server restart or provider-side exactly-once execution",
+      "status": "pending"
+    },
+    {
+      "id": "risk-quote",
+      "routes": ["/tasks"],
+      "navigation": "Open a real authorized task through its existing detail link",
+      "requiredObservation": "Display P, symmetric deposits, fee, canonical asset and quote hash; both participants read the same quote; a changed/expired quote loses confirmation readiness",
+      "boundary": "Quote confirmation is not payment, investment, yield accrual or a receipt",
+      "status": "pending"
+    },
+    {
+      "id": "order-and-matching",
+      "routes": ["/tasks"],
+      "navigation": "Use the task detail and explainable matching controls",
+      "requiredObservation": "Role-scoped order actions, explicit current status, qualification constraints and matching evidence; pending oracle state does not select a random winner",
+      "boundary": "No duplicate historical chain transactions or fabricated VRF fulfillment",
+      "status": "pending"
+    },
+    {
+      "id": "cocos-office",
+      "routes": ["/office"],
+      "requiredObservation": "Visible Office navigation, actual Cocos rendering, desk selection, status filtering and desktop/mobile resize without clipped hit targets",
+      "boundary": "Public demonstration desks stay labeled as demonstration data, not private live work",
+      "status": "pending"
+    },
+    {
+      "id": "staking-and-arbitration",
+      "routes": ["/staking", "/committee"],
+      "requiredObservation": "Explain wallet/role prerequisites, conflict review and both outcome directions; identify the independently verified receipt/status evidence",
+      "boundary": "Showing the form is not proof of settlement; historical receipts retain their original scope and date",
+      "status": "pending"
+    },
+    {
+      "id": "governance",
+      "routes": ["/ops"],
+      "requiredObservation": "Authenticated permissions, review context and versions, self-review rejection, revocation/expired-session behavior, audit readback and clear unavailable states",
+      "boundary": "Governance database actions are not cloud deployment, DAO voting or transfer of funds",
+      "status": "pending"
+    },
+    {
+      "id": "delivery-evidence",
+      "routes": ["/evidence"],
+      "requiredObservation": "Current runtime architecture, readable evidence links, correct local/production/chain boundaries and clearly historical previous recordings",
+      "status": "pending"
+    }
+  ],
+  "acceptance": [
+    "Map each recorded case to a time range, observed result and build identity",
+    "Leave blocked or uncovered requirements explicitly incomplete rather than replacing them with demonstrations",
+    "Verify finalized media is playable and critical actions are legible at a deliberate pace",
+    "Record media hash and coverage results only after actual capture and review",
+    "Publish the new recording and its truthful coverage ledger without overwriting historical evidence"
+  ],
+  "excludedOperations": ["AWS writes or sampling", "free-plan changes", "duplicate historical Sepolia transactions"]
+}

@@ -34,6 +34,8 @@ export function translateLocalizedText(locale: Locale, text: string): string {
   if (locale === "zh-CN") {
     const reliability = /^Reliability (\d+(?:\.\d+)?)% across (\d+) completed tasks$/.exec(text);
     if (reliability) return `可靠性 ${reliability[1]}%，累计完成 ${reliability[2]} 项任务`;
+    const hours = /^(\d+) hours$/.exec(text);
+    if (hours) return `${hours[1]} 小时`;
   }
   return translateVisibleText(locale, text);
 }

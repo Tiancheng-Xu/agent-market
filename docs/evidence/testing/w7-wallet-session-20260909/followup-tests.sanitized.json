@@ -1,0 +1,27 @@
+{
+  "scope": "Real auth handlers over local HTTP with in-memory fault-injected AuthStore; ephemeral software fixture EIP-191 signature. No external or user wallet signature. Cookie jar is explicit and does not prove browser Secure-cookie policy.",
+  "passed": 5,
+  "failed": 0,
+  "cases": [
+    {
+      "name": "broadcasts invalidation metadata only, deduplicates itself, never relays received events, revokes pending work, and detaches",
+      "status": "passed"
+    },
+    {
+      "name": "uses real auth HTTP handlers: failed logout preserves cookie, local veto blocks reuse, retry revokes server session, fresh login recovers",
+      "status": "passed"
+    },
+    {
+      "name": "revokes a late verification before allowing a new login",
+      "status": "passed"
+    },
+    {
+      "name": "does not run a queued signature for a superseded identity",
+      "status": "passed"
+    },
+    {
+      "name": "revokes verification cookies when identity readback fails without provider events",
+      "status": "passed"
+    }
+  ]
+}

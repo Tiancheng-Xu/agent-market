@@ -178,7 +178,11 @@ describe("local agents Queen workflow", () => {
       />,
     );
 
-    expect(markup).toContain("Risk Assessor preflight");
+    expect(markup).toContain('<details class="runtime-boundary queen-preflight">');
+    expect(markup).toContain("Risk assessment: local validation only; production unavailable");
+    expect(markup).toContain('<label class="queen-task-prompt">');
+    expect(markup).toContain('role="log" aria-label="Workflow progress"');
+    expect(markup.indexOf("Generate workflow plan")).toBeLessThan(markup.indexOf('class="queen-react-flow"'));
     expect(markup).toContain("Outside Queen DAG");
     expect(markup).toContain("verified-local");
     expect(markup).toContain("Production assessor unavailable");
@@ -218,7 +222,11 @@ describe("local agents Queen workflow", () => {
     );
 
     expect(markup).toContain("Generate workflow plan");
-    expect(markup).toContain("Start workflow");
+    expect(markup).toContain("Confirm this plan (not execution)");
+    expect(markup).not.toContain("Start workflow");
+    expect(markup).toContain("Local demonstration only");
+    expect(markup).toContain("Sign in and read");
+    expect(markup).toMatch(/<button[^>]+disabled=""[^>]*>Confirm this plan \(not execution\)<\/button>/);
     expect(markup).toContain("Auto-filled");
     expect(markup).toContain('aria-label="Queen workflow diagram"');
     expect(markup).toContain('aria-label="Graph edges"');

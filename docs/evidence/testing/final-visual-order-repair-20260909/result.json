@@ -1,0 +1,446 @@
+{
+  "gate": "PASS",
+  "scope": "Only affected order deep route, 10 width/locale combinations. Existing visual fixture; no live backend/wallet/transaction claim.",
+  "rows": [
+    {
+      "width": 375,
+      "requestedLocale": "zh-CN",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "zh-CN",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 275.4375,
+      "blankBottom": 31,
+      "reputationWidth": 343,
+      "overviewWidth": 343,
+      "score": "52.4",
+      "scoreHeight": 39.890625,
+      "scoreLineHeight": 39.9,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 309,
+          "overlap": false
+        },
+        {
+          "width": 309,
+          "overlap": false
+        },
+        {
+          "width": 309,
+          "overlap": false
+        },
+        {
+          "width": 309,
+          "overlap": false
+        },
+        {
+          "width": 309,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "requestedLocale": "en",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "en",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 323.9375,
+      "blankBottom": 31,
+      "reputationWidth": 343,
+      "overviewWidth": 343,
+      "score": "52.4",
+      "scoreHeight": 39.890625,
+      "scoreLineHeight": 39.9,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 309,
+          "overlap": false
+        },
+        {
+          "width": 309,
+          "overlap": false
+        },
+        {
+          "width": 309,
+          "overlap": false
+        },
+        {
+          "width": 309,
+          "overlap": false
+        },
+        {
+          "width": 309,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "requestedLocale": "zh-CN",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "zh-CN",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 275.4375,
+      "blankBottom": 31,
+      "reputationWidth": 358,
+      "overviewWidth": 358,
+      "score": "52.4",
+      "scoreHeight": 39.890625,
+      "scoreLineHeight": 39.9,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 157,
+          "overlap": false
+        },
+        {
+          "width": 157,
+          "overlap": false
+        },
+        {
+          "width": 157,
+          "overlap": false
+        },
+        {
+          "width": 157,
+          "overlap": false
+        },
+        {
+          "width": 157,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "requestedLocale": "en",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "en",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 323.9375,
+      "blankBottom": 31,
+      "reputationWidth": 358,
+      "overviewWidth": 358,
+      "score": "52.4",
+      "scoreHeight": 39.890625,
+      "scoreLineHeight": 39.9,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 157,
+          "overlap": false
+        },
+        {
+          "width": 157,
+          "overlap": false
+        },
+        {
+          "width": 157,
+          "overlap": false
+        },
+        {
+          "width": 157,
+          "overlap": false
+        },
+        {
+          "width": 157,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 430,
+      "requestedLocale": "zh-CN",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "zh-CN",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 250.6875,
+      "blankBottom": 31,
+      "reputationWidth": 398,
+      "overviewWidth": 398,
+      "score": "52.4",
+      "scoreHeight": 39.890625,
+      "scoreLineHeight": 39.9,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 177,
+          "overlap": false
+        },
+        {
+          "width": 177,
+          "overlap": false
+        },
+        {
+          "width": 177,
+          "overlap": false
+        },
+        {
+          "width": 177,
+          "overlap": false
+        },
+        {
+          "width": 177,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 430,
+      "requestedLocale": "en",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "en",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 323.9375,
+      "blankBottom": 31,
+      "reputationWidth": 398,
+      "overviewWidth": 398,
+      "score": "52.4",
+      "scoreHeight": 39.890625,
+      "scoreLineHeight": 39.9,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 177,
+          "overlap": false
+        },
+        {
+          "width": 177,
+          "overlap": false
+        },
+        {
+          "width": 177,
+          "overlap": false
+        },
+        {
+          "width": 177,
+          "overlap": false
+        },
+        {
+          "width": 177,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "requestedLocale": "zh-CN",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "zh-CN",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 279.859375,
+      "blankBottom": 39,
+      "reputationWidth": 1076.796875,
+      "overviewWidth": 1076.8125,
+      "score": "52.4",
+      "scoreHeight": 68.390625,
+      "scoreLineHeight": 68.4,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 197.359375,
+          "overlap": false
+        },
+        {
+          "width": 197.359375,
+          "overlap": false
+        },
+        {
+          "width": 197.359375,
+          "overlap": false
+        },
+        {
+          "width": 197.359375,
+          "overlap": false
+        },
+        {
+          "width": 197.359375,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "requestedLocale": "en",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "en",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 278.859375,
+      "blankBottom": 39,
+      "reputationWidth": 1076.796875,
+      "overviewWidth": 1076.8125,
+      "score": "52.4",
+      "scoreHeight": 68.390625,
+      "scoreLineHeight": 68.4,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 197.359375,
+          "overlap": false
+        },
+        {
+          "width": 197.359375,
+          "overlap": false
+        },
+        {
+          "width": 197.359375,
+          "overlap": false
+        },
+        {
+          "width": 197.359375,
+          "overlap": false
+        },
+        {
+          "width": 197.359375,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "requestedLocale": "zh-CN",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "zh-CN",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 279.859375,
+      "blankBottom": 39,
+      "reputationWidth": 1311.984375,
+      "overviewWidth": 1312,
+      "score": "52.4",
+      "scoreHeight": 68.390625,
+      "scoreLineHeight": 68.4,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 244.390625,
+          "overlap": false
+        },
+        {
+          "width": 244.390625,
+          "overlap": false
+        },
+        {
+          "width": 244.40625,
+          "overlap": false
+        },
+        {
+          "width": 244.390625,
+          "overlap": false
+        },
+        {
+          "width": 244.40625,
+          "overlap": false
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "requestedLocale": "en",
+      "ready": true,
+      "pathname": "/tasks/task-research-brief",
+      "locale": "en",
+      "overflow": false,
+      "brokenImages": 0,
+      "emptyButtons": 0,
+      "labelsPresent": true,
+      "forbiddenLabels": [],
+      "matchesLink": "/tasks/task-research-brief/matches",
+      "contractHeight": 278.859375,
+      "blankBottom": 39,
+      "reputationWidth": 1311.984375,
+      "overviewWidth": 1312,
+      "score": "52.4",
+      "scoreHeight": 68.390625,
+      "scoreLineHeight": 68.4,
+      "scoreNoWrap": true,
+      "dimensions": [
+        {
+          "width": 244.390625,
+          "overlap": false
+        },
+        {
+          "width": 244.390625,
+          "overlap": false
+        },
+        {
+          "width": 244.40625,
+          "overlap": false
+        },
+        {
+          "width": 244.390625,
+          "overlap": false
+        },
+        {
+          "width": 244.40625,
+          "overlap": false
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "build": {
+    "exitCode": 0,
+    "runtimeCases": 6,
+    "workerSha256": "b31f9e7e4666310b87770cb25d57cb9a55bd2ea6aaa364592c4893b9d6ea4ccb"
+  },
+  "tests": {
+    "files": 6,
+    "passed": 51
+  }
+}

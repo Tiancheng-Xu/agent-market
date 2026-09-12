@@ -11,6 +11,7 @@ export interface RiskQuoteAssignment {
 }
 
 export interface IssueRiskQuoteInput {
+  validateAuthority?: (db?: Sql | TransactionSql) => Promise<void>;
   taskId: string;
   publisherWallet: string;
   dagRevision: number;
@@ -37,6 +38,8 @@ export interface StoredRiskQuote {
 }
 
 export interface ConfirmRiskQuoteInput {
+  validateAuthority?: (db?: Sql | TransactionSql) => Promise<void>;
+  quoteHash?: string;
   quoteId: string;
   actorType: "publisher" | "agent";
   actorWallet: string;
@@ -65,6 +68,7 @@ export type RiskQuoteGateDecision =
   | { status: "manual_review"; code: string; reasonCode: string; quoteId: string };
 
 interface RiskQuoteConfirmation {
+  quoteHash: string;
   quoteId: string;
   actorType: "publisher" | "agent";
   actorKey: string;
@@ -111,6 +115,7 @@ function canonicalAssignments(assignments: readonly RiskQuoteAssignment[]): Risk
 
 function validateIssue(input: IssueRiskQuoteInput) {
   const quote = RiskQuoteSchema.parse(input.quote);
+  if (quote.schemaVersion !== 2 || !quote.assetId) throw new Error("RISK_QUOTE_REQUOTE_REQUIRED");
   const publisherWallet = assertWallet(input.publisherWallet);
   const assignments = canonicalAssignments(input.assignments);
   if (!Number.isInteger(input.dagRevision) || input.dagRevision < 0) throw new Error("RISK_QUOTE_DAG_REVISION_INVALID");
@@ -148,6 +153,8 @@ function confirmationKey(input: ConfirmRiskQuoteInput): string {
 }
 
 function validateConfirmation(record: StoredRiskQuote, input: ConfirmRiskQuoteInput): RiskQuoteConfirmation {
+  if (record.quote.schemaVersion !== 2 || !record.quote.assetId) throw new Error('RISK_QUOTE_REQUOTE_REQUIRED');
+  if (!input.quoteHash || input.quoteHash !== record.basisFingerprint) throw new Error('RISK_QUOTE_HASH_MISMATCH');
   if (record.status !== "active") throw new Error("RISK_QUOTE_SUPERSEDED");
   if (record.quote.taskFingerprint !== input.taskFingerprint) throw new Error("RISK_QUOTE_FINGERPRINT_MISMATCH");
   if (new Date(input.confirmedAt).getTime() >= new Date(record.quote.expiresAt).getTime()) throw new Error("RISK_QUOTE_EXPIRED");
@@ -160,6 +167,7 @@ function validateConfirmation(record: StoredRiskQuote, input: ConfirmRiskQuoteIn
   }
   return {
     quoteId: record.id,
+    quoteHash: record.basisFingerprint,
     actorType: input.actorType,
     actorKey: confirmationKey(input),
     actorWallet,
@@ -171,6 +179,7 @@ function validateConfirmation(record: StoredRiskQuote, input: ConfirmRiskQuoteIn
 
 function evaluateBase(record: StoredRiskQuote | null, input: EvaluateRiskQuoteInput, phase: "preliminary" | "final") {
   if (!record || record.taskId !== input.taskId) return blockedDecision(input.quoteId, "RISK_QUOTE_NOT_FOUND");
+  if (record.quote.schemaVersion !== 2 || !record.quote.assetId) return blockedDecision(input.quoteId, "RISK_QUOTE_REQUOTE_REQUIRED");
   if (record.status !== "active") return manualDecision(input.quoteId, "RISK_QUOTE_SUPERSEDED", "risk_quote_superseded");
   if (record.quote.phase !== phase) return blockedDecision(input.quoteId, "RISK_QUOTE_PHASE_INVALID");
   if (record.quote.taskFingerprint !== input.taskFingerprint) {
@@ -196,7 +205,7 @@ abstract class RiskQuoteStoreBase implements RiskQuoteStore {
     if (record!.quote.manualReviewRequired && (!record!.manualApprovedAt || !record!.manualApprovedBy)) {
       return blockedDecision(input.quoteId, "RISK_QUOTE_MANUAL_APPROVAL_REQUIRED");
     }
-    const confirmed = await this.confirmations(input.quoteId);
+    const confirmed = (await this.confirmations(input.quoteId)).filter(c => c.quoteHash === record!.basisFingerprint && c.taskFingerprint === record!.quote.taskFingerprint);
     if (!confirmed.some(({ actorType }) => actorType === "publisher")) {
       return blockedDecision(input.quoteId, "RISK_QUOTE_PUBLISHER_CONFIRMATION_REQUIRED");
     }
@@ -208,7 +217,7 @@ abstract class RiskQuoteStoreBase implements RiskQuoteStore {
     const rejected = evaluateBase(record, input, "final");
     if (rejected) return rejected;
     const quote = record!;
-    const confirmed = await this.confirmations(input.quoteId);
+    const confirmed = (await this.confirmations(input.quoteId)).filter(c => c.quoteHash === quote.basisFingerprint && c.taskFingerprint === quote.quote.taskFingerprint);
     if (!confirmed.some(({ actorType }) => actorType === "publisher")) {
       return blockedDecision(input.quoteId, "RISK_QUOTE_PUBLISHER_CONFIRMATION_REQUIRED");
     }
@@ -228,6 +237,7 @@ export class MemoryRiskQuoteStore extends RiskQuoteStoreBase {
   private readonly confirmationRecords = new Map<string, RiskQuoteConfirmation>();
 
   async issue(input: IssueRiskQuoteInput): Promise<StoredRiskQuote> {
+    await input.validateAuthority?.();
     const validated = validateIssue(input);
     const basis = basisFingerprint({
       taskId: input.taskId,
@@ -272,6 +282,7 @@ export class MemoryRiskQuoteStore extends RiskQuoteStoreBase {
   }
 
   async confirm(input: ConfirmRiskQuoteInput): Promise<void> {
+    await input.validateAuthority?.();
     const record = this.records.get(input.quoteId);
     if (!record) throw new Error("RISK_QUOTE_NOT_FOUND");
     const confirmation = validateConfirmation(record, input);
@@ -286,6 +297,7 @@ export class MemoryRiskQuoteStore extends RiskQuoteStoreBase {
     if (!record) throw new Error("RISK_QUOTE_NOT_FOUND");
     if (record.status !== "active") throw new Error("RISK_QUOTE_SUPERSEDED");
     if (!record.quote.manualReviewRequired) throw new Error("RISK_QUOTE_MANUAL_APPROVAL_NOT_REQUIRED");
+    if (record.quote.schemaVersion !== 2) throw new Error("RISK_QUOTE_REQUOTE_REQUIRED");
     record.manualApprovedAt = iso(input.approvedAt);
     record.manualApprovedBy = input.approvedBy.trim();
     if (!record.manualApprovedBy) throw new Error("RISK_QUOTE_MANUAL_APPROVER_REQUIRED");
@@ -347,6 +359,7 @@ export class PostgresRiskQuoteStore extends RiskQuoteStoreBase {
         FOR UPDATE
       `;
       if (!taskRows[0]) throw new Error("RISK_QUOTE_TASK_NOT_FOUND");
+      await input.validateAuthority?.(transaction);
       if (normalizeWallet(String(taskRows[0].publisher_wallet)) !== validated.publisherWallet) {
         throw new Error("RISK_QUOTE_PUBLISHER_FORBIDDEN");
       }
@@ -406,16 +419,20 @@ export class PostgresRiskQuoteStore extends RiskQuoteStoreBase {
 
   async confirm(input: ConfirmRiskQuoteInput): Promise<void> {
     await this.sql.begin(async (transaction) => {
+      await transaction`SELECT id FROM agent_market.tasks WHERE id = (
+        SELECT task_id FROM agent_market.risk_quotes WHERE id = ${input.quoteId}
+      ) FOR UPDATE`;
+      await input.validateAuthority?.(transaction);
       const record = await this.load(transaction, input.quoteId);
       if (!record) throw new Error("RISK_QUOTE_NOT_FOUND");
       const confirmation = validateConfirmation(record, input);
       const inserted = await transaction<DatabaseRow[]>`
         INSERT INTO agent_market.risk_quote_confirmations (
-          quote_id, actor_type, actor_key, actor_wallet, agent_id, task_fingerprint, confirmed_at
+          quote_id, actor_type, actor_key, actor_wallet, agent_id, task_fingerprint, confirmed_at, quote_hash
         ) VALUES (
           ${confirmation.quoteId}, ${confirmation.actorType}, ${confirmation.actorKey},
           ${confirmation.actorWallet}, ${confirmation.agentId}, ${confirmation.taskFingerprint},
-          ${confirmation.confirmedAt}::timestamptz
+          ${confirmation.confirmedAt}::timestamptz, ${confirmation.quoteHash}
         ) ON CONFLICT DO NOTHING RETURNING quote_id
       `;
       if (!inserted[0]) throw new Error("RISK_QUOTE_CONFIRMATION_DUPLICATE");
@@ -429,7 +446,7 @@ export class PostgresRiskQuoteStore extends RiskQuoteStoreBase {
     const updated = await this.sql<DatabaseRow[]>`
       UPDATE agent_market.risk_quotes
       SET manual_approved_at = ${iso(input.approvedAt)}::timestamptz, manual_approved_by = ${approvedBy}
-      WHERE id = ${input.quoteId} AND status = 'active' AND manual_review_required = true
+      WHERE id = ${input.quoteId} AND status = 'active' AND manual_review_required = true AND quote_payload->>'schemaVersion' = '2'
       RETURNING id
     `;
     if (!updated[0]) throw new Error("RISK_QUOTE_MANUAL_APPROVAL_NOT_ALLOWED");
@@ -437,12 +454,13 @@ export class PostgresRiskQuoteStore extends RiskQuoteStoreBase {
 
   protected async confirmations(quoteId: string): Promise<RiskQuoteConfirmation[]> {
     const rows = await this.sql<DatabaseRow[]>`
-      SELECT quote_id, actor_type, actor_key, actor_wallet, agent_id, task_fingerprint, confirmed_at
+      SELECT quote_id, actor_type, actor_key, actor_wallet, agent_id, task_fingerprint, confirmed_at, quote_hash
       FROM agent_market.risk_quote_confirmations
       WHERE quote_id = ${quoteId}
     `;
     return rows.map((row) => ({
       quoteId: String(row.quote_id),
+      quoteHash: String(row.quote_hash ?? ""),
       actorType: row.actor_type as RiskQuoteConfirmation["actorType"],
       actorKey: String(row.actor_key),
       actorWallet: normalizeWallet(String(row.actor_wallet)),

@@ -12,18 +12,42 @@ interface SessionAuthenticator { authenticateSession(token: string): Promise<{ w
 
 const headers = (requestId: string) => ({ "cache-control": "no-store", "x-request-id": requestId });
 
-function parseConfirmation(value: unknown): { quoteId: string; taskFingerprint: string } {
+type ConfirmationBody = {
+  quoteId: string;
+  taskFingerprint: string;
+  quoteHash: string;
+} & ({ actorType: "publisher"; agentId?: never } | { actorType: "agent"; agentId: string });
+
+function parseConfirmation(value: unknown): ConfirmationBody {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new RiskPricingServiceError("RISK_QUOTE_CONFIRMATION_INVALID", 400);
   }
   const body = value as Record<string, unknown>;
-  if (Object.keys(body).length !== 2 || !("quoteId" in body) || !("taskFingerprint" in body)
+  const actorType = body.actorType;
+  const agentId = typeof body.agentId === "string" ? body.agentId.trim() : undefined;
+  const expectedKeys = actorType === "publisher"
+    ? ["actorType", "quoteHash", "quoteId", "taskFingerprint"]
+    : ["actorType", "agentId", "quoteHash", "quoteId", "taskFingerprint"];
+  const actualKeys = Object.keys(body).sort();
+  if ((actorType !== "publisher" && actorType !== "agent")
+    || actualKeys.length !== expectedKeys.length
+    || actualKeys.some((key, index) => key !== expectedKeys[index])
     || typeof body.quoteId !== "string" || !isUuid(body.quoteId)) {
     throw new RiskPricingServiceError("RISK_QUOTE_CONFIRMATION_INVALID", 400);
   }
+  if (actorType === "agent" && (!agentId || agentId.length > 160)) {
+    throw new RiskPricingServiceError("RISK_QUOTE_CONFIRMATION_INVALID", 400);
+  }
   const fingerprint = TaskFingerprintSchema.safeParse(body.taskFingerprint);
-  if (!fingerprint.success) throw new RiskPricingServiceError("RISK_QUOTE_CONFIRMATION_INVALID", 400);
-  return { quoteId: body.quoteId, taskFingerprint: fingerprint.data };
+  const quoteHash = TaskFingerprintSchema.safeParse(body.quoteHash);
+  if (!fingerprint.success || !quoteHash.success) throw new RiskPricingServiceError("RISK_QUOTE_CONFIRMATION_INVALID", 400);
+  return {
+    quoteId: body.quoteId,
+    taskFingerprint: fingerprint.data,
+    quoteHash: quoteHash.data,
+    actorType,
+    ...(actorType === "agent" ? { agentId: agentId! } : {}),
+  } as ConfirmationBody;
 }
 
 export function createRiskQuoteConfirmationHandler(input: {

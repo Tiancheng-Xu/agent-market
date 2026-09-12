@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "agent-market.local-test-report.v1",
+  "status": "verified-local",
+  "scope": "Supplemental commercial authorization and reconciliation tests",
+  "source": {
+    "kind": "completed-specialist-test-report",
+    "agentId": "01a08710-d5eb-7213-bf90-7075830bb710",
+    "testFile": "apps/transaction-engine/src/commercial/service.test.ts",
+    "parentIndependentlyReran": false,
+    "commit": null
+  },
+  "results": {
+    "selectedPassed": 3,
+    "existingTestsExcludedByFilter": 18,
+    "fullSuiteExecuted": false,
+    "globalTypecheckExecuted": false,
+    "database": "real-local-postgresql",
+    "paymentObservations": "explicit-test-double"
+  },
+  "coverage": [
+    {
+      "requirement": "R5 manual approval authority",
+      "verified": [
+        "Missing approval rejects commercial binding",
+        "Risk assessor and agent roles cannot grant platform approval",
+        "Platform operator approval allows binding through the existing runtime",
+        "Both deposit projections equal 400 and payment projection remains zero"
+      ]
+    },
+    {
+      "requirement": "Reconcile after settled",
+      "verified": [
+        "Runtime validates the legal task event chain",
+        "A non-beneficiary cannot reconcile",
+        "Concurrent reconciliation consumes one observation and creates one payment ledger entry",
+        "A new service instance and repeated reconciliation do not duplicate payment ledger entries"
+      ],
+      "limitation": "The payment observation is a test double, not an external receipt."
+    },
+    {
+      "requirement": "Legacy orders without accepted quotes",
+      "verified": [
+        "Authenticated participant reads remain available",
+        "Non-participant reads are rejected",
+        "All eight write commands and historical idempotency replay return COMMERCIAL_REBIND_REQUIRED",
+        "The original snapshot is unchanged and no quote, receipt, or ledger entry is created"
+      ]
+    }
+  ],
+  "remainingRequirements": [
+    "Versioned canonical asset identity bound to quote and participant acceptance",
+    "Read-only real receipt observation with asset, beneficiary, amount and finality verification",
+    "Verifiable prior participant consent for yield allocation",
+    "Independent evidence-backed deposit resolution",
+    "Fresh complete repository verification and production publication"
+  ],
+  "boundaries": {
+    "awsOperations": false,
+    "planChanges": false,
+    "externalProviderRequests": false,
+    "chainTransactions": false,
+    "realFundsCollectedOrReturned": false,
+    "productionVerified": false,
+    "recordingEvidence": false
+  }
+}

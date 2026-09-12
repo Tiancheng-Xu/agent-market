@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "agent-market.local-validation.v1",
+  "date": "2026-09-09",
+  "status": "verified-local",
+  "testFile": "apps/transaction-engine/src/commercial/service.test.ts",
+  "database": "dedicated-loopback-postgresql",
+  "testsPassed": 9,
+  "typecheckExitCode": 0,
+  "feePolicy": "budget-plus-service-fee.v1",
+  "invariants": [
+    "Accepted Agent principal is not reduced by the platform fee",
+    "Platform fee B is ceil(original P times feeBps divided by 10000), separately journaled",
+    "Changing runtime fee configuration does not change an existing order's frozen fee",
+    "Unused principal is refunded in the accounting projection",
+    "Projection and pending claim are not evidence of funding or payment"
+  ],
+  "remaining": [
+    "Bind to the authoritative accepted risk quote and policy",
+    "Complete symmetric deposit A accounting and adjudicated outcomes",
+    "Complete authoritative income and penalty attribution",
+    "Provide real external payment observation before claiming a paid outcome"
+  ]
+}

@@ -53,7 +53,11 @@ function sameExpectation(left: ChainTransactionExpectation, right: ChainTransact
     && (left.resourceKind ?? "task") === (right.resourceKind ?? "task")
     && left.budgetAtomic === right.budgetAtomic
     && left.bondAtomic === right.bondAtomic
-    && left.agentWins === right.agentWins;
+    && left.agentWins === right.agentWins
+    && left.resourceRevision === right.resourceRevision
+    && left.reviewId === right.reviewId
+    && left.reviewHash === right.reviewHash
+    && left.reviewExpiresAt === right.reviewExpiresAt;
 }
 
 function validateObservation(
@@ -163,6 +167,10 @@ interface ChainTransactionRow {
   expected_bond_atomic: string | null;
   expected_agent_wins: boolean | null;
   resource_kind: "task" | "account";
+  expected_resource_revision: number | null;
+  expected_review_id: string | null;
+  expected_review_hash: string | null;
+  expected_review_expires_at: string | null;
 }
 
 export class PostgresTransactionStore implements TransactionStore {
@@ -182,12 +190,14 @@ export class PostgresTransactionStore implements TransactionStore {
         id, intent_id, request_id, request_ref, chain_id, actor_wallet,
         contract_address, method, call_data, expected_value_atomic,
         resource_id, resource_kind, expected_budget_atomic, expected_bond_atomic, expected_agent_wins,
+        expected_resource_revision, expected_review_id, expected_review_hash, expected_review_expires_at,
         status, created_at, expires_at
       ) VALUES (
         ${intent.intentId}, ${intent.intentId}, ${intent.requestId},
         decode(${intent.requestRef.slice(2)}, 'hex'), ${intent.chainId}, ${intent.from},
         ${intent.to}, ${intent.method}, ${intent.data.toLowerCase()}, ${intent.valueAtomic},
         ${expectation.resourceId}, ${expectation.resourceKind ?? "task"}, ${expectation.budgetAtomic}, ${expectation.bondAtomic}, ${expectation.agentWins},
+        ${expectation.resourceRevision ?? null}, ${expectation.reviewId ?? null}, ${expectation.reviewHash ?? null}, ${expectation.reviewExpiresAt ?? null},
         'created', ${intent.createdAt}, ${intent.expiresAt}
       )
       ON CONFLICT (intent_id) DO NOTHING
@@ -203,7 +213,8 @@ export class PostgresTransactionStore implements TransactionStore {
   async findExpectation(intentId: string): Promise<ChainTransactionExpectation | null> {
     const rows = await this.sql<ChainTransactionRow[]>`
       SELECT resource_id::text, resource_kind, expected_budget_atomic::text, expected_bond_atomic::text,
-        expected_agent_wins
+        expected_agent_wins, expected_resource_revision, expected_review_id::text,
+        expected_review_hash, expected_review_expires_at::text
       FROM agent_market.chain_transactions WHERE intent_id = ${intentId} LIMIT 1
     `;
     const row = rows[0];
@@ -214,6 +225,10 @@ export class PostgresTransactionStore implements TransactionStore {
       budgetAtomic: row.expected_budget_atomic,
       bondAtomic: row.expected_bond_atomic,
       agentWins: row.expected_agent_wins,
+      ...(row.expected_resource_revision === null ? {} : { resourceRevision: row.expected_resource_revision }),
+      ...(row.expected_review_id === null ? {} : { reviewId: row.expected_review_id }),
+      ...(row.expected_review_hash === null ? {} : { reviewHash: row.expected_review_hash }),
+      ...(row.expected_review_expires_at === null ? {} : { reviewExpiresAt: new Date(row.expected_review_expires_at).toISOString() }),
     };
   }
 

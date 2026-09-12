@@ -1,0 +1,140 @@
+{
+  "date": "2026-09-09",
+  "gate": "FAIL",
+  "build": {
+    "command": "npm run build",
+    "exitCode": 1,
+    "error": "Edge bundle contains browser-only marker: window.ethereum",
+    "clientAndWorkerEmitted": true,
+    "releasePackagingPassed": false
+  },
+  "matrix": {
+    "checked": 180,
+    "routes": [
+      {
+        "route": "/",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/agents",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/agents/new",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/agents/local",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/agents/personal-image-agent",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/tasks",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/tasks/new",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/tasks/task-research-brief",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/tasks/task-research-brief/matches",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/tasks/task-research-brief/workspace",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/office",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/dashboard",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/staking",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/committee",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/disputes/dispute-demo",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/ops",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/evidence",
+        "status": 200,
+        "expected": 200
+      },
+      {
+        "route": "/missing",
+        "status": 404,
+        "expected": 404
+      }
+    ],
+    "widths": [
+      375,
+      390,
+      430,
+      1440,
+      1920
+    ],
+    "locales": [
+      "zh-CN",
+      "en"
+    ],
+    "unreachable": [],
+    "pathnameMismatch": 0,
+    "horizontalOverflow": 0,
+    "brokenImages": 0,
+    "emptyButtons": 0,
+    "pageErrors": 0,
+    "untranslatedLocalCombinations": 5
+  },
+  "interactions": {
+    "viewports": 5,
+    "navigationAndScrollReset": "PASS",
+    "opsAuthAndHonestStatus": "PASS",
+    "localGraphNodes": 8,
+    "localGraphEdges": 8,
+    "localGraphZoom": "PASS",
+    "cocosActualRenderAndHit": "PASS",
+    "cocosCanvasLocaleTitles": 10
+  },
+  "findings": [
+    "F1 Edge build browser-only import",
+    "F2 Chinese Local paragraphs and short order labels untranslated",
+    "F3 Desktop order contract blank stretch and reputation score/labels squeezed"
+  ],
+  "boundary": "Offline built-worker adapter; existing demo data is visual fixture only. No wallet provider injection, real signature, transaction, cloud or production business acceptance."
+}

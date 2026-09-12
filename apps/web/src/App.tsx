@@ -12,11 +12,13 @@ import { HomePage } from "./pages/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { DisputePage, StakingPage, WorkspacePage } from "./pages/WorkflowPages";
 import { resetRouteScroll } from "./routeScroll";
+import { loadLocalRoute, loadOrderRoute } from "./routeModules";
+import { RouteBoundary } from "./components/RouteBoundary";
 
-const LocalAgentsPage = lazy(() => import("./pages/LocalAgentsPage").then((module) => ({
+const LocalAgentsPage = lazy(() => loadLocalRoute().then((module) => ({
   default: module.LocalAgentsPage,
 })));
-const OrderDetailRoute = lazy(() => import("./pages/OrderDetailRoute"));
+const OrderDetailRoute = lazy(loadOrderRoute);
 
 function RouteFallback() {
   return (
@@ -56,5 +58,5 @@ function RouteScrollReset() {
 
 export default function App() {
   const { wallet, connect, switchToSepolia, isSepolia } = useWallet();
-  return <Shell wallet={wallet} isSepolia={isSepolia} onConnect={connect} onSwitch={switchToSepolia}><RouteScrollReset /><Routes><Route path="/" element={<HomePage />} /><Route path="/agents" element={<ManagedAgentsPage walletAddress={wallet.address} />} /><Route path="/agents/local" element={<Suspense fallback={<RouteFallback />}><LocalAgentsPage walletAddress={wallet.address} /></Suspense>} /><Route path="/agents/new" element={<AgentNewPage walletAddress={wallet.address} />} /><Route path="/agents/:id" element={<AgentDetailPage />} /><Route path="/tasks" element={<TasksPage />} /><Route path="/tasks/new" element={<TaskNewPage walletAddress={wallet.address} />} /><Route path="/tasks/:id" element={<Suspense fallback={<RouteFallback />}><OrderDetailRoute walletAddress={wallet.address} /></Suspense>} /><Route path="/tasks/:id/matches" element={<ExplainableMatchesPage />} /><Route path="/tasks/:id/workspace" element={<WorkspacePage walletAddress={wallet.address} />} /><Route path="/office" element={<WorkspacePage walletAddress={wallet.address} />} /><Route path="/disputes/:id" element={<DisputePage />} /><Route path="/staking" element={<StakingPage walletAddress={wallet.address} />} /><Route path="/dashboard" element={<DashboardPage />} /><Route path="/committee" element={<CommitteePage walletAddress={wallet.address} />} /><Route path="/ops" element={<OpsPage />} /><Route path="/evidence" element={<EvidencePage />} /><Route path="*" element={<NotFoundPage />} /></Routes></Shell>;
+  return <Shell wallet={wallet} isSepolia={isSepolia} onConnect={connect} onSwitch={switchToSepolia}><RouteScrollReset /><RouteBoundary><Routes><Route path="/" element={<HomePage />} /><Route path="/agents" element={<ManagedAgentsPage walletAddress={wallet.address} />} /><Route path="/agents/local" element={<Suspense fallback={<RouteFallback />}><LocalAgentsPage walletAddress={wallet.address} /></Suspense>} /><Route path="/agents/new" element={<AgentNewPage walletAddress={wallet.address} />} /><Route path="/agents/:id" element={<AgentDetailPage />} /><Route path="/tasks" element={<TasksPage />} /><Route path="/tasks/new" element={<TaskNewPage walletAddress={wallet.address} />} /><Route path="/tasks/:id" element={<Suspense fallback={<RouteFallback />}><OrderDetailRoute walletAddress={wallet.address} /></Suspense>} /><Route path="/tasks/:id/matches" element={<ExplainableMatchesPage />} /><Route path="/tasks/:id/workspace" element={<WorkspacePage walletAddress={wallet.address} />} /><Route path="/office" element={<WorkspacePage walletAddress={wallet.address} />} /><Route path="/disputes/:id" element={<DisputePage />} /><Route path="/staking" element={<StakingPage walletAddress={wallet.address} />} /><Route path="/dashboard" element={<DashboardPage />} /><Route path="/committee" element={<CommitteePage walletAddress={wallet.address} />} /><Route path="/ops" element={<OpsPage walletAddress={wallet.address} />} /><Route path="/evidence" element={<EvidencePage />} /><Route path="*" element={<NotFoundPage />} /></Routes></RouteBoundary></Shell>;
 }

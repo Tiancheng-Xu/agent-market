@@ -18,7 +18,7 @@ const requestId = "0191f6f8-cb6b-7f31-81ad-c497d7d90301";
 const resourceId = "0191f6f8-cb6b-7f31-81ad-c497d7d90304";
 const { requestRef, taskId } = deriveChainResource(resourceId);
 const contract = "0x2222222222222222222222222222222222222222";
-const contracts = { token: contract, escrow: contract, committee: contract, vault: contract };
+const contracts = { token: contract, escrow: contract, committee: contract, vault: contract, workflowEscrow: contract };
 const txHash = `0x${"56".repeat(32)}`;
 const blockHash = `0x${"78".repeat(32)}`;
 
@@ -212,5 +212,37 @@ describe("transaction intent and verification routes", () => {
       .toEqual((await first.json() as { intent: unknown }).intent);
     expect((await handler(request("unknownMethod", {}))).status).toBe(400);
     expect((await handler(request("createTask", { deadline: "not-a-uint" }))).status).toBe(400);
+  });
+
+  it("rejects direct V3 resolution intents without a current matching review and binds the review identity", async () => {
+    const { auth, wallet, cookie } = await authenticatedWallet();
+    const store = new MemoryTransactionStore();
+    const resources = new MemoryChainResourceRepository([{
+      resourceId, publisherWallet: Wallet.createRandom().address, agentWallet: null,
+      budgetAtomic: "6000000", status: "disputed", revision: 4,
+    }], [], wallet.address);
+    const handler = createIntentHandler({ auth, store, resources, contracts, now: () => now });
+    const request = (agentsWin: boolean) => new Request("https://agent-market.test/api/transactions/intents", {
+      method: "POST",
+      headers: { cookie, origin: "https://agent-market.test", "content-type": "application/json" },
+      body: JSON.stringify({ resourceId, method: "resolveWorkflowTask", args: { agentsWin } }),
+    });
+
+    const bypass = await handler(request(true));
+    expect(bypass.status).toBe(409);
+    expect(await bypass.json()).toEqual(expect.objectContaining({ error: "CHAIN_ARBITRATION_REVIEW_REQUIRED" }));
+
+    const review = await resources.recordArbitrationReview(resourceId, wallet.address, { agentsWin: true }, now);
+    const switched = await handler(request(false));
+    expect(switched.status).toBe(409);
+    expect(await switched.json()).toEqual(expect.objectContaining({ error: "CHAIN_ARBITRATION_REVIEW_ARGS_MISMATCH" }));
+
+    const response = await handler(request(true));
+    const body = await response.json() as { intent: { intentId: string } };
+    expect(response.status).toBe(201);
+    await expect(store.findExpectation(body.intent.intentId)).resolves.toMatchObject({
+      resourceId, resourceRevision: 4, reviewId: review.reviewId,
+      reviewHash: review.reviewHash, reviewExpiresAt: review.expiresAt, agentWins: true,
+    });
   });
 });

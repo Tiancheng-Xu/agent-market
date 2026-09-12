@@ -60,7 +60,7 @@ describe("risk engine", () => {
       factors: factors(),
       reasonCodes: ["low_risk_baseline"],
     });
-    const quote = createRiskQuote({
+    const quote = createRiskQuote({ assetId: 'eip155:11155111/erc20:0x5555555555555555555555555555555555555555',
       phase: "preliminary",
       policyVersion: "risk-pricing-v1",
       taskFingerprint: `sha256:${"d".repeat(64)}`,
@@ -94,6 +94,20 @@ describe("risk engine", () => {
     ]);
   });
 
+  it("allocates atomic remainders by highest weight then lowest Agent ID", () => {
+    expect(
+      allocateAgentTeamDeposit("3", [
+        { agentId: "agent-c", shareBps: 5, nodeRiskMultiplierBps: 10_000, reputationRiskMultiplierBps: 10_000 },
+        { agentId: "agent-b", shareBps: 4, nodeRiskMultiplierBps: 10_000, reputationRiskMultiplierBps: 10_000 },
+        { agentId: "agent-a", shareBps: 4, nodeRiskMultiplierBps: 10_000, reputationRiskMultiplierBps: 10_000 },
+      ]),
+    ).toEqual([
+      { agentId: "agent-a", amountAtomic: "1" },
+      { agentId: "agent-b", amountAtomic: "0" },
+      { agentId: "agent-c", amountAtomic: "2" },
+    ]);
+  });
+
   it("aggregates duplicate Agent nodes before allocating the team deposit", () => {
     expect(
       allocateAgentTeamDeposit("10", [
@@ -124,7 +138,7 @@ describe("risk engine", () => {
       factors: factors({ financialRisk: 100, dataSensitivity: 40 }),
       reasonCodes: ["financial_risk", "sensitive_data"],
     });
-    const quote = createRiskQuote({
+    const quote = createRiskQuote({ assetId: 'eip155:11155111/erc20:0x5555555555555555555555555555555555555555',
       phase: "final",
       policyVersion: "risk-pricing-v1",
       taskFingerprint: `sha256:${"e".repeat(64)}`,

@@ -8,11 +8,61 @@ import type { EdgeChange, NodeChange } from "@xyflow/react";
 
 import { Badge, PageHeader, Panel } from "../components/Ui";
 import { agentProviderLabel, publicAgentCatalog } from "../agentCatalog";
-import { Localized } from "../i18n/LanguageProvider";
+import { Localized, translateLocalizedText, useLanguage } from "../i18n/LanguageProvider";
+import "./LocalAgentsPage.css";
 import { parseGraphqlResponse } from "../lib/graphqlResponse";
 import { listOwnerAgents, type OwnerAgentRecord } from "../ownerAgentRegistry";
+import { authenticateWalletSession } from "../lib/chainClient";
+import { assertWalletSessionAuthenticated, subscribeWalletSession, walletSessionRevision } from "../lib/walletSession";
+import { canConfirmQueenPlanning, createQueenPlanningClient, isPlanningTaskId,
+  QUEEN_PLANNING_ERROR_STATUS, queenPlanningStatusLabel, type QueenPlanningStatus } from "../lib/queenPlanningClient";
 
 export { parseGraphqlResponse } from "../lib/graphqlResponse";
+
+// Page-owned explanatory copy only. IDs, model names and transport state codes
+// are preserved; changing language must not change planning or approval state.
+const queenLocalZhCopy: Readonly<Record<string, string>> = {
+  "Chat and orchestration are disabled. Persisted Queen planning uses the separate authenticated TE gateway; Runtime health does not prove its worker readiness.": "聊天与编排暂不可用。已保存任务的 Queen 规划使用独立的认证 TE 网关；Runtime 健康检查不能证明规划 Worker 已就绪。",
+  "Connect a wallet using the existing wallet control, then explicitly sign in.": "请先通过页面的钱包入口连接钱包，再主动签名登录。",
+  "Local demonstration only. Not a real task, persisted plan, assignment or execution.": "仅供本地演示，不代表真实任务、持久化计划、任务分配或执行结果。",
+  "Local demonstration only. No persisted task loaded.": "仅供本地演示，尚未加载持久化任务。",
+  "No private plan loaded. Read a persisted task; no demo fallback.": "尚未加载私有计划。请读取持久化任务；不会用演示图代替真实计划。",
+  "No committed graph read back for this task. Queued is not generated; refresh persisted status. No demonstration fallback.": "尚未读回此任务已持久化的任务图。排队不等于生成完成，请刷新持久化状态；不会回退到演示图。",
+  "Wallet session invalidated. Sign in again to read private plans.": "钱包会话已失效，请重新签名登录后读取私有计划。",
+  "Queued only, not a generated graph or execution.": "仅表示已排队，不代表任务图已生成或任务已执行。",
+  "Approval recorded, not execution completed.": "仅表示审批已记录，不代表执行完成。",
+  "Planning producer/worker readiness is not enabled on this host. History can still be read; no flags were changed.": "此主机未启用规划生产者或 Worker 就绪门控。仍可读取历史记录；未修改任何开关。",
+  "Click Sign in and read to sign in again. No automatic signature or mutation retry.": "请点击“签名登录并读取”重新登录。不会自动签名或重试写入操作。",
+  "Readback unavailable. Refresh status before any further action; do not assume a mutation failed or retry execution.": "暂时无法读回状态。请先刷新状态，再进行后续操作；不能据此认定写入失败或重试执行。",
+  "Local demonstration changes only. Nothing was sent or persisted.": "仅修改本地演示图，未发送请求，也未写入持久化存储。",
+  "No persisted planning request": "尚无持久化规划请求",
+  "Authorization expired / revoked / stale (server does not distinguish); approval disabled. ": "授权已过期、撤销或失效（服务端未区分具体原因），审批已禁用。",
+  "Planning: ": "规划状态：",
+  "Approval: ": "审批状态：",
+  " (approved)": "（已批准）",
+  " (rejected)": "（已拒绝）",
+  "; recording is not execution.": "；记录审批不等于执行任务。",
+  "No approval recorded.": "尚未记录审批。",
+  "Execution not verified.": "执行结果尚未验证。",
+  "LOCAL DEMO": "本地演示",
+  "READING / QUEUING": "读取或排队中",
+  "NOT LOADED": "尚未加载",
+  "Persisted task ID": "持久化任务 ID",
+  "Queuing...": "正在排队...",
+  "Local demo only": "仅查看本地演示",
+  "agents: Auto-filled (local demo only)": "智能体：自动填充（仅本地演示）",
+  "agents: persisted plan only; execution not verified": "智能体：仅展示持久化计划，执行结果尚未验证",
+  "Save local demo changes": "保存本地演示修改",
+  "Edit local demo": "编辑本地演示",
+  "Demonstration only": "仅供演示",
+  "No execution evidence": "暂无执行证据",
+  "matching audit: unavailable": "匹配审计：暂不可用",
+};
+
+export function localQueenCopy(text: string, locale: "en" | "zh-CN"): string {
+  if (locale !== "zh-CN") return text;
+  return Object.entries(queenLocalZhCopy).reduce((result, [english, chinese]) => result.split(english).join(chinese), text);
+}
 
 type AgentId = string;
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -54,6 +104,7 @@ type QueenTaskNode = {
   required: boolean;
   judgesNodeId?: string;
   repairsNodeId?: string;
+  assignedAgentId?: string;
 };
 type QueenTaskGraphResult = {
   taskId: string;
@@ -146,151 +197,6 @@ mutation OrchestrateAgents($input: AgentOrchestrationInput!) {
   }
 }
 `;
-const PROPOSE_TASK_GRAPH_MUTATION = `
-mutation ProposeTaskGraph($input: ProposeTaskGraphInput!) {
-  proposeTaskGraph(input: $input) {
-    taskId
-    graphRevision
-    riskLevel
-    startPolicy
-    rescuePolicy { mode visibleToUser evidenceVisible }
-    nodes { nodeId type title dependencies required }
-    edges { from to condition }
-  }
-}
-`;
-const AMEND_TASK_GRAPH_MUTATION = `
-mutation AmendTaskGraph($input: AmendTaskGraphInput!) {
-  amendTaskGraph(input: $input) {
-    taskId
-    graphRevision
-    riskLevel
-    startPolicy
-    confirmationStatus
-    preservedAssignmentNodeIds
-    rescuePolicy { mode visibleToUser evidenceVisible }
-    nodes { nodeId type title dependencies required judgesNodeId repairsNodeId }
-    edges { from to condition }
-  }
-}
-`;
-const RANK_NODE_AGENTS_MUTATION = `
-mutation RankNodeAgents($input: RankNodeAgentsInput!) {
-  rankNodeAgents(input: $input) {
-    nodeId
-    autoSelectedAgentId
-    rankingPolicy
-    matchingAudit {
-      policyVersion
-      eligibleCount
-      selectedIds
-      selectionReasons
-      seedHash
-      historyCount
-      coldStartCount
-    }
-    candidates { agentId displayName modelTag costPer1kTokensUsd qualityScore status rankingScore }
-  }
-}
-`;
-const ACCEPT_NODE_ASSIGNMENT_MUTATION = `
-mutation AcceptNodeAssignment($input: AcceptNodeAssignmentInput!) {
-  acceptNodeAssignment(input: $input) {
-    nodeId
-    selectedAgentId
-    status
-  }
-}
-`;
-const SELECT_NODE_AGENT_MUTATION = `
-mutation SelectNodeAgent($input: SelectNodeAgentInput!) {
-  selectNodeAgent(input: $input) {
-    nodeId
-    selectedAgentId
-    status
-  }
-}
-`;
-const CONFIRM_TASK_GRAPH_MUTATION = `
-mutation ConfirmTaskGraph($input: ConfirmTaskGraphInput!) {
-  confirmTaskGraph(input: $input) {
-    taskId
-    graphRevision
-    confirmationStatus
-  }
-}
-`;
-const START_TASK_RUN_MUTATION = `
-mutation StartTaskRun($input: StartTaskRunInput!) {
-  startTaskRun(input: $input) {
-    taskId
-    runId
-    status
-    reasonCode
-  }
-}
-`;
-const SUBMIT_NODE_OUTPUT_MUTATION = `
-mutation SubmitNodeOutput($input: SubmitNodeOutputInput!) {
-  submitNodeOutput(input: $input) {
-    nodeId
-    outputId
-    output
-    status
-  }
-}
-`;
-const JUDGE_NODE_OUTPUT_MUTATION = `
-mutation JudgeNodeOutput($input: JudgeNodeOutputInput!) {
-  judgeNodeOutput(input: $input) {
-    nodeId
-    judgeAgentId
-    verdict
-    score
-    redTeamRequired
-    status
-  }
-}
-`;
-const REQUEST_ADVERSARIAL_REVIEW_MUTATION = `
-mutation RequestAdversarialReview($input: RequestAdversarialReviewInput!) {
-  requestAdversarialReview(input: $input) {
-    nodeId
-    redTeamAgentId
-    findings
-    status
-  }
-}
-`;
-const REPAIR_NODE_MUTATION = `
-mutation RepairNode($input: RepairNodeInput!) {
-  repairNode(input: $input) {
-    parentNodeId
-    repairNodeId
-    output
-    status
-  }
-}
-`;
-const FINAL_ARBITRATE_MUTATION = `
-mutation FinalArbitrate($input: FinalArbitrateInput!) {
-  finalArbitrate(input: $input) {
-    taskId
-    finalArbiterAgentId
-    verdict
-    finalOutput
-  }
-}
-`;
-const WRITE_LEARNING_LOOP_MUTATION = `
-mutation WriteLearningLoop($input: WriteLearningLoopInput!) {
-  writeLearningLoop(input: $input) {
-    memoryRecordId
-    status
-    summary
-  }
-}
-`;
 
 const fallbackAgents: DisplayAgent[] = publicAgentCatalog.map((agent) => ({
   id: agent.id,
@@ -313,6 +219,11 @@ export function LocalAgentsPage({
   initialQueenRanks?: Record<string, QueenRankResult>;
   walletAddress?: string | null;
 } = {}) {
+  const { locale } = useLanguage();
+  const zh = locale === "zh-CN";
+  const queenCopy = (text: string) => localQueenCopy(text, locale);
+  const [agentSearch, setAgentSearch] = useState("");
+  const [openAgentGroups, setOpenAgentGroups] = useState<Record<string, boolean>>({ current: true });
   const [selectedId, setSelectedId] = useState<AgentId>("personal-ai-agent-runtime-v4-1");
   const [health, setHealth] = useState<Health>({ status: "offline", agents: [], reasonCode: "RUNTIME_OFFLINE" });
   const [healthRevision, setHealthRevision] = useState(0);
@@ -325,8 +236,14 @@ export function LocalAgentsPage({
   const [orchestrationIds, setOrchestrationIds] = useState<AgentId[]>([]);
   const [queenWorkflow, setQueenWorkflow] = useState<QueenWorkflowState>(initialQueenWorkflow ?? { status: "idle", log: [] });
   const [queenRanks, setQueenRanks] = useState<Record<string, QueenRankResult>>(initialQueenRanks);
-  const [queenAssignments, setQueenAssignments] = useState<Record<string, QueenAssignmentResult>>({});
-  const [queenNodeOutputs, setQueenNodeOutputs] = useState<Record<string, string>>({});
+  const [planningTaskId, setPlanningTaskId] = useState("");
+  const [demoMode, setDemoMode] = useState(true);
+  const [needsLogin, setNeedsLogin] = useState(true);
+  const [planningNotice, setPlanningNotice] = useState("");
+  const [readback, setReadback] = useState<{ wallet: string; revision: number; value: QueenPlanningStatus } | null>(null);
+  const planningAbortRef = useRef<AbortController | null>(null);
+  const planningSequence = useRef(0);
+  const clientRef = useRef<ReturnType<typeof createQueenPlanningClient> | null>(null);
   const [queenBusy, setQueenBusy] = useState<string | null>(null);
   const [queenDraftGraph, setQueenDraftGraph] = useState<QueenTaskGraphResult | null>(null);
   const [queenNodePositions, setQueenNodePositions] = useState<QueenNodePositions>({});
@@ -339,6 +256,22 @@ export function LocalAgentsPage({
     [displayAgents, selectedId],
   );
   const healthById = useMemo(() => new Map(health.agents.map((agent) => [agent.agentId, agent])), [health.agents]);
+  const agentGroups = [
+    { id: "current", label: zh ? "当前与已验证模型" : "Current and verified models" },
+    { id: "candidates", label: zh ? "候选模型" : "Candidate models" },
+    { id: "history", label: zh ? "历史模型" : "Historical models" },
+  ].map((group) => ({
+    ...group,
+    agents: displayAgents.filter((agent) => {
+      const historical = /historical|earlier self-trained/i.test(`${agent.name} ${agent.note}`);
+      const groupId = historical ? "history"
+        : healthById.get(agent.id)?.status === "online" || agent.verification === "verified" || ownerAgents.some((owner) => owner.id === agent.id)
+          ? "current" : "candidates";
+      const labels = [agent.name, agent.model, agent.provider, agent.ownership, agent.selectableBy, group.label];
+      const searchable = labels.flatMap((label) => [label, translateLocalizedText("zh-CN", label)]).join(" ").toLowerCase();
+      return groupId === group.id && searchable.includes(agentSearch.trim().toLowerCase());
+    }),
+  }));
   const orchestrationAgents = useMemo(
     () => orchestrationIds
       .map((id) => displayAgents.find((agent) => agent.id === id))
@@ -352,8 +285,15 @@ export function LocalAgentsPage({
   const orchestrationModelConflict = hasDuplicateModels(orchestrationAgents);
   const runtimeAvailable = health.status !== "offline";
   const canRunOrchestration = runtimeAvailable && !busy && orchestrationAgents.length >= 2 && !orchestrationModelConflict && draft.trim().length > 0;
-  const visibleQueenGraph = queenDraftGraph ?? queenWorkflow.graph;
-  const queenGraphEditable = canEditQueenDraft(queenWorkflow.status, queenBusy);
+  const livePlanning = readback?.wallet === walletAddress?.toLowerCase()
+    && readback?.revision === walletSessionRevision() && readback.value.task.taskId === planningTaskId.trim()
+    ? readback.value : null;
+  const visibleQueenGraph = demoMode ? queenDraftGraph ?? queenWorkflow.graph : livePlanning?.request?.plan?.graph;
+  const queenGraphEditable = demoMode && canEditQueenDraft(queenWorkflow.status, queenBusy);
+  const presentedQueenWorkflow: QueenWorkflowState = demoMode ? queenWorkflow : {
+    status: queenBusy ? "proposing" : "idle",
+    log: [planningNotice, livePlanning ? queenPlanningStatusLabel(livePlanning) : "No private plan loaded. Read a persisted task; no demo fallback."].filter(Boolean),
+  };
 
   useEffect(() => {
     let active = true;
@@ -454,443 +394,104 @@ export function LocalAgentsPage({
     }
   }
 
-  async function proposeQueenWorkflow() {
-    const requirement = draft.trim() || "Build a verified Agent Market task with Queen-led GraphQL orchestration.";
-    const abort = new AbortController();
-    abortRef.current = abort;
-    setQueenWorkflow({ status: "proposing", log: ["Queen is decomposing the requirement into a task plan..."] });
-    setQueenBusy("prepare");
-    setLastError(null);
-    try {
-      const data = await runQueenMutation<{ proposeTaskGraph: QueenTaskGraphResult }>({
-        operationName: "ProposeTaskGraph",
-        query: PROPOSE_TASK_GRAPH_MUTATION,
-        input: {
-          requestId: crypto.randomUUID(),
-          requirement,
-          queenAgentId: "queen-router-v1",
-        },
-        signal: abort.signal,
-      });
-      const graph = data.proposeTaskGraph;
-      setQueenRanks({});
-      setQueenAssignments({});
-      setQueenNodeOutputs({});
-      setQueenWorkflow({
-        status: "ready",
-        graph,
-        log: [
-          `Task plan revision ${graph.graphRevision} is ready.`,
-          `Risk: ${graph.riskLevel}; start policy: ${graph.startPolicy}.`,
-          `Rescue policy is ${graph.rescuePolicy.evidenceVisible ? "evidence-visible" : "hidden"}.`,
-          "Auto-filling recommended agents for every task node...",
-        ],
-      });
-      await prepareQueenAssignments(graph, abort.signal);
-      appendQueenLog("Auto-filled recommended agents and accepted assignments.");
-    } catch (error) {
-      if (!abort.signal.aborted) {
-        const message = error instanceof Error ? error.message : "Queen workflow failed";
-        setLastError(message);
-        setQueenWorkflow({ status: "error", log: [message] });
-      }
-    } finally {
-      setQueenBusy(null);
-      abortRef.current = null;
-    }
+  function clearPlanning() {
+    planningSequence.current += 1;
+    planningAbortRef.current?.abort();
+    planningAbortRef.current = null;
+    clientRef.current = null;
+    setReadback(null);
+    setQueenBusy(null);
+    setPlanningNotice("");
+    setQueenDraftGraph(null);
+    setQueenNodePositions({});
+    setQueenRanks({});
+    setQueenWorkflow({ status: "idle", log: [] });
   }
 
-  async function prepareQueenAssignments(graph: QueenTaskGraphResult, signal: AbortSignal) {
-    const accepted: Record<string, QueenAssignmentResult> = {};
-    const selectedModelTags: Record<string, string> = {};
-    for (const node of graph.nodes) {
-      const rankData = await runQueenMutation<{ rankNodeAgents: QueenRankResult }>({
-        operationName: "RankNodeAgents",
-        query: RANK_NODE_AGENTS_MUTATION,
-        input: {
-          taskId: graph.taskId,
-          nodeId: node.nodeId,
-          requiredCapabilities: capabilitiesForQueenNode(node),
-        },
-        signal,
-      });
-      setQueenRanks((current) => ({ ...current, [node.nodeId]: rankData.rankNodeAgents }));
+  useEffect(() => {
+    clearPlanning();
+    try { assertWalletSessionAuthenticated(); setNeedsLogin(!walletAddress); }
+    catch { setNeedsLogin(true); }
+    const unsubscribe = subscribeWalletSession(() => {
+      clearPlanning();
+      setNeedsLogin(true);
+      setPlanningNotice("Wallet session invalidated. Sign in again to read private plans.");
+    });
+    return () => {
+      unsubscribe();
+      planningSequence.current += 1;
+      planningAbortRef.current?.abort();
+    };
+  }, [walletAddress]);
 
-      const selectedCandidate = rankData.rankNodeAgents.candidates.find((candidate) =>
-        isIndependentQueenCandidate(node, candidate, graph, selectedModelTags),
-      );
-      if (!selectedCandidate) throw new Error(`节点「${node.title}」没有独立且合格的 Agent / No independent eligible agent.`);
-      const selectedAgentId = selectedCandidate.agentId;
-
-      const assignmentData = await runQueenMutation<{ acceptNodeAssignment: QueenAssignmentResult }>({
-        operationName: "AcceptNodeAssignment",
-        query: ACCEPT_NODE_ASSIGNMENT_MUTATION,
-        input: { taskId: graph.taskId, nodeId: node.nodeId, agentId: selectedAgentId },
-        signal,
-      });
-      accepted[node.nodeId] = assignmentData.acceptNodeAssignment;
-      selectedModelTags[node.nodeId] = selectedCandidate.modelTag;
-      setQueenAssignments((current) => ({ ...current, [node.nodeId]: assignmentData.acceptNodeAssignment }));
+  async function runPlanningAction(action: "read" | "login" | "propose" | "confirm") {
+    const taskId = planningTaskId.trim();
+    if (!walletAddress || !isPlanningTaskId(taskId) || queenBusy) return;
+    if (action === "propose" && !livePlanning) return;
+    if (action === "confirm" && (!livePlanning || !canConfirmQueenPlanning(livePlanning))) return;
+    const revision = walletSessionRevision();
+    const sequence = ++planningSequence.current;
+    const abort = new AbortController();
+    planningAbortRef.current?.abort();
+    planningAbortRef.current = abort;
+    setDemoMode(false);
+    setQueenBusy(action);
+    setPlanningNotice("");
+    const current = () => sequence === planningSequence.current
+      && revision === walletSessionRevision() && !abort.signal.aborted;
+    const applyReadback = (value: QueenPlanningStatus) => {
+      if (current()) setReadback({ wallet: walletAddress.toLowerCase(), revision, value });
+    };
+    try {
+      if (action === "login") {
+        // The only signature path is this explicitly clicked action.
+        await authenticateWalletSession(walletAddress);
+        if (!current()) return;
+        clientRef.current = createQueenPlanningClient();
+        setNeedsLogin(false);
+      }
+      const client = clientRef.current ??= createQueenPlanningClient();
+      if (action === "propose") {
+        const result = await client.propose(livePlanning!.task, abort.signal);
+        if (!current()) return;
+        setReadback(null);
+        setPlanningNotice(`requestId: ${result.requestId}; ${result.status}; duplicate: ${result.duplicate}. Queued only, not a generated graph or execution.`);
+      }
+      if (action === "confirm") {
+        const result = await client.confirm(livePlanning!, true, abort.signal);
+        if (!current()) return;
+        setReadback(null);
+        setPlanningNotice(`approvalId: ${result.approvalId}; ${result.status}; duplicate: ${result.duplicate}. Approval recorded, not execution completed.`);
+      }
+      applyReadback(await client.read(taskId, abort.signal));
+    } catch (error) {
+      if (!current()) return;
+      setReadback(null);
+      const code = error instanceof Error ? error.message : "QUEEN_GRAPHQL_UNAVAILABLE";
+      const authFailure = ["AUTH_SESSION_INVALID", "AUTH_REAUTH_REQUIRED", "AUTH_WALLET_CHANGED"].includes(code);
+      if (authFailure) { setNeedsLogin(true); clientRef.current = null; }
+      const safe = Object.hasOwn(QUEEN_PLANNING_ERROR_STATUS, code)
+        || ["AUTH_REAUTH_REQUIRED", "AUTH_WALLET_CHANGED", "QUEEN_REQUEST_TIMEOUT", "QUEEN_GRAPHQL_INVALID_RESPONSE"].includes(code)
+        ? code : "QUEEN_GRAPHQL_UNAVAILABLE";
+      setPlanningNotice((previous) => [previous, safe, safe === "QUEEN_ASYNC_PLANNING_DISABLED"
+        ? "Planning producer/worker readiness is not enabled on this host. History can still be read; no flags were changed."
+        : authFailure ? "Click Sign in and read to sign in again. No automatic signature or mutation retry."
+          : "Readback unavailable. Refresh status before any further action; do not assume a mutation failed or retry execution."].filter(Boolean).join(" "));
+    } finally {
+      if (current()) { setQueenBusy(null); planningAbortRef.current = null; }
     }
-    return accepted;
   }
 
   function beginQueenWorkflowEdit() {
-    if (!queenWorkflow.graph || !queenGraphEditable) return;
-    setQueenDraftGraph({
-      ...queenWorkflow.graph,
-      nodes: queenWorkflow.graph.nodes.map((node) => ({ ...node, dependencies: [...node.dependencies] })),
-      edges: queenWorkflow.graph.edges.map((edge) => ({ ...edge })),
-    });
+    if (!demoMode || !queenWorkflow.graph || !queenGraphEditable) return;
+    setQueenDraftGraph(structuredClone(queenWorkflow.graph));
     setQueenNodePositions({});
   }
 
-  async function saveQueenWorkflowEdit() {
-    if (!queenDraftGraph || queenBusy) return;
-    if (queenDraftGraph.nodes.some((node) => node.title.trim().length === 0)) {
-      setLastError("Every workflow node needs a title before saving.");
-      return;
-    }
-    const abort = new AbortController();
-    abortRef.current = abort;
-    setQueenBusy("amend");
-    setLastError(null);
-    try {
-      const data = await runQueenMutation<{ amendTaskGraph: QueenTaskGraphResult & { confirmationStatus: string; preservedAssignmentNodeIds: string[] } }>({
-        operationName: "AmendTaskGraph",
-        query: AMEND_TASK_GRAPH_MUTATION,
-        input: {
-          taskId: queenDraftGraph.taskId,
-          nodes: queenDraftGraph.nodes.map((node) => ({ ...node, title: node.title.trim() })),
-          edges: queenDraftGraph.edges,
-        },
-        signal: abort.signal,
-      });
-      setQueenWorkflow((current) => ({
-        ...current,
-        graph: data.amendTaskGraph,
-        log: [...current.log, `Workflow revision ${data.amendTaskGraph.graphRevision} saved; confirmation is pending.`].slice(-10),
-      }));
-      setQueenDraftGraph(null);
-      setQueenNodePositions({});
-    } catch (error) {
-      if (!abort.signal.aborted) {
-        const failure = preserveQueenDraftAfterSaveFailure(queenDraftGraph, error);
-        setQueenDraftGraph(failure.graph);
-        setLastError(failure.reason);
-        appendQueenLog(`Workflow amendment failed: ${failure.reason}`);
-      }
-    } finally {
-      setQueenBusy(null);
-      abortRef.current = null;
-    }
-  }
-
-  async function selectQueenNodeAgent(nodeId: string, selectedAgentId: string) {
-    const graph = queenWorkflow.graph;
-    if (!graph || queenBusy) return;
-    const abort = new AbortController();
-    abortRef.current = abort;
-    setQueenBusy(`select:${nodeId}`);
-    setLastError(null);
-    try {
-      const node = graph.nodes.find((candidate) => candidate.nodeId === nodeId);
-      const selectedCandidate = queenRanks[nodeId]?.candidates.find((candidate) => candidate.agentId === selectedAgentId);
-      const selectedModelTags = Object.fromEntries(
-        Object.entries(queenAssignments).flatMap(([assignedNodeId, assignment]) => {
-          const modelTag = queenRanks[assignedNodeId]?.candidates.find((candidate) => candidate.agentId === assignment.selectedAgentId)?.modelTag;
-          return modelTag ? [[assignedNodeId, modelTag]] : [];
-        }),
-      );
-      if (!node || !selectedCandidate || !isIndependentQueenCandidate(node, selectedCandidate, graph, selectedModelTags)) {
-        throw new Error("Judge 与 Final Arbiter 必须使用独立于被审查工作的模型 / independent review models are required.");
-      }
-      await runQueenMutation<{ selectNodeAgent: QueenAssignmentResult }>({
-        operationName: "SelectNodeAgent",
-        query: SELECT_NODE_AGENT_MUTATION,
-        input: { taskId: graph.taskId, nodeId, selectedAgentId, selectedBy: "user" },
-        signal: abort.signal,
-      });
-      const accepted = await runQueenMutation<{ acceptNodeAssignment: QueenAssignmentResult }>({
-        operationName: "AcceptNodeAssignment",
-        query: ACCEPT_NODE_ASSIGNMENT_MUTATION,
-        input: { taskId: graph.taskId, nodeId, agentId: selectedAgentId },
-        signal: abort.signal,
-      });
-      setQueenAssignments((current) => ({ ...current, [nodeId]: accepted.acceptNodeAssignment }));
-      appendQueenLog(`User selected ${selectedAgentId} for ${nodeId}; confirmation is pending.`);
-    } catch (error) {
-      if (!abort.signal.aborted) {
-        const message = error instanceof Error ? error.message : "Agent selection failed";
-        setLastError(message);
-        appendQueenLog(`Agent selection failed for ${nodeId}: ${message}`);
-      }
-    } finally {
-      setQueenBusy(null);
-      abortRef.current = null;
-    }
-  }
-
-  async function runQueenNodeAction(node: QueenTaskNode, action: "rank" | "accept" | "execute" | "judge" | "red_team" | "repair" | "final" | "learn") {
-    if (!queenWorkflow.graph || queenBusy) return;
-    const graph = queenWorkflow.graph;
-    const abort = new AbortController();
-    abortRef.current = abort;
-    setQueenBusy(`${action}:${node.nodeId}`);
-    setLastError(null);
-    try {
-      if (action === "rank") {
-        const data = await runQueenMutation<{ rankNodeAgents: QueenRankResult }>({
-          operationName: "RankNodeAgents",
-          query: RANK_NODE_AGENTS_MUTATION,
-          input: {
-            taskId: graph.taskId,
-            nodeId: node.nodeId,
-            requiredCapabilities: capabilitiesForQueenNode(node),
-          },
-          signal: abort.signal,
-        });
-        setQueenRanks((current) => ({ ...current, [node.nodeId]: data.rankNodeAgents }));
-        appendQueenLog(`Ranked ${node.nodeId}; auto-selected ${data.rankNodeAgents.autoSelectedAgentId ?? "none"}.`);
-      }
-      if (action === "accept") {
-        const selectedAgentId = queenRanks[node.nodeId]?.autoSelectedAgentId;
-        if (!selectedAgentId) throw new Error(`No selected agent for ${node.nodeId}; rank first.`);
-        const data = await runQueenMutation<{ acceptNodeAssignment: QueenAssignmentResult }>({
-          operationName: "AcceptNodeAssignment",
-          query: ACCEPT_NODE_ASSIGNMENT_MUTATION,
-          input: { taskId: graph.taskId, nodeId: node.nodeId, agentId: selectedAgentId },
-          signal: abort.signal,
-        });
-        setQueenAssignments((current) => ({ ...current, [node.nodeId]: data.acceptNodeAssignment }));
-        appendQueenLog(`Accepted ${node.nodeId} by ${data.acceptNodeAssignment.selectedAgentId}.`);
-      }
-      if (action === "execute") {
-        const executorAgentId = queenAssignments[node.nodeId]?.selectedAgentId;
-        if (!executorAgentId) throw new Error(`Accept ${node.nodeId} first.`);
-        const data = await runQueenMutation<{ submitNodeOutput: { nodeId: string; output: string; status: string } }>({
-          operationName: "SubmitNodeOutput",
-          query: SUBMIT_NODE_OUTPUT_MUTATION,
-          input: { taskId: graph.taskId, nodeId: node.nodeId, executorAgentId },
-          signal: abort.signal,
-        });
-        setQueenNodeOutputs((current) => ({ ...current, [node.nodeId]: data.submitNodeOutput.output }));
-        appendQueenLog(`Submitted ${node.nodeId}: ${clipLog(data.submitNodeOutput.output)}`);
-      }
-      if (action === "judge") {
-        const judgedNodeId = node.judgesNodeId ?? "execute-1";
-        const judgeAgentId = queenAssignments[node.nodeId]?.selectedAgentId;
-        if (!judgeAgentId) throw new Error(`Accept judge node ${node.nodeId} first.`);
-        const data = await runQueenMutation<{ judgeNodeOutput: { verdict: string; score: number; redTeamRequired: boolean } }>({
-          operationName: "JudgeNodeOutput",
-          query: JUDGE_NODE_OUTPUT_MUTATION,
-          input: { taskId: graph.taskId, nodeId: judgedNodeId, judgeAgentId },
-          signal: abort.signal,
-        });
-        appendQueenLog(`Judged ${judgedNodeId}: ${data.judgeNodeOutput.verdict}, score ${data.judgeNodeOutput.score}, red-team ${data.judgeNodeOutput.redTeamRequired ? "required" : "not required"}.`);
-      }
-      if (action === "red_team") {
-        const targetNodeId = firstNodeId(graph, "execute");
-        const redTeamAgentId = queenAssignments[node.nodeId]?.selectedAgentId;
-        if (!redTeamAgentId) throw new Error(`Accept red-team node ${node.nodeId} first.`);
-        const data = await runQueenMutation<{ requestAdversarialReview: { findings: string } }>({
-          operationName: "RequestAdversarialReview",
-          query: REQUEST_ADVERSARIAL_REVIEW_MUTATION,
-          input: { taskId: graph.taskId, nodeId: targetNodeId, redTeamAgentId },
-          signal: abort.signal,
-        });
-        appendQueenLog(`Red-team findings: ${clipLog(data.requestAdversarialReview.findings)}`);
-      }
-      if (action === "repair") {
-        const parentNodeId = node.repairsNodeId ?? firstNodeId(graph, "execute");
-        const repairAgentId = queenAssignments[node.nodeId]?.selectedAgentId ?? queenAssignments[parentNodeId]?.selectedAgentId;
-        if (!repairAgentId) throw new Error(`Accept repair node or parent executor first.`);
-        const data = await runQueenMutation<{ repairNode: { repairNodeId: string; output: string } }>({
-          operationName: "RepairNode",
-          query: REPAIR_NODE_MUTATION,
-          input: { taskId: graph.taskId, parentNodeId, repairAgentId },
-          signal: abort.signal,
-        });
-        appendQueenLog(`Repair ${data.repairNode.repairNodeId}: ${clipLog(data.repairNode.output)}`);
-      }
-      if (action === "final") {
-        const finalArbiterAgentId = queenAssignments[node.nodeId]?.selectedAgentId;
-        if (!finalArbiterAgentId) throw new Error(`Accept final arbiter node ${node.nodeId} first.`);
-        const data = await runQueenMutation<{ finalArbitrate: { verdict: string; finalOutput: string } }>({
-          operationName: "FinalArbitrate",
-          query: FINAL_ARBITRATE_MUTATION,
-          input: { taskId: graph.taskId, finalArbiterAgentId },
-          signal: abort.signal,
-        });
-        appendQueenLog(`Final arbitration ${data.finalArbitrate.verdict}: ${clipLog(data.finalArbitrate.finalOutput)}`);
-      }
-      if (action === "learn") {
-        const data = await runQueenMutation<{ writeLearningLoop: { status: string; summary: string } }>({
-          operationName: "WriteLearningLoop",
-          query: WRITE_LEARNING_LOOP_MUTATION,
-          input: {
-            taskId: graph.taskId,
-            summary: `Queen workflow ${graph.taskId} completed with graph revision ${graph.graphRevision}.`,
-          },
-          signal: abort.signal,
-        });
-        appendQueenLog(`Learning Loop ${data.writeLearningLoop.status}: ${clipLog(data.writeLearningLoop.summary)}`);
-      }
-    } catch (error) {
-      if (!abort.signal.aborted) {
-        const message = error instanceof Error ? error.message : "Queen node action failed";
-        setLastError(message);
-        appendQueenLog(`Error on ${action} ${node.nodeId}: ${message}`);
-      }
-    } finally {
-      setQueenBusy(null);
-      abortRef.current = null;
-    }
-  }
-
-  async function startQueenWorkflow() {
-    if (!queenWorkflow.graph || queenBusy) return;
-    const graph = queenWorkflow.graph;
-    if (graph.startPolicy === "manualRequired" && typeof window !== "undefined") {
-      const approved = window.confirm("This workflow is marked high risk. Starting it may spend provider quota or run local models. Continue?");
-      if (!approved) {
-        appendQueenLog("Start cancelled by user after high-risk confirmation.");
-        return;
-      }
-    }
-    const abort = new AbortController();
-    abortRef.current = abort;
-    setQueenBusy("workflow");
-    setLastError(null);
-    setQueenWorkflow((current) => ({
-      ...current,
-      status: "running",
-      activeNodeId: "confirm-workflow",
-      log: [...current.log, "Confirming workflow and accepted assignments..."].slice(-10),
-    }));
-    try {
-      const assignments = graph.nodes.some((node) => queenAssignments[node.nodeId]?.status !== "accepted")
-        ? await prepareQueenAssignments(graph, abort.signal)
-        : queenAssignments;
-      if (Object.keys(assignments).length > 0) appendQueenLog("Recommended agents are confirmed.");
-
-      const confirmation = await runQueenMutation<{ confirmTaskGraph: { graphRevision: number; confirmationStatus: string } }>({
-        operationName: "ConfirmTaskGraph",
-        query: CONFIRM_TASK_GRAPH_MUTATION,
-        input: { taskId: graph.taskId },
-        signal: abort.signal,
-      });
-      appendQueenLog(`Workflow revision ${confirmation.confirmTaskGraph.graphRevision} is ${confirmation.confirmTaskGraph.confirmationStatus}.`);
-
-      const data = await runQueenMutation<{ startTaskRun: { status: string; reasonCode?: string; runId?: string } }>({
-        operationName: "StartTaskRun",
-        query: START_TASK_RUN_MUTATION,
-        input: {
-          taskId: graph.taskId,
-          manualApproval: graph.startPolicy === "manualRequired" ? true : undefined,
-        },
-        signal: abort.signal,
-      });
-      appendQueenLog(`Workflow start: ${data.startTaskRun.status}${data.startTaskRun.reasonCode ? ` / ${data.startTaskRun.reasonCode}` : ""}${data.startTaskRun.runId ? ` / ${data.startTaskRun.runId}` : ""}`);
-      if (data.startTaskRun.status !== "running") {
-        throw new Error(data.startTaskRun.reasonCode ?? `Workflow start returned ${data.startTaskRun.status}`);
-      }
-
-      for (const node of graph.nodes) {
-        setQueenWorkflow((current) => ({
-          ...current,
-          status: "running",
-          activeNodeId: node.nodeId,
-          log: [...current.log, `Running ${node.nodeId}: ${node.title}`].slice(-10),
-        }));
-        if (node.type === "execute") {
-          const executorAgentId = assignments[node.nodeId]?.selectedAgentId;
-          if (!executorAgentId) throw new Error(`No confirmed executor for ${node.title}.`);
-          const output = await runQueenMutation<{ submitNodeOutput: { nodeId: string; output: string; status: string } }>({
-            operationName: "SubmitNodeOutput",
-            query: SUBMIT_NODE_OUTPUT_MUTATION,
-            input: { taskId: graph.taskId, nodeId: node.nodeId, executorAgentId },
-            signal: abort.signal,
-          });
-          setQueenNodeOutputs((current) => ({ ...current, [node.nodeId]: output.submitNodeOutput.output }));
-          appendQueenLog(`Executor completed: ${clipLog(output.submitNodeOutput.output)}`);
-        }
-        if (node.type === "judge") {
-          const judgeAgentId = assignments[node.nodeId]?.selectedAgentId;
-          if (!judgeAgentId) throw new Error(`No confirmed judge for ${node.title}.`);
-          const judgedNodeId = node.judgesNodeId ?? firstNodeId(graph, "execute");
-          const verdict = await runQueenMutation<{ judgeNodeOutput: { verdict: string; score: number; redTeamRequired: boolean } }>({
-            operationName: "JudgeNodeOutput",
-            query: JUDGE_NODE_OUTPUT_MUTATION,
-            input: { taskId: graph.taskId, nodeId: judgedNodeId, judgeAgentId },
-            signal: abort.signal,
-          });
-          appendQueenLog(`Independent judge: ${verdict.judgeNodeOutput.verdict}, score ${verdict.judgeNodeOutput.score}.`);
-        }
-        if (node.type === "red_team") {
-          const redTeamAgentId = assignments[node.nodeId]?.selectedAgentId;
-          if (!redTeamAgentId) throw new Error(`No confirmed red-team agent for ${node.title}.`);
-          const review = await runQueenMutation<{ requestAdversarialReview: { findings: string } }>({
-            operationName: "RequestAdversarialReview",
-            query: REQUEST_ADVERSARIAL_REVIEW_MUTATION,
-            input: { taskId: graph.taskId, nodeId: firstNodeId(graph, "execute"), redTeamAgentId },
-            signal: abort.signal,
-          });
-          appendQueenLog(`Adversarial review completed: ${clipLog(review.requestAdversarialReview.findings)}`);
-        }
-        if (node.type === "repair") {
-          const parentNodeId = node.repairsNodeId ?? firstNodeId(graph, "execute");
-          const repairAgentId = assignments[node.nodeId]?.selectedAgentId ?? assignments[parentNodeId]?.selectedAgentId;
-          if (!repairAgentId) throw new Error(`No confirmed repair agent for ${node.title}.`);
-          const repair = await runQueenMutation<{ repairNode: { repairNodeId: string; output: string } }>({
-            operationName: "RepairNode",
-            query: REPAIR_NODE_MUTATION,
-            input: { taskId: graph.taskId, parentNodeId, repairAgentId },
-            signal: abort.signal,
-          });
-          appendQueenLog(`Repair path prepared: ${clipLog(repair.repairNode.output)}`);
-        }
-        if (node.type === "synthesize") {
-          const finalArbiterAgentId = assignments[node.nodeId]?.selectedAgentId;
-          if (!finalArbiterAgentId) throw new Error(`No confirmed final arbiter for ${node.title}.`);
-          const arbitration = await runQueenMutation<{ finalArbitrate: { verdict: string; finalOutput: string } }>({
-            operationName: "FinalArbitrate",
-            query: FINAL_ARBITRATE_MUTATION,
-            input: { taskId: graph.taskId, finalArbiterAgentId },
-            signal: abort.signal,
-          });
-          appendQueenLog(`Final arbiter: ${arbitration.finalArbitrate.verdict}; ${clipLog(arbitration.finalArbitrate.finalOutput)}`);
-        }
-        if (node.type === "deliver") {
-          const memory = await runQueenMutation<{ writeLearningLoop: { status: string; summary: string } }>({
-            operationName: "WriteLearningLoop",
-            query: WRITE_LEARNING_LOOP_MUTATION,
-            input: {
-              taskId: graph.taskId,
-              summary: `Queen workflow ${graph.taskId} completed with graph revision ${graph.graphRevision}.`,
-            },
-            signal: abort.signal,
-          });
-          appendQueenLog(`Learning Loop record: ${memory.writeLearningLoop.status}; ${clipLog(memory.writeLearningLoop.summary)}`);
-        }
-      }
-      setQueenWorkflow((current) => finalizeQueenWorkflowState(current, "succeeded", "Workflow completed with all required nodes."));
-    } catch (error) {
-      const message = abort.signal.aborted
-        ? "Workflow cancelled by user."
-        : error instanceof Error ? error.message : "Queen start failed";
-      if (!abort.signal.aborted) {
-        setLastError(message);
-      }
-      setQueenWorkflow((current) => finalizeQueenWorkflowState(
-        current,
-        abort.signal.aborted ? "cancelled" : "error",
-        abort.signal.aborted ? message : `Start error: ${message}`,
-      ));
-    } finally {
-      setQueenBusy(null);
-      abortRef.current = null;
-    }
+  function saveQueenWorkflowEdit() {
+    if (!demoMode || !queenDraftGraph || queenBusy) return;
+    setQueenWorkflow({ status: "ready", graph: queenDraftGraph, log: ["Local demonstration changes only. Nothing was sent or persisted."] });
+    setQueenDraftGraph(null);
   }
 
   function appendQueenLog(message: string) {
@@ -919,33 +520,77 @@ export function LocalAgentsPage({
   return (
     <Localized>
       <>
+        <div className="local-agents-intro">
         <PageHeader
           eyebrow="LIVE AGENT PLAYGROUND"
           title="Talk to real agents"
-          description="Workflow control surface for the local trained runtime plus DeepSeek, Kimi, Qwen, and Zhipu provider agents. Select agents in order, then let the lead agent orchestrate the final answer."
+          description={locale === "zh-CN" ? "选择智能体，描述任务，再查看流程与交付证据。" : "Select an agent, describe a task, then inspect the workflow and delivery evidence."}
           actions={<Badge tone={health.status === "online" ? "cyan" : health.status === "degraded" ? "amber" : "rose"}>{health.status.toUpperCase()}</Badge>}
         />
 
-        {!runtimeAvailable ? <div className="runtime-offline-callout" role="status"><div><strong>Runtime unavailable</strong><span>{health.reasonCode ?? "RUNTIME_OFFLINE"}. Queen planning, chat, and orchestration stay disabled until the signed Runtime health check succeeds.</span></div><button type="button" className="button button-ghost" onClick={() => setHealthRevision((current) => current + 1)}>Retry runtime health</button></div> : null}
+        </div>
+
+        {!runtimeAvailable ? <div className="runtime-offline-callout" role="status"><div><strong>Runtime unavailable</strong><span>{health.reasonCode ?? "RUNTIME_OFFLINE"}. {queenCopy("Chat and orchestration are disabled. Persisted Queen planning uses the separate authenticated TE gateway; Runtime health does not prove its worker readiness.")}</span></div><button type="button" className="button button-ghost" onClick={() => setHealthRevision((current) => current + 1)}>Retry runtime health</button></div> : null}
 
         <Panel className="queen-workflow-panel">
           <div className="panel-heading">
             <div>
               <h2>Queen-led GraphQL workflow</h2>
-              <p>Describe the task once. Queen plans the DAG, auto-fills recommended agents, asks for high-risk confirmation, then runs independent Judge and Final Arbiter gates behind one user-level flow.</p>
+              <p>{locale === "zh-CN" ? "Queen 规划，你确认；Agent 执行，Judge 与 Final Arbiter 独立验收。" : "Queen plans. You confirm. Agents execute under independent Judge and Final Arbiter review."}</p>
             </div>
-            <Badge tone={queenWorkflow.status === "ready" || queenWorkflow.status === "succeeded" ? "cyan" : queenWorkflow.status === "running" ? "amber" : queenWorkflow.status === "error" || queenWorkflow.status === "cancelled" ? "rose" : "neutral"}>
-              {queenWorkflow.status.toUpperCase()}
+            <Badge tone="neutral">
+              {queenCopy(demoMode ? "LOCAL DEMO" : queenBusy ? "READING / QUEUING" : (livePlanning?.request?.planningOperationStatus ?? "NOT LOADED").toUpperCase())}
             </Badge>
           </div>
-          <div className="runtime-boundary" aria-label="Risk Assessor preflight">
-            <span>Risk Assessor preflight</span>
-            <p><strong>Outside Queen DAG.</strong> The deterministic risk protocol and engine are <strong>verified-local</strong>. Production assessor unavailable because no production RiskAssessorClient is configured; this lane cannot claim a production assessment.</p>
+          <div className="queen-workflow-grid">
+            <div className="queen-workflow-copy">
+              <label className="queen-task-prompt">
+                <span>{zh ? "持久化任务 ID（UUID）" : "Persisted task ID (UUID)"}</span>
+                <input value={planningTaskId} maxLength={36} aria-label={queenCopy("Persisted task ID")} onChange={(event) => {
+                  clearPlanning(); setPlanningTaskId(event.target.value); setDemoMode(false);
+                }} />
+              </label>
+              <p>{zh ? "需求仅从已保存任务读取，不使用聊天输入。连接钱包不等于签名登录。" : "Requirement comes only from the saved task, never the chat prompt. Connecting a wallet is not signing in."}</p>
+              <p>{zh ? "真实主机及 Worker 就绪尚未验证；只有服务端允许才可排队。浏览器无执行权。" : "Live host/worker readiness is not verified; queuing requires server admission. The browser has no execution authority."}</p>
+              {livePlanning ? <p>taskVersion: {livePlanning.task.taskVersion}; {zh ? "任务状态：" : "task status: "}{livePlanning.task.status}</p> : null}
+              {livePlanning?.request ? <p style={{ overflowWrap: "anywhere" }}>requestId: {livePlanning.request.requestId}; graphRevision: {livePlanning.request.graphRevision}; fingerprint: {livePlanning.request.taskFingerprint}</p> : null}
+              <div className="button-row">
+              <button type="button" className="button button-ghost" disabled={!walletAddress || !isPlanningTaskId(planningTaskId.trim()) || queenBusy !== null} onClick={() => { void runPlanningAction("login"); }}>
+                {zh ? "签名登录并读取" : "Sign in and read"}
+              </button>
+              <button type="button" className="button button-ghost" disabled={!walletAddress || needsLogin || !isPlanningTaskId(planningTaskId.trim()) || queenBusy !== null} onClick={() => { void runPlanningAction("read"); }}>
+                {zh ? "刷新持久化状态" : "Refresh persisted status"}
+              </button>
+              <button type="button" className="button button-primary" disabled={demoMode || needsLogin || !livePlanning || livePlanning.task.status !== "open" || queenBusy !== null} onClick={() => { void runPlanningAction("propose"); }}>
+                {queenBusy === "propose" ? queenCopy("Queuing...") : "Generate workflow plan"}
+              </button>
+              <button type="button" className="button button-warning" disabled={demoMode || needsLogin || !livePlanning || !canConfirmQueenPlanning(livePlanning) || queenBusy !== null} onClick={() => { void runPlanningAction("confirm"); }}>
+                {zh ? "确认此版本计划（不执行）" : "Confirm this plan (not execution)"}
+              </button>
+              <button type="button" className="button button-ghost" onClick={() => { clearPlanning(); setDemoMode(true); }}>{queenCopy("Local demo only")}</button>
+              </div>
+              {!walletAddress ? <p role="status">{queenCopy("Connect a wallet using the existing wallet control, then explicitly sign in.")}</p> : null}
+              {demoMode ? <p role="status">{queenCopy("Local demonstration only. Not a real task, persisted plan, assignment or execution.")}</p> : null}
+            </div>
+            <div className="queen-workflow-log" role="log" aria-label={locale === "zh-CN" ? "工作流进度" : "Workflow progress"}>
+              {(presentedQueenWorkflow.log.length > 0 ? presentedQueenWorkflow.log : ["Local demonstration only. No persisted task loaded."]).map((item, index) => (
+                <span key={`${item}-${index}`}>{queenCopy(item)}</span>
+              ))}
+            </div>
           </div>
-          <QueenReactFlow
-            graph={visibleQueenGraph}
-            activeNodeId={queenWorkflow.activeNodeId}
-            status={queenWorkflow.status}
+          <details className="runtime-boundary queen-preflight">
+            <summary>{locale === "zh-CN" ? "风险评估：仅本地验证，生产评估尚不可用" : "Risk assessment: local validation only; production unavailable"}</summary>
+            <p><strong>Outside Queen DAG.</strong> The deterministic risk protocol and engine are <strong>verified-local</strong>. Production assessor unavailable because no production RiskAssessorClient is configured; this lane cannot claim a production assessment.</p>
+          </details>
+          {demoMode || visibleQueenGraph ? <QueenReactFlow
+            graph={visibleQueenGraph ? {
+              ...visibleQueenGraph,
+              edges: visibleQueenGraph.edges.map(({ condition, ...edge }) => (
+                condition === undefined ? edge : { ...edge, condition }
+              )),
+            } : undefined}
+            activeNodeId={demoMode ? queenWorkflow.activeNodeId : undefined}
+            status={demoMode ? queenWorkflow.status : "idle"}
             editMode={queenDraftGraph !== null && queenGraphEditable}
             locked={!queenGraphEditable}
             nodePositions={queenNodePositions}
@@ -954,26 +599,7 @@ export function LocalAgentsPage({
             onEdgesChange={(changes) => setQueenDraftGraph((current) => current ? applyQueenEdgeChangesToDraft(current, changes) : current)}
             onConnect={(edge) => setQueenDraftGraph((current) => current ? appendQueenDraftEdge(current, edge) : current)}
             onValidationError={(error) => setLastError(`${error.code}: ${error.message}`)}
-          />
-          <div className="queen-workflow-grid">
-            <div className="queen-workflow-copy">
-              <strong>Hard flow</strong>
-              <span>{"requirement -> task plan -> Auto-filled agents -> verified run -> delivery evidence"}</span>
-              <button type="button" className="button button-primary" disabled={!runtimeAvailable || queenWorkflow.status === "proposing" || queenBusy !== null} onClick={proposeQueenWorkflow}>
-                {queenWorkflow.status === "proposing" || queenBusy === "prepare" ? "Planning..." : "Generate workflow plan"}
-              </button>
-              <button type="button" className="button button-warning" disabled={!runtimeAvailable || !queenWorkflow.graph || queenBusy !== null || queenWorkflow.status === "succeeded" || queenDraftGraph !== null} onClick={startQueenWorkflow}>
-                {queenBusy === "workflow" ? "Running..." : queenWorkflow.status === "succeeded" ? "Workflow completed" : "Start workflow"}
-              </button>
-              {queenBusy === "workflow" ? <button type="button" className="button button-ghost" onClick={cancelQueenWorkflow}>Cancel workflow</button> : null}
-              {queenWorkflow.activeNodeId ? <span role="status"><strong>Current node</strong>: {queenWorkflow.activeNodeId}</span> : null}
-            </div>
-            <div className="queen-workflow-log">
-              {(queenWorkflow.log.length > 0 ? queenWorkflow.log : ["No task graph proposed yet."]).map((item, index) => (
-                <span key={`${item}-${index}`}>{item}</span>
-              ))}
-            </div>
-          </div>
+          /> : <div className="queen-react-flow" role="status">{queenCopy("No committed graph read back for this task. Queued is not generated; refresh persisted status. No demonstration fallback.")}</div>}
           {visibleQueenGraph ? (
             <div className="queen-dag">
               <div className="queen-dag-meta">
@@ -981,22 +607,20 @@ export function LocalAgentsPage({
                 <span>risk: {visibleQueenGraph.riskLevel}</span>
                 <span>start: {visibleQueenGraph.startPolicy}</span>
                 <span>rescue: {visibleQueenGraph.rescuePolicy.mode}</span>
-                <span>agents: Auto-filled</span>
+                <span>{queenCopy(demoMode ? "agents: Auto-filled (local demo only)" : "agents: persisted plan only; execution not verified")}</span>
                 {queenDraftGraph ? (
                   <>
-                    <button type="button" className="button button-primary" disabled={queenBusy !== null} onClick={saveQueenWorkflowEdit}>Save workflow changes</button>
+                    <button type="button" className="button button-primary" disabled={!demoMode || queenBusy !== null} onClick={saveQueenWorkflowEdit}>{queenCopy("Save local demo changes")}</button>
                     <button type="button" className="button button-ghost" disabled={queenBusy !== null} onClick={() => { setQueenDraftGraph(null); setQueenNodePositions({}); }}>Cancel editing</button>
                   </>
                 ) : (
-                  <button type="button" className="button button-ghost" disabled={!queenGraphEditable} onClick={beginQueenWorkflowEdit}>Edit workflow</button>
+                  <button type="button" className="button button-ghost" disabled={!queenGraphEditable} onClick={beginQueenWorkflowEdit}>{queenCopy("Edit local demo")}</button>
                 )}
               </div>
               <div className="queen-node-list">
                 {visibleQueenGraph.nodes.map((node) => {
-                  const selectedAgentId = queenAssignments[node.nodeId]?.selectedAgentId ?? queenRanks[node.nodeId]?.autoSelectedAgentId;
-                  const nodeStatus = queenAssignments[node.nodeId]?.status === "accepted"
-                    ? "Accepted"
-                    : selectedAgentId ? "Recommended" : "Queued";
+                  const selectedAgentId = demoMode ? queenRanks[node.nodeId]?.autoSelectedAgentId : node.assignedAgentId;
+                  const nodeStatus = demoMode ? "Demonstration only" : "No execution evidence";
                   return (
                     <div key={node.nodeId} className={`queen-node queen-node-${node.type}`}>
                       <strong>{node.type}</strong>
@@ -1011,7 +635,7 @@ export function LocalAgentsPage({
                       <small>{node.nodeId} {node.required ? "/ required" : "/ rescue"}</small>
                       <em>{node.dependencies.length > 0 ? `after ${node.dependencies.join(", ")}` : "entry"}</em>
                       <small>agent: {selectedAgentId ?? "Auto-fill pending"}</small>
-                      <small>status: {nodeStatus}</small>
+                      <small>status: {queenCopy(nodeStatus)}</small>
                       {queenRanks[node.nodeId]?.matchingAudit ? (
                         <div className="runtime-boundary" aria-label={`Matching audit for ${node.nodeId}`}>
                           <span>Matching audit / {queenRanks[node.nodeId]!.matchingAudit!.policyVersion}</span>
@@ -1020,22 +644,17 @@ export function LocalAgentsPage({
                           <small>seed: {summarizeSeedHash(queenRanks[node.nodeId]!.matchingAudit!.seedHash)}</small>
                           <small>eligible {queenRanks[node.nodeId]!.matchingAudit!.eligibleCount} / history {queenRanks[node.nodeId]!.matchingAudit!.historyCount} / cold {queenRanks[node.nodeId]!.matchingAudit!.coldStartCount}</small>
                         </div>
-                      ) : <small>matching audit: unavailable</small>}
+                      ) : <small>{queenCopy("matching audit: unavailable")}</small>}
                       <select
                         aria-label={`Select agent for ${node.nodeId}`}
-                        disabled={queenBusy !== null || (queenRanks[node.nodeId]?.candidates.length ?? 0) === 0}
+                        disabled
                         value={selectedAgentId ?? ""}
-                        onChange={(event) => { void selectQueenNodeAgent(node.nodeId, event.target.value); }}
                       >
                         {!selectedAgentId ? <option value="">Auto-fill pending</option> : null}
                         {(queenRanks[node.nodeId]?.candidates ?? []).map((candidate) => (
                           <option key={candidate.agentId} value={candidate.agentId}>{candidate.displayName}</option>
                         ))}
                       </select>
-                      {(() => {
-                        const output = queenNodeOutputs[node.nodeId];
-                        return output ? <em>{clipLog(output)}</em> : null;
-                      })()}
                     </div>
                   );
                 })}
@@ -1044,11 +663,21 @@ export function LocalAgentsPage({
           ) : null}
         </Panel>
 
-        <div className="playground-layout">
+        <div className="playground-layout local-agents-workspace">
           <Panel className="agent-rail">
             <div className="panel-heading"><h2>Agents</h2><Badge tone="neutral">V1 C-PLANE</Badge></div>
-            <div className="agent-option-list">
-              {displayAgents.map((agent) => {
+            <label className="agent-directory-search">
+              <span>{zh ? "搜索 Agent 目录" : "Search agent directory"}</span>
+              <input type="search" value={agentSearch} onChange={(event) => setAgentSearch(event.target.value)} placeholder={zh ? "名称、模型或提供方" : "Name, model or provider"} />
+            </label>
+            <p className="agent-directory-selection">{zh ? "当前选择：" : "Selected: "}{selectedAgent.name}</p>
+            <div className="agent-directory-scroll" tabIndex={0} role="region" aria-label={zh ? "Agent 目录" : "Agent directory"}>
+              {agentGroups.map((group) => group.agents.length ? <section className="agent-directory-group" key={group.id}>
+                <button type="button" className="agent-directory-toggle" aria-expanded={Boolean(agentSearch.trim()) || Boolean(openAgentGroups[group.id])} aria-controls={`agent-group-${group.id}`} onClick={() => setOpenAgentGroups((current) => ({ ...current, [group.id]: !current[group.id] }))}>
+                  <span>{group.label}</span><span>{group.agents.length} {agentSearch.trim() || openAgentGroups[group.id] ? "−" : "+"}</span>
+                </button>
+                <div id={`agent-group-${group.id}`} className="agent-option-list" hidden={!agentSearch.trim() && !openAgentGroups[group.id]}>
+              {group.agents.map((agent) => {
                 const live = healthById.get(agent.id);
                 const status = live?.status ?? "offline";
                 return (
@@ -1056,6 +685,7 @@ export function LocalAgentsPage({
                     key={agent.id}
                     type="button"
                     className={`agent-option ${selectedId === agent.id ? "active" : ""}`}
+                    aria-pressed={selectedAgent.id === agent.id}
                     onClick={() => setSelectedId(agent.id)}
                   >
                     <span className={`agent-status agent-status-${status}`} />
@@ -1065,6 +695,9 @@ export function LocalAgentsPage({
                   </button>
                 );
               })}
+                </div>
+              </section> : null)}
+              {!agentGroups.some((group) => group.agents.length) ? <p role="status">{zh ? "没有匹配的 Agent" : "No matching agents"}</p> : null}
             </div>
             <div className="runtime-boundary">
               <span>Boundary</span>
@@ -1192,42 +825,6 @@ async function runGraphqlOrchestration(options: {
   return result;
 }
 
-async function runQueenMutation<T>(options: {
-  operationName: string;
-  query: string;
-  input: Record<string, unknown>;
-  signal: AbortSignal;
-}): Promise<T> {
-  const operationSignal = createWorkflowOperationSignal(options.signal);
-  let response: Response;
-  try {
-    response = await fetch("/agent/graphql", {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({
-        query: options.query,
-        operationName: options.operationName,
-        variables: { input: options.input },
-      }),
-      signal: operationSignal,
-    });
-  } catch (error) {
-    if (operationSignal.aborted && !options.signal.aborted) {
-      throw new Error(`${options.operationName} timed out after ${WORKFLOW_OPERATION_TIMEOUT_MS / 1000} seconds.`);
-    }
-    throw error;
-  }
-  const payload = await parseGraphqlResponse(response);
-  if (!response.ok) throw new Error(`GraphQL gateway returned ${response.status}`);
-  if (!isRecord(payload)) throw new Error("GraphQL response is invalid");
-  const errors = payload.errors;
-  if (Array.isArray(errors) && errors.length > 0) {
-    const first = errors[0];
-    throw new Error(isRecord(first) && typeof first.message === "string" ? first.message : "Queen workflow failed");
-  }
-  if (!isRecord(payload.data)) throw new Error("GraphQL response data is invalid");
-  return payload.data as T;
-}
 
 export function createWorkflowOperationSignal(parentSignal: AbortSignal, timeoutMs = WORKFLOW_OPERATION_TIMEOUT_MS): AbortSignal {
   return AbortSignal.any([parentSignal, AbortSignal.timeout(timeoutMs)]);

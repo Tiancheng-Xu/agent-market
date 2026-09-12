@@ -14,6 +14,8 @@ import type {
   RiskTaskSource,
 } from "./risk-pricing-service.js";
 
+import { RiskQuoteSchema } from '@agent-market/shared-contracts';
+
 type DatabaseRow = Record<string, unknown>;
 type PricingFact = {
   nodeId: string;
@@ -29,7 +31,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const WALLET = /^0x[0-9a-f]{40}$/u;
 const ATOMIC = /^(0|[1-9][0-9]*)$/u;
 const QUOTE_STATUSES: readonly RiskContextQuoteStatus[] = [
-  "not_issued", "active", "confirmed", "expired", "superseded", "manual_review",
+  "not_issued", "active", "confirmed", "expired", "superseded", "manual_review", "requote_required",
 ];
 
 const record = (value: unknown, code: string): DatabaseRow => {
@@ -112,6 +114,7 @@ function parsePricingFacts(value: unknown): PricingFact[] {
 }
 
 export function authoritativeRiskTaskFromDatabase(row: DatabaseRow): AuthoritativeRiskTask {
+  if (['manual_review', 'cancelled', 'failed', 'disputed'].includes(String(row.task_status))) throw new Error('RISK_TASK_HALTED');
   const id = String(row.id ?? "");
   const taskVersion = integer(row.task_version, "RISK_TASK_VERSION_INVALID");
   const contextTaskVersion = integer(row.context_task_version, "RISK_CONTEXT_TASK_VERSION_INVALID");
@@ -230,12 +233,17 @@ export function authoritativeRiskTaskFromDatabase(row: DatabaseRow): Authoritati
 export class PostgresRiskTaskSource implements RiskTaskSource {
   constructor(private readonly sql: Sql) {}
 
-  async loadAuthoritativeTask(taskId: string): Promise<AuthoritativeRiskTask | null> {
+  async loadAuthoritativeTask(taskId: string, db?: import('postgres').Sql | import('postgres').TransactionSql): Promise<AuthoritativeRiskTask | null> {
     if (!UUID.test(taskId)) throw new Error("RISK_TASK_ID_INVALID");
-    return this.sql.begin(async (transaction) => {
+    const load = async (transaction: import('postgres').Sql | import('postgres').TransactionSql) => {
       const rows = await transaction<DatabaseRow[]>`
         SELECT
           task.id,
+          task.status AS task_status,
+          current_quote.id AS current_quote_id,
+          current_quote.quote_version AS current_quote_version,
+          current_quote.basis_fingerprint AS current_quote_hash,
+          current_quote.quote_payload AS current_quote_payload,
           task.title,
           task.description,
           task.requirements,
@@ -245,11 +253,15 @@ export class PostgresRiskTaskSource implements RiskTaskSource {
           COALESCE((
             SELECT CASE
               WHEN quote.status = 'superseded' THEN 'superseded'
+              WHEN quote.quote_payload->>'schemaVersion' IS DISTINCT FROM '2' THEN 'requote_required'
               WHEN quote.expires_at <= now() THEN 'expired'
               WHEN quote.manual_review_required AND quote.manual_approved_at IS NULL THEN 'manual_review'
               WHEN EXISTS (
                 SELECT 1 FROM agent_market.risk_quote_confirmations confirmation
                 WHERE confirmation.quote_id = quote.id AND confirmation.actor_type = 'publisher'
+                  AND confirmation.quote_hash = quote.basis_fingerprint
+                  AND confirmation.task_fingerprint = quote.task_fingerprint
+                  AND lower(confirmation.actor_wallet) = lower(task.publisher_wallet)
               ) AND (
                 quote.phase = 'preliminary' OR NOT EXISTS (
                   SELECT 1 FROM agent_market.risk_quote_agent_allocations allocation
@@ -258,13 +270,16 @@ export class PostgresRiskTaskSource implements RiskTaskSource {
                     WHERE confirmation.quote_id = quote.id
                       AND confirmation.actor_type = 'agent'
                       AND confirmation.agent_id = allocation.agent_id
+                      AND confirmation.quote_hash = quote.basis_fingerprint
+                      AND confirmation.task_fingerprint = quote.task_fingerprint
+                      AND lower(confirmation.actor_wallet) = lower(allocation.agent_wallet)
                   )
                 )
               ) THEN 'confirmed'
               ELSE 'active'
             END
             FROM agent_market.risk_quotes quote
-            WHERE quote.task_id = task.id
+            WHERE quote.id = current_quote.id
             ORDER BY quote.quote_version DESC
             LIMIT 1
           ), 'not_issued') AS quote_status,
@@ -303,6 +318,11 @@ export class PostgresRiskTaskSource implements RiskTaskSource {
               AND fact.graph_revision = workflow.graph_revision
           ), '[]'::jsonb) AS pricing_facts
         FROM agent_market.tasks task
+        LEFT JOIN LATERAL (
+          SELECT * FROM agent_market.risk_quotes
+          WHERE task_id = task.id AND status = 'active'
+          ORDER BY quote_version DESC LIMIT 1
+        ) current_quote ON true
         LEFT JOIN agent_market.task_risk_contexts context
           ON context.task_id = task.id AND context.status = 'active'
         LEFT JOIN agent_market.queen_workflows workflow ON workflow.task_id = task.id
@@ -317,7 +337,13 @@ export class PostgresRiskTaskSource implements RiskTaskSource {
       if (row.context_task_version === null || row.context_task_version === undefined) {
         throw new Error("RISK_CONTEXT_MISSING");
       }
-      return authoritativeRiskTaskFromDatabase(row);
-    });
+      const task = authoritativeRiskTaskFromDatabase(row);
+      return { ...task, currentQuote: row.current_quote_id ? {
+        quoteId: String(row.current_quote_id), version: Number(row.current_quote_version),
+        quoteHash: String(row.current_quote_hash),
+        quote: RiskQuoteSchema.parse(row.current_quote_payload),
+      } : null };
+    };
+    return db ? load(db) : this.sql.begin(load);
   }
 }

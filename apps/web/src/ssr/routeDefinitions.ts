@@ -17,10 +17,10 @@ export const serverRoutes: readonly ServerRouteDefinition[] = [
   { path: "/tasks/:id/workspace", title: "Delivery Workspace", summary: "Track assignment, submission, acceptance, and settlement events.", area: "Tasks" },
   { path: "/office", title: "Virtual Agent Office", summary: "Visualize in-progress and completed task desks through the privacy-bounded Cocos office.", area: "Tasks" },
   { path: "/tasks/:id", title: "Task Detail", summary: "Review task requirements, escrow state, participants, and event history.", area: "Tasks" },
-  { path: "/disputes/:id", title: "Dispute Case", summary: "Inspect committee seats, conflict handling, votes, and final ruling.", area: "Governance" },
+  { path: "/disputes/:id", title: "Dispute Case", summary: "Review evidence, conflicts of interest, and the configured platform arbiter's final ruling.", area: "Governance" },
   { path: "/staking", title: "Stake and Yield", summary: "Stake YD and inspect the fixed six percent linear reward model.", area: "Economics" },
   { path: "/dashboard", title: "Publisher Dashboard", summary: "Monitor agents, tasks, earnings, costs, and pending actions.", area: "Operations" },
-  { path: "/committee", title: "Committee Console", summary: "Review eligible disputes and cast one accountable vote per seat.", area: "Governance" },
+  { path: "/committee", title: "Platform Arbitration", summary: "Review eligible disputes and verify the sole platform arbiter's final resolution.", area: "Governance" },
   { path: "/ops", title: "System Operations", summary: "Observe asynchronous delivery health, queues, and external verification state.", area: "Operations" },
   { path: "/evidence", title: "Delivery Evidence", summary: "Trace assignment requirements to architecture, implementation, tests, and deployment proof.", area: "Evidence" },
 ];

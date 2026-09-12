@@ -98,7 +98,12 @@ export const AgentDepositAllocationSchema = z.object({
 
 export type AgentDepositAllocation = z.infer<typeof AgentDepositAllocationSchema>;
 
+export const RiskAssetIdSchema = z.string().regex(/^eip155:[1-9][0-9]{0,15}\/erc20:0x[0-9a-f]{40}$/u)
+  .refine(value => !value.endsWith('0x' + '0'.repeat(40)), 'RISK_ASSET_ZERO_ADDRESS');
+
 const RiskQuoteBaseSchema = z.object({
+  schemaVersion: z.union([z.literal(1), z.literal(2)]).optional(),
+  assetId: RiskAssetIdSchema.optional(),
   phase: RiskQuotePhaseSchema,
   policyVersion: z.string().trim().min(1).max(80),
   taskFingerprint: TaskFingerprintSchema,
@@ -118,6 +123,9 @@ const RiskQuoteBaseSchema = z.object({
 }).strict();
 
 export const RiskQuoteSchema = RiskQuoteBaseSchema.superRefine((quote, context) => {
+  if ((quote.schemaVersion === 2 && !quote.assetId) || (quote.schemaVersion !== 2 && quote.assetId !== undefined)) {
+    context.addIssue({ code: 'custom', message: 'RISK_QUOTE_ASSET_VERSION_INVALID' });
+  }
   const expected = policyForScore(quote.riskScore);
   if (
     quote.riskTier !== expected.riskTier

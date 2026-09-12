@@ -1,0 +1,12 @@
+{
+  "scope": "Bacon W7 caller follow-up; not full W7 completion",
+  "testsPassed": 26,
+  "testsFailed": 0,
+  "browserChecks": 6,
+  "browserFailures": 0,
+  "pageErrors": 0,
+  "typecheck": "passed",
+  "cleanup": "dedicated browser and server stopped; ports closed",
+  "boundary": "Mock EIP-1193 only for browser and transaction sending. HTTP auth fixture uses an ephemeral software EIP-191 signature, not an external/user wallet. No real transaction or chain success.",
+  "externalWalletSignatureEvidence": false
+}

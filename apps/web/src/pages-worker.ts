@@ -11,6 +11,7 @@ import {
 import { buildCsrFallbackDocument, composeSsrDocument } from "./ssr/html";
 import type { RenderState } from "./ssr/renderState";
 import { routeForPath } from "./ssr/routeDefinitions";
+import { QUEEN_PLANNING_ERROR_STATUS } from "./lib/queenPlanningClient";
 
 export interface PagesEnvironment {
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -19,9 +20,9 @@ export interface PagesEnvironment {
   TRANSACTION_ENGINE_ORIGIN?: string;
   AGENT_ALLOWED_ORIGINS?: string;
   AGENT_CHAT_MAX_BYTES?: string;
-  AGENT_RUNTIME_KEY_ID?: string;
+  AGENT_RUNTIME_PUBLIC_KEY_ID?: string;
   AGENT_RUNTIME_ORIGIN?: string;
-  AGENT_RUNTIME_SHARED_SECRET?: string;
+  AGENT_RUNTIME_PUBLIC_SECRET?: string;
   TURNSTILE_SECRET?: string;
 }
 
@@ -41,11 +42,22 @@ const TRANSACTION_ENGINE_DYNAMIC_PATHS = [
   { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}$`, "iu"), methods: ["GET"] },
   { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/commands$`, "iu"), methods: ["POST"] },
   { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/risk-context$`, "iu"), methods: ["GET"] },
-  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/risk-quote$`, "iu"), methods: ["POST"] },
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/risk-quote$`, "iu"), methods: ["GET", "POST"] },
   { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/risk-quote/confirm$`, "iu"), methods: ["POST"] },
   { pattern: new RegExp(`^/api/agents/${UUID_SEGMENT}/reputation$`, "iu"), methods: ["GET"] },
   { pattern: new RegExp(`^/api/orders/${UUID_SEGMENT}$`, "iu"), methods: ["GET"] },
   { pattern: new RegExp(`^/api/orders/${UUID_SEGMENT}/commands$`, "iu"), methods: ["POST"] },
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/planning-request$`, "iu"), methods: ["GET", "POST"] },
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/planning-approval$`, "iu"), methods: ["POST"] },
+  { pattern: new RegExp(`^/api/tasks/${UUID_SEGMENT}/selection$`, "iu"), methods: ["GET", "POST"] },
+  { pattern: new RegExp(`^/api/agents/${UUID_SEGMENT}/selection-access$`, "iu"), methods: ["POST"] },
+  { pattern: new RegExp(`^/api/chain/resources/${UUID_SEGMENT}/arbitration-review$`, "iu"), methods: ["GET", "POST"] },
+  { pattern: /^\/api\/commercial\/orders$/u, methods: ["POST"] },
+  { pattern: new RegExp(`^/api/commercial/orders/${UUID_SEGMENT}$`, "iu"), methods: ["GET"] },
+  { pattern: new RegExp(`^/api/commercial/orders/${UUID_SEGMENT}/commands$`, "iu"), methods: ["POST"] },
+  { pattern: /^\/api\/governance\/(events|tickets|reviews)$/u, methods: ["GET", "POST"] },
+  { pattern: /^\/api\/governance\/commands$/u, methods: ["POST"] },
+  { pattern: /^\/api\/governance\/(compensation|audit)$/u, methods: ["GET"] },
 ] as const;
 
 function transactionEngineMethods(pathname: string): readonly string[] | null {
@@ -89,16 +101,113 @@ async function proxyTransactionEngine(
     method: request.method,
     headers,
     redirect: "manual",
+    signal: AbortSignal.timeout(10_000),
   };
   if (body) upstreamRequest.body = body;
-  const upstream = await upstreamFetch(new Request(
-    new URL(requestUrl.pathname.slice(1), origin),
-    upstreamRequest,
-  ));
+  let upstream: Response;
+  try {
+    upstream = await upstreamFetch(new Request(
+      new URL(requestUrl.pathname.slice(1) + requestUrl.search, origin),
+      upstreamRequest,
+    ));
+  } catch {
+    return Response.json({ error: "TRANSACTION_ENGINE_UNAVAILABLE" }, {
+      status: 503, headers: { "cache-control": "no-store" },
+    });
+  }
+  if (upstream.status >= 500 || (upstream.status >= 300 && upstream.status < 400)) {
+    return Response.json({ error: "TRANSACTION_ENGINE_UNAVAILABLE" }, {
+      status: 503, headers: { "cache-control": "no-store" },
+    });
+  }
   const responseHeaders = new Headers(upstream.headers);
   responseHeaders.set("cache-control", "no-store");
   responseHeaders.delete("server");
   return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
+}
+
+function queenProxyFailure(code: string): Response {
+  return Response.json({ data: null, errors: [{ message: code, extensions: { code } }] }, {
+    status: QUEEN_PLANNING_ERROR_STATUS[code] ?? 503,
+    headers: { "cache-control": "no-store", vary: "Cookie, Origin", ...(code === "METHOD_NOT_ALLOWED" ? { allow: "POST" } : {}) },
+  });
+}
+
+async function boundedQueenBody(body: ReadableStream<Uint8Array> | null, limit: number, signal: AbortSignal) {
+  if (!body) throw new Error("EMPTY_BODY");
+  const reader = body.getReader();
+  const abort = () => { void reader.cancel().catch(() => undefined); };
+  signal.addEventListener("abort", abort, { once: true });
+  let text = "";
+  let bytes = 0;
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  try {
+    signal.throwIfAborted();
+    for (;;) {
+      const chunk = await reader.read();
+      signal.throwIfAborted();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > limit) { abort(); throw new Error("BODY_TOO_LARGE"); }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    signal.removeEventListener("abort", abort);
+    reader.releaseLock();
+  }
+}
+
+// Exact task-bound TE entry only. This never signs/unlocks the public Runtime.
+async function proxyQueenGraphql(request: Request, environment: PagesEnvironment, upstreamFetch: typeof fetch) {
+  const url = new URL(request.url);
+  if (request.method !== "POST") return queenProxyFailure("METHOD_NOT_ALLOWED");
+  if (request.headers.get("origin") !== url.origin || request.headers.get("sec-fetch-site") === "cross-site") {
+    return queenProxyFailure("AUTH_ORIGIN_MISMATCH");
+  }
+  if (url.search) return queenProxyFailure("QUEEN_GRAPHQL_INVALID");
+  if (request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !== "application/json") {
+    return queenProxyFailure("QUEEN_GRAPHQL_MEDIA_TYPE");
+  }
+  const length = request.headers.get("content-length");
+  if (length !== null && !/^\d+$/u.test(length)) return queenProxyFailure("QUEEN_GRAPHQL_INVALID");
+  if (length !== null && Number(length) > 32_768) return queenProxyFailure("QUEEN_GRAPHQL_TOO_LARGE");
+  if (!environment.TRANSACTION_ENGINE_ORIGIN) return queenProxyFailure("QUEEN_GRAPHQL_UNAVAILABLE");
+  const signal = AbortSignal.any([request.signal, AbortSignal.timeout(10_000)]);
+  let body: string;
+  try { body = await boundedQueenBody(request.body, 32_768, signal); }
+  catch (error) {
+    return queenProxyFailure(error instanceof Error && error.message === "BODY_TOO_LARGE"
+      ? "QUEEN_GRAPHQL_TOO_LARGE" : "QUEEN_GRAPHQL_INVALID");
+  }
+  try {
+    const origin = new URL(environment.TRANSACTION_ENGINE_ORIGIN);
+    if (!["http:", "https:"].includes(origin.protocol) || origin.username || origin.password) throw new Error("INVALID_UPSTREAM");
+    const headers = new Headers({ "content-type": "application/json", accept: "application/json",
+      origin: url.origin, "x-forwarded-host": url.host, "x-forwarded-proto": url.protocol.slice(0, -1) });
+    for (const name of ["cookie", "sec-fetch-site"]) {
+      const value = request.headers.get(name);
+      if (value !== null) headers.set(name, value);
+    }
+    const upstream = await upstreamFetch(new Request(new URL("/api/queen/graphql", origin), {
+      method: "POST", headers, body, redirect: "manual", signal,
+    }));
+    if (upstream.status >= 300 && upstream.status < 400) {
+      void upstream.body?.cancel().catch(() => undefined);
+      return queenProxyFailure("QUEEN_GRAPHQL_UNAVAILABLE");
+    }
+    const payload: unknown = JSON.parse(await boundedQueenBody(upstream.body, 1_048_576, signal));
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("INVALID_UPSTREAM");
+    const envelope = payload as Record<string, unknown>;
+    if (!upstream.ok || envelope.errors !== undefined) {
+      const error = Array.isArray(envelope.errors) ? envelope.errors[0] : undefined;
+      const code: unknown = error?.extensions?.code;
+      return queenProxyFailure(typeof code === "string" && Object.hasOwn(QUEEN_PLANNING_ERROR_STATUS, code)
+        ? code : "QUEEN_GRAPHQL_UNAVAILABLE");
+    }
+    if (!envelope.data || typeof envelope.data !== "object" || Array.isArray(envelope.data)) throw new Error("INVALID_UPSTREAM");
+    return Response.json({ data: envelope.data }, { headers: { "cache-control": "no-store", vary: "Cookie, Origin" } });
+  } catch { return queenProxyFailure("QUEEN_GRAPHQL_UNAVAILABLE"); }
 }
 
 type RenderRoute = (
@@ -123,7 +232,6 @@ const securityHeaders = {
 } as const;
 
 const AGENT_CHAT_DEFAULT_MAX_BYTES = 16_384;
-const AGENT_RUNTIME_KEY_ID = "edge-runtime-v1";
 const signedHeaderNames = {
   keyId: "x-agent-key-id",
   timestamp: "x-agent-timestamp",
@@ -232,11 +340,17 @@ export function createPagesHandler(options: HandlerOptions = {}) {
         return handleAgentGraphql(request, environment, upstreamFetch);
       }
 
+      if (requestUrl.pathname === "/api/queen/graphql") {
+        return proxyQueenGraphql(request, environment, upstreamFetch);
+      }
+      if (requestUrl.pathname === "/api/queen" || requestUrl.pathname.startsWith("/api/queen/")) {
+        return Response.json({ error: "NOT_FOUND" }, { status: 404, headers: { "cache-control": "no-store" } });
+      }
       const transactionMethods = transactionEngineMethods(requestUrl.pathname);
       if (transactionMethods) {
         return proxyTransactionEngine(request, environment, upstreamFetch, transactionMethods);
       }
-      if (requestUrl.pathname.startsWith("/api/orders/")) {
+      if (["/api/orders/", "/api/commercial/", "/api/governance/"].some(prefix => requestUrl.pathname.startsWith(prefix))) {
         return Response.json({ error: "NOT_FOUND" }, { status: 404, headers: { "cache-control": "no-store" } });
       }
 
@@ -400,7 +514,7 @@ async function handleAgentGraphql(
     }
   }
 
-  if (!environment.AGENT_RUNTIME_ORIGIN || !environment.AGENT_RUNTIME_SHARED_SECRET) {
+  if (!environment.AGENT_RUNTIME_ORIGIN || !environment.AGENT_RUNTIME_PUBLIC_KEY_ID || !environment.AGENT_RUNTIME_PUBLIC_SECRET) {
     return graphqlAgentError("RUNTIME_OFFLINE", "Agent runtime is not configured", requestId, true, cors);
   }
 
@@ -409,8 +523,8 @@ async function handleAgentGraphql(
       "POST",
       "/graphql",
       runtimeBody,
-      environment.AGENT_RUNTIME_SHARED_SECRET,
-      environment.AGENT_RUNTIME_KEY_ID ?? AGENT_RUNTIME_KEY_ID,
+      environment.AGENT_RUNTIME_PUBLIC_SECRET,
+      environment.AGENT_RUNTIME_PUBLIC_KEY_ID,
     );
     const upstream = await upstreamFetch(new Request(new URL("/graphql", normalizedOrigin(environment.AGENT_RUNTIME_ORIGIN)), {
       method: "POST",
@@ -418,6 +532,9 @@ async function handleAgentGraphql(
       body: runtimeBody,
       signal: AbortSignal.timeout(120_000),
     }));
+    if (upstream.status === 401 || upstream.status === 403) {
+      return graphqlAgentError("FORBIDDEN", "Runtime task authorization was denied", requestId, false, cors, upstream.status);
+    }
     if (!upstream.ok || upstream.body === null) {
       return graphqlAgentError("RUNTIME_OFFLINE", "Agent runtime is offline", requestId, true, cors);
     }
@@ -456,7 +573,7 @@ async function handleAgentHealth(
 ): Promise<Response> {
   const requestUrl = new URL(request.url);
   const cors = corsHeaders(request, environment);
-  if (!environment.AGENT_RUNTIME_ORIGIN || !environment.AGENT_RUNTIME_SHARED_SECRET) {
+  if (!environment.AGENT_RUNTIME_ORIGIN || !environment.AGENT_RUNTIME_PUBLIC_KEY_ID || !environment.AGENT_RUNTIME_PUBLIC_SECRET) {
     return Response.json(LiveChatHealthSchema.parse({
       status: "offline",
       checkedAt: new Date().toISOString(),
@@ -472,8 +589,8 @@ async function handleAgentHealth(
       "GET",
       "/healthz",
       body,
-      environment.AGENT_RUNTIME_SHARED_SECRET,
-      environment.AGENT_RUNTIME_KEY_ID ?? AGENT_RUNTIME_KEY_ID,
+      environment.AGENT_RUNTIME_PUBLIC_SECRET,
+      environment.AGENT_RUNTIME_PUBLIC_KEY_ID,
     );
     const response = await upstreamFetch(new Request(new URL("/healthz", normalizedOrigin(environment.AGENT_RUNTIME_ORIGIN)), {
       method: "GET",
@@ -540,7 +657,7 @@ async function handleAgentChat(
     }
   }
 
-  if (!environment.AGENT_RUNTIME_ORIGIN || !environment.AGENT_RUNTIME_SHARED_SECRET) {
+  if (!environment.AGENT_RUNTIME_ORIGIN || !environment.AGENT_RUNTIME_PUBLIC_KEY_ID || !environment.AGENT_RUNTIME_PUBLIC_SECRET) {
     return sseAgentError("RUNTIME_OFFLINE", "Agent runtime is not configured", requestId, true, cors);
   }
 
@@ -549,8 +666,8 @@ async function handleAgentChat(
       "POST",
       "/agent/chat",
       runtimeBody,
-      environment.AGENT_RUNTIME_SHARED_SECRET,
-      environment.AGENT_RUNTIME_KEY_ID ?? AGENT_RUNTIME_KEY_ID,
+      environment.AGENT_RUNTIME_PUBLIC_SECRET,
+      environment.AGENT_RUNTIME_PUBLIC_KEY_ID,
     );
     const upstream = await upstreamFetch(new Request(new URL("/agent/chat", normalizedOrigin(environment.AGENT_RUNTIME_ORIGIN)), {
       method: "POST",
@@ -719,6 +836,7 @@ function graphqlAgentError(
   requestId: string,
   retryable: boolean,
   cors: Record<string, string>,
+  status = 200,
 ): Response {
   return Response.json({
     data: null,
@@ -729,7 +847,7 @@ function graphqlAgentError(
       },
     ],
   }, {
-    status: 200,
+    status,
     headers: { ...agentJsonHeaders(), ...cors },
   });
 }

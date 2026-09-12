@@ -191,6 +191,7 @@ function RiskPricingContent({
 }
 
 export function OrderDetailPage({ walletAddress = null }: { walletAddress?: string | null }) {
+  const { locale } = useLanguage();
   const { id = "" } = useParams();
   const fixture = tasks.find((item) => item.id === id) ?? tasks[0]!;
   const isLiveOrder = uuidPattern.test(id);
@@ -331,8 +332,8 @@ export function OrderDetailPage({ walletAddress = null }: { walletAddress?: stri
         {!isLiveOrder ? <DemoNotice /> : null}
         <div className="order-overview-grid">
           <Panel className="order-contract-card">
-            <span className="eyebrow">ACCEPTANCE CONTRACT</span>
-            <h2>Evidence before settlement</h2>
+            <span className="eyebrow">{locale === "zh-CN" ? "验收约定" : "ACCEPTANCE CONTRACT"}</span>
+            <h2>{locale === "zh-CN" ? "先验证证据，再结算" : "Evidence before settlement"}</h2>
             <ul className="detail-list">
               <li>Deliverable matches the requested structured format.</li>
               <li>Artifact carries a content hash, media type, size and timestamp.</li>
@@ -344,25 +345,29 @@ export function OrderDetailPage({ walletAddress = null }: { walletAddress?: stri
             <span>Escrow budget</span>
             <strong>{budget} YD atomic</strong>
             <small>{status === "manual_review" ? "Unknown settlement state; manual review required" : "Receipt verification remains separate from UI state"}</small>
-            <Link className="button button-primary" to={`/tasks/${id}/matches`}>View explainable matches</Link>
+            <Link className="button button-primary" to={`/tasks/${id}/matches`}>{locale === "zh-CN" ? "查看可解释匹配" : "View explainable matches"}</Link>
           </Panel>
-          <ReputationContent state={reputation} />
+          <div className="order-reputation"><ReputationContent state={reputation} /></div>
         </div>
-        {isLiveOrder ? <LiveRiskQuotePanel taskId={id} walletAddress={walletAddress} onFundingReady={setConfirmedQuoteContext} /> : <RiskPricingContent isLiveOrder={false} />}
+        {isLiveOrder ? <LiveRiskQuotePanel taskId={id} walletAddress={walletAddress} canRequote={role === "publisher"} onFundingReady={setConfirmedQuoteContext} /> : <RiskPricingContent isLiveOrder={false} />}
         <Panel className="order-lifecycle-panel">
           <div className="order-section-heading">
-            <div><span className="eyebrow">LEDGER PROJECTION</span><h2>Order lifecycle</h2></div>
+            <div><span className="eyebrow">{locale === "zh-CN" ? "账本投影" : "LEDGER PROJECTION"}</span><h2>{locale === "zh-CN" ? "订单生命周期" : "Order lifecycle"}</h2></div>
             <Badge tone={status === "manual_review" ? "amber" : "neutral"}>VERSION {order?.version ?? 1}</Badge>
           </div>
-          <div className="order-lifecycle" aria-label="Order lifecycle">
+          <div className="order-lifecycle" aria-label={locale === "zh-CN" ? "订单生命周期" : "Order lifecycle"}>
             {ORDER_LIFECYCLE.map((step) => <div className={lifecycleState(step, status)} key={step}><i /><span>{shortStep(step)}</span></div>)}
           </div>
           {order?.manualReview ? <div className="inline-state warning"><strong>Manual review:</strong> {order.manualReview.reasonCode} · previous state {order.manualReview.previousStatus}</div> : null}
         </Panel>
         <div className="two-column order-action-grid">
           <Panel>
-            <span className="eyebrow">ROLE-SCOPED ACTIONS</span>
-            <h2>{role === "visitor" ? "Connect the participant wallet" : `${role} controls`}</h2>
+            <span className="eyebrow">{locale === "zh-CN" ? "角色权限操作" : "ROLE-SCOPED ACTIONS"}</span>
+            <h2>{role === "visitor"
+              ? (locale === "zh-CN" ? "连接参与方钱包" : "Connect the participant wallet")
+              : locale === "zh-CN"
+                ? role === "publisher" ? "发布方操作" : "Agent 操作"
+                : `${role} controls`}</h2>
             {visibleActions.length ? (
               <div className="form-actions">
                 {visibleActions.filter((action) => action !== "submit_artifact").map((action) => (
@@ -380,16 +385,16 @@ export function OrderDetailPage({ walletAddress = null }: { walletAddress?: stri
             <div className="inline-state" role="status" aria-live="polite">{message}</div>
           </Panel>
           <Panel>
-            <span className="eyebrow">DELIVERY & REVIEW</span>
-            <h2>Eligibility is earned</h2>
+            <span className="eyebrow">{locale === "zh-CN" ? "交付与评价" : "DELIVERY & REVIEW"}</span>
+            <h2>{locale === "zh-CN" ? "满足条件后获得评价资格" : "Eligibility is earned"}</h2>
             <p>Only an accepted delivery grants the publisher one review. Self-review, linked wallets, duplicate reviews and non-accepted orders are rejected.</p>
             <div className="evidence-list">
-              <span><b>{order?.artifacts.length ?? 0}</b> artifacts</span>
-              <span><b>{order?.reviewEligible ? "YES" : "NO"}</b> review eligible</span>
-              <span><b>{order?.agentId ? "BOUND" : "NONE"}</b> exact Agent ID</span>
+              <span><b>{order?.artifacts.length ?? 0}</b> {locale === "zh-CN" ? "项交付物" : "artifacts"}</span>
+              <span><b>{order?.reviewEligible ? "YES" : "NO"}</b> {locale === "zh-CN" ? "可评价" : "review eligible"}</span>
+              <span><b>{order?.agentId ? "BOUND" : "NONE"}</b> {locale === "zh-CN" ? "精确 Agent ID" : "exact Agent ID"}</span>
             </div>
             <div className="form-actions">
-              <Link className="button button-ghost" to={`/tasks/${id}/workspace`}>Open Office desk</Link>
+              <Link className="button button-ghost" to={`/tasks/${id}/workspace`}>{locale === "zh-CN" ? "打开办公室工位" : "Open Office desk"}</Link>
               {status === "disputed" ? <Link className="button button-warning" to={`/disputes/${id}`}>Review dispute</Link> : null}
             </div>
           </Panel>

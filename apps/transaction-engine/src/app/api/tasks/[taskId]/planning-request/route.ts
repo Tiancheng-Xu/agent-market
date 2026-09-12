@@ -2,6 +2,19 @@ import { getOrderRuntime } from "../../../../../application/order-runtime";
 import { QueenPlanningError, requestQueenPlanning } from "../../../../../application/queen-planning-request";
 import { getAuthOrigin, getAuthService } from "../../../../../auth/runtime";
 import { AuthError, readSessionCookie } from "../../../../../auth/session";
+import { readQueenPlanningStatus } from "../../../../../application/queen-planning-status";
+import { createQueenPlanningStatusHandler } from "../../../../../application/queen-planning-status-http";
+
+export async function GET(request: Request, context: { params: Promise<{ taskId: string }> }) {
+  try {
+    return await createQueenPlanningStatusHandler({
+      authOrigin: getAuthOrigin(), auth: getAuthService(),
+      read: input => readQueenPlanningStatus(getOrderRuntime().sql, input),
+    })(request, (await context.params).taskId);
+  } catch {
+    return Response.json({ error: "QUEEN_PLANNING_UNAVAILABLE" }, { status: 503, headers: { "cache-control": "no-store" } });
+  }
+}
 
 export async function POST(request: Request, context: { params: Promise<{ taskId: string }> }) {
   const headers = { "cache-control": "no-store" };

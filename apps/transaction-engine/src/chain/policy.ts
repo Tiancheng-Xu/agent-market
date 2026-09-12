@@ -25,9 +25,9 @@ export function deriveChainResource(resourceId: string): ChainResourceBinding {
   };
 }
 
-export function deriveIntentRequestId(actorWallet: string, resourceId: string, method: TransactionMethod): string {
+export function deriveIntentRequestId(actorWallet: string, resourceId: string, method: TransactionMethod, binding = ""): string {
   return uuidv5(
-    `agent-market:intent:${getAddress(actorWallet)}:${normalizeResourceId(resourceId)}:${method}`,
+    `agent-market:intent:${getAddress(actorWallet)}:${normalizeResourceId(resourceId)}:${method}:${binding}`,
     uuidv5.URL,
   );
 }

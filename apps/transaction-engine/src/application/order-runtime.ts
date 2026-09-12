@@ -7,6 +7,7 @@ import { PostgresReputationV2Store } from "./postgres-reputation-v2-store";
 import { PostgresRiskTaskSource } from "./postgres-risk-task-source";
 import { RiskPricingService } from "./risk-pricing-service";
 import { PostgresRiskQuoteStore } from "./risk-quote-store";
+import { RuntimeRiskAssessor } from './runtime-risk-assessor';
 
 export interface OrderRuntime {
   sql: Sql;
@@ -32,7 +33,7 @@ export function getOrderRuntime(): OrderRuntime {
     sql,
     store,
     quoteStore,
-    riskPricing: new RiskPricingService({ quotes: quoteStore, tasks: riskTaskSource }),
+    riskPricing: new RiskPricingService({ quotes: quoteStore, tasks: riskTaskSource, assessor: new RuntimeRiskAssessor() }),
     reputationStore,
     service: new OrderService(store, quoteStore),
   };

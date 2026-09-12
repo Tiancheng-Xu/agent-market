@@ -3,6 +3,8 @@ packages:
   - packages/*
 
 allowBuilds:
+  '@swc/core': true
   esbuild: true
   keccak: true
+  protobufjs: true
   secp256k1: true

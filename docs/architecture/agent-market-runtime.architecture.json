@@ -32,6 +32,29 @@
       }
     ]
   },
+  "delivery_status": {
+    "asOf": "2026-09-12",
+    "overall": "verified-local-release-pending",
+    "evidence": "docs/evidence/testing/2026-09-12-non-aws-completion.json",
+    "verifiedLocal": [
+      "Web: 50 files and 389 tests passed; build succeeded",
+      "Transaction Engine: 54 files passed and 9 skipped; 328 tests passed and 44 skipped",
+      "Local Agent Runner: 16 files passed and 7 skipped; 118 tests passed and 8 skipped",
+      "Contracts 34, trainer 33, repository static 32",
+      "Go vet and Go test passed",
+      "Real local PostgreSQL and Temporal evidence exists"
+    ],
+    "pending": [
+      "No AWS operation or validation in this round",
+      "No new Sepolia transaction in this round",
+      "Chainlink VRF external deployment and callback",
+      "Production local Runtime host and tunnel",
+      "Fresh final visual 180-combination rerun",
+      "Final recording, PR and Cloudflare release/readback"
+    ],
+    "visualBoundary": "The historical 180-combination gate failed. A later 10-combination order repair passed, but the final 180 has not been rerun.",
+    "documentationCloseoutReranCommands": false
+  },
   "layout": {
     "mode": "grid",
     "origin": [70, 72],

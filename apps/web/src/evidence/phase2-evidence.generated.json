@@ -287,6 +287,30 @@
       "status": "verified-production"
     },
     {
+      "id": "V2-RUNTIME-HMAC-SCOPES",
+      "phase": "v2",
+      "requirement": {
+        "en": "Keep public and owner Runtime callers on distinct HMAC keys and fail closed on the legacy shared-key configuration.",
+        "zh": "为 public 与 owner Runtime 调用方使用不同 HMAC 密钥，并对旧共享单密钥配置 fail closed。"
+      },
+      "implementation": {
+        "en": "The local Runtime composition root loads separate public-only and owner-only keys. The supervisor requires both key ID/secret pairs, and the owner risk assessor is covered through the real in-process Runtime request, HMAC verification and SSE response path. This is local test evidence only; no production Runtime, live model, cloud or chain verification is claimed.",
+        "zh": "本地 Runtime composition root 加载仅限 public 与仅限 owner 的独立密钥。Supervisor 强制要求两组 key ID/secret；owner risk assessor 通过真实进程内 Runtime 请求、HMAC 验签与 SSE 返回链路覆盖。这里只是本地测试证据，不代表生产 Runtime、真实模型、云或链验证。"
+      },
+      "code": [
+        "apps/local-agent-runner/src/runtime-server.ts",
+        "apps/local-agent-runner/src/signing.ts",
+        "apps/local-agent-runner/src/temporal/deployment/runtime-supervisor.mjs",
+        "apps/transaction-engine/src/application/runtime-risk-assessor.ts"
+      ],
+      "evidence": [
+        "apps/local-agent-runner/src/signing-scope.test.ts",
+        "apps/local-agent-runner/src/temporal/deployment/runtime-supervisor.test.mjs",
+        "apps/transaction-engine/src/application/runtime-risk-assessor.test.ts"
+      ],
+      "status": "verified-local"
+    },
+    {
       "id": "V2-THE-GRAPH",
       "phase": "v2",
       "requirement": {

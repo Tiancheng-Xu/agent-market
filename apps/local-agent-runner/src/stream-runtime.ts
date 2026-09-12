@@ -26,6 +26,8 @@ export type LocalStreamRuntimeOptions = {
   manifests: AgentManifest[];
   ollamaClient: OllamaStreamingClient;
   providerClients?: ProviderClients;
+  signingKeys?: readonly SigningKey[];
+  /** Legacy single-key callers are public-only unless the key declares a narrower ACL. */
   signingKey?: SigningKey;
   now?: () => Date;
   requestTimeoutMs?: number;
@@ -49,6 +51,12 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
   }
   const manifests = new Map(options.manifests.map((manifest) => [manifest.id, manifest]));
   const nonceStore = new NonceReplayStore();
+  const configuredSigningKeys = options.signingKeys
+    ?? (options.signingKey ? [options.signingKey] : []);
+  const signingKeys = new Map(configuredSigningKeys.map((key) => [key.keyId, key]));
+  if (signingKeys.size !== configuredSigningKeys.length) {
+    throw new Error("RUNTIME_SIGNING_KEY_ID_COLLISION");
+  }
   const now = options.now ?? (() => new Date());
   const queenAgents = agentCandidatesFromManifests([...manifests.values()], now);
   const publicQueenOrchestrator = createQueenOrchestrator({
@@ -108,9 +116,12 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
       }
 
       const body = await request.text();
-      if (options.signingKey !== undefined) {
+      if (signingKeys.size === 0) {
+        return jsonError("UNAUTHORIZED", "Runtime signing keys are not configured", undefined, false, 401);
+      }
+      {
         const verified = verifySignedRequest("POST", url.pathname, body, request.headers, {
-          keys: { [options.signingKey.keyId]: options.signingKey.secret },
+          keys: signingKeys,
           now,
           nonceStore,
         });

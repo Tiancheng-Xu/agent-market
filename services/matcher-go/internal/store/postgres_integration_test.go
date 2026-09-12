@@ -43,7 +43,7 @@ func TestPostgresPgvectorIntegration(t *testing.T) {
 	}
 	t.Cleanup(pool.Close)
 	verifyHarnessDatabase(t, ctx, pool, ownershipToken)
-	for _, name := range []string{"0001_agent_market_core.sql", "0003_phase2_lifecycle.sql", "0005_matcher_profile.sql"} {
+	for _, name := range []string{"0001_agent_market_core.sql", "0003_phase2_lifecycle.sql", "0005_matcher_profile.sql", "0007_agent_matching_score.sql", "0012_l2_team_contracts.sql", "0024_vrf_matching.sql"} {
 		content, readErr := os.ReadFile(filepath.Join("..", "..", "..", "..", "database", "migrations", name))
 		if readErr != nil {
 			t.Fatal(readErr)
@@ -78,25 +78,26 @@ func TestPostgresPgvectorIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	agents := []struct {
-		id, status, capability, embedding string
+		id, owner, access, status, capability, embedding string
 		available                         bool
 		minimum                           int
 		completed                         int
 	}{
-		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a301", "active", "research", vector(1, 0), true, 50, 2},
-		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a302", "active", "research", vector(.9, .1), true, 50, 2},
-		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a303", "active", "research", vector(.8, .2), true, 50, 0},
-		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a304", "active", "other", vector(1, 0), true, 50, 0},
-		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a305", "suspended", "research", vector(1, 0), true, 50, 0},
-		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a306", "active", "research", vector(1, 0), true, 101, 0},
-		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a307", "active", "research", vector(1, 0), false, 50, 0},
-		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a308", "active", "research", "", true, 50, 0},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a301", "0x2222222222222222222222222222222222222222", "public-market", "active", "research", vector(1, 0), true, 50, 2},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a302", "0x1111111111111111111111111111111111111111", "owner-only", "active", "research", vector(.9, .1), true, 50, 2},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a303", "0x2222222222222222222222222222222222222222", "public-market", "active", "research", vector(.8, .2), true, 50, 0},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a304", "0x2222222222222222222222222222222222222222", "public-market", "active", "other", vector(1, 0), true, 50, 0},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a305", "0x2222222222222222222222222222222222222222", "public-market", "suspended", "research", vector(1, 0), true, 50, 0},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a306", "0x2222222222222222222222222222222222222222", "public-market", "active", "research", vector(1, 0), true, 101, 0},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a307", "0x2222222222222222222222222222222222222222", "public-market", "active", "research", vector(1, 0), false, 50, 0},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a308", "0x2222222222222222222222222222222222222222", "public-market", "active", "research", "", true, 50, 0},
+		{"018f3f50-7b2d-7cc1-98f5-9ab68e75a310", "0x2222222222222222222222222222222222222222", "owner-only", "active", "research", vector(1, 0), true, 50, 2},
 	}
 	for _, agent := range agents {
 		_, err = pool.Exec(ctx, `INSERT INTO agent_market.agents
-			(id,owner_wallet,name,description,capabilities,status,embedding,available,minimum_budget_atomic,completed_tasks)
-				VALUES ($1,'0x2222222222222222222222222222222222222222',$2,$2,ARRAY[$3],$4,NULLIF($5, '')::vector,$6,$7,$8)`,
-			agent.id, agent.id, agent.capability, agent.status, agent.embedding, agent.available, agent.minimum, agent.completed)
+			(id,owner_wallet,selection_access,name,description,capabilities,status,embedding,available,minimum_budget_atomic,completed_tasks)
+				VALUES ($1,$2,$3,$1,$1,ARRAY[$4],$5,NULLIF($6, '')::vector,$7,$8,$9)`,
+			agent.id, agent.owner, agent.access, agent.capability, agent.status, agent.embedding, agent.available, agent.minimum, agent.completed)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,7 +117,7 @@ func TestPostgresPgvectorIntegration(t *testing.T) {
 		t.Fatalf("candidate count = %d, want 3", len(result.Candidates))
 	}
 	for _, candidate := range result.Candidates {
-		if strings.HasSuffix(candidate.ID, "304") || strings.HasSuffix(candidate.ID, "305") || strings.HasSuffix(candidate.ID, "306") || strings.HasSuffix(candidate.ID, "307") || strings.HasSuffix(candidate.ID, "308") {
+		if strings.HasSuffix(candidate.ID, "304") || strings.HasSuffix(candidate.ID, "305") || strings.HasSuffix(candidate.ID, "306") || strings.HasSuffix(candidate.ID, "307") || strings.HasSuffix(candidate.ID, "308") || strings.HasSuffix(candidate.ID, "310") {
 			t.Fatalf("ineligible candidate returned: %s", candidate.ID)
 		}
 	}

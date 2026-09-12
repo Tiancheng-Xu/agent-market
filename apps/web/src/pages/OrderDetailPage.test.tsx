@@ -132,9 +132,13 @@ describe("OrderDetailPage trust boundaries", () => {
 
   it("keeps order data dependencies behind lazy route chunks", () => {
     const appSource = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
+    const routeSource = readFileSync(new URL("../routeModules.ts", import.meta.url), "utf8");
 
-    expect(appSource).toContain('lazy(() => import("./pages/OrderDetailRoute")');
-    expect(appSource).toContain('lazy(() => import("./pages/LocalAgentsPage")');
+    expect(appSource).toContain("lazy(loadOrderRoute)");
+    expect(appSource).toContain("lazy(() => loadLocalRoute()");
+    expect(routeSource).toContain('import("./pages/OrderDetailRoute")');
+    expect(routeSource).toContain('import("./pages/LocalAgentsPage")');
+    expect(appSource).not.toMatch(/from ["']\.\/pages\/(?:OrderDetailRoute|LocalAgentsPage)["']/u);
     expect(appSource).toContain("<Suspense fallback={<RouteFallback />}");
     expect(appSource).not.toContain("@tanstack/react-query");
     expect(appSource).toContain('<Route path="*" element={<NotFoundPage />} />');

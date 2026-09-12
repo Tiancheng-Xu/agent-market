@@ -15,6 +15,24 @@ describe("bilingual interface", () => {
     expect(translateLocalizedText("zh-CN", "Build a source-backed AI market brief")).toBe("编写有来源支撑的 AI 市场简报");
     expect(translateLocalizedText("zh-CN", "No Sepolia transaction, AWS mutation, or production configuration was executed by this implementation task.")).toBe("本次实现未执行 Sepolia 交易、AWS 变更或生产配置。");
     expect(translateLocalizedText("zh-CN", "personal-code-agent:v1")).toBe("personal-code-agent:v1");
+    expect(translateLocalizedText("zh-CN", "48 hours")).toBe("48 小时");
+  });
+  it.each([
+    ["Readiness score", "就绪度评分"],
+    ["Credential exposure", "凭据暴露风险"],
+    ["Browser Ollama exposure", "浏览器 Ollama 暴露风险"],
+    ["Verified operations", "已验证操作"],
+    ["Catalog completeness", "目录完整度"],
+    ["Runtime boundary", "Runtime 边界"],
+    ["Public catalog: ", "公开目录："],
+    [" Public catalog: ", " 公开目录："],
+    ["Ownership: ", "归属："],
+    ["Order lifecycle", "订单生命周期"],
+    ["Connect the participant wallet", "连接参与方钱包"],
+    ["Eligibility is earned", "满足条件后获得评价资格"],
+    ["Open Office desk", "打开办公室工位"],
+  ])("translates public Agent profile copy: %s", (source, expected) => {
+    expect(translateVisibleText("zh-CN", source)).toBe(expected);
   });
   it.each([
     ["LIVE AGENT PLAYGROUND", "真实 Agent 试验台"],

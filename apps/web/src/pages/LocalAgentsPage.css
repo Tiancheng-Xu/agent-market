@@ -1,0 +1,37 @@
+.local-agents-workspace .agent-rail { min-width: 0; max-height: none; overflow: visible; }
+.local-agents-workspace .agent-directory-search { display: grid; gap: 8px; }
+.local-agents-workspace .agent-directory-search input { width: 100%; min-width: 0; min-height: 44px; }
+.local-agents-workspace .agent-directory-selection { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+.local-agents-workspace .agent-directory-scroll { max-height: 52vh; max-height: 52dvh; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; }
+.local-agents-workspace .agent-directory-group + .agent-directory-group { margin-top: 12px; }
+.local-agents-workspace .agent-directory-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 10px; text-align: left; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.local-agents-workspace .agent-option-list { margin-top: 8px; }
+.local-agents-workspace .agent-option-list[hidden] { display: none; }
+.local-agents-workspace .agent-option { min-height: 72px; }
+.local-agents-workspace .agent-option :is(strong, small, em) { min-width: 0; overflow-wrap: anywhere; }
+.local-agents-workspace .chat-surface { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.local-agents-workspace .message-list { min-height: 220px; max-height: 52vh; max-height: 52dvh; overscroll-behavior-y: contain; scrollbar-gutter: stable; }
+.local-agents-workspace .composer textarea { max-height: 220px; }
+@media (max-width: 760px) {
+  .local-agents-workspace .agent-directory-scroll { max-height: 34vh; max-height: 34dvh; }
+  .local-agents-workspace .agent-rail { padding-right: 0; }
+  .local-agents-workspace .chat-surface { grid-row: 1; }
+  .local-agents-workspace .composer-actions .button-row { flex-wrap: wrap; }
+}
+
+.local-agents-intro .page-header { margin-bottom: 16px; gap: 16px; }
+.local-agents-intro .page-header h1 { font-size: clamp(30px, 3vw, 42px); line-height: 1.12; }
+.local-agents-intro .page-header p { max-width: 74ch; font-size: 16px; line-height: 1.5; }
+.queen-workflow-panel .queen-workflow-grid { grid-template-columns: minmax(0, 1fr) minmax(200px, .65fr); align-items: start; margin-block: 16px; }
+.queen-workflow-panel .queen-workflow-copy { min-width: 0; padding: 12px; gap: 12px; border-radius: 12px; }
+.queen-task-prompt { display: grid; gap: 8px; font-size: 14px; }
+.queen-task-prompt textarea { box-sizing: border-box; width: 100%; min-width: 0; min-height: 72px; max-height: 180px; padding: 12px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; line-height: 1.5; }
+.queen-workflow-copy .button-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.queen-workflow-copy .button { min-height: 44px; }
+.queen-workflow-panel .queen-workflow-log { min-width: 0; max-height: 12rem; overflow: auto; overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
+.queen-preflight summary { min-height: 44px; padding-block: 10px; color: var(--muted); font-size: 14px; cursor: pointer; }
+.local-agents-workspace { align-items: start; }
+@media (max-width: 760px) {
+  .queen-workflow-panel .queen-workflow-grid { grid-template-columns: minmax(0, 1fr); }
+  .queen-workflow-panel .queen-workflow-log { max-height: 8rem; }
+}

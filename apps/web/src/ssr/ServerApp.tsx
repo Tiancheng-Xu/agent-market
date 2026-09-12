@@ -1,6 +1,7 @@
 import { FullChainEvidence } from "../evidence/FullChainEvidence";
 import phase2Evidence from "../evidence/phase2-evidence.generated.json";
 import { routeForPath } from "./routeDefinitions";
+import { OpsPage } from "../pages/ControlPages";
 
 export function ServerApp({ pathname }: { pathname: string }) {
   const route = routeForPath(pathname);
@@ -30,6 +31,7 @@ export function ServerApp({ pathname }: { pathname: string }) {
           <div><dt>Evidence</dt><dd>Requirement to verification trace</dd></div>
         </dl>
       </section>
+      {pathname.replace(/\/+$/, "") === "/ops" ? <OpsPage walletAddress={null} /> : null}
       {pathname.replace(/\/+$/, "") === "/evidence" ? <>
         <p data-evidence-boundary="current">{phase2Evidence.truthBoundary.en}</p>
         <FullChainEvidence />

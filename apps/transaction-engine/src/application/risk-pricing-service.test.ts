@@ -20,12 +20,14 @@ import {
   readRiskContext,
   requestRiskQuote,
 } from "../../../web/src/lib/riskPricingClient";
+import { withWalletSession } from "../../../web/src/lib/walletSession";
 
 const taskId = "11111111-1111-4111-8111-111111111111";
 const agentId = "22222222-2222-4222-8222-222222222222";
 const publisher = "0x1111111111111111111111111111111111111111";
 const agentWallet = "0x2222222222222222222222222222222222222222";
 const outsider = "0x3333333333333333333333333333333333333333";
+const assetId = `eip155:11155111/erc20:0x${"5".repeat(40)}`;
 const origin = new URL("https://agent-market.test");
 const now = "2026-09-01T12:00:00.000Z";
 const requestId = "0191f6f8-cb6b-7f31-81ad-c497d7d90102";
@@ -84,6 +86,7 @@ function dependencies(task: AuthoritativeRiskTask, quotes = new MemoryRiskQuoteS
     now: () => new Date(now),
     policyVersion: "risk-pricing-v2-test",
     serviceFeeBps: 600,
+    assetId: () => assetId,
   });
   return { tasks, assessor, quotes, service };
 }
@@ -109,7 +112,7 @@ describe("RiskPricingService", () => {
     const preliminary = dependencies(preliminaryTask());
     const pre = await preliminary.service.issueQuote({
       taskId,
-      expectedTaskFingerprint: fingerprintRiskTask(preliminaryTask()),
+      expectedTaskFingerprint: fingerprintRiskTask(preliminaryTask(), assetId),
       actorWallet: publisher,
     });
     expect(pre.quote.phase).toBe("preliminary");
@@ -118,7 +121,7 @@ describe("RiskPricingService", () => {
     const final = dependencies(finalTask());
     const issued = await final.service.issueQuote({
       taskId,
-      expectedTaskFingerprint: fingerprintRiskTask(finalTask()),
+      expectedTaskFingerprint: fingerprintRiskTask(finalTask(), assetId),
       actorWallet: publisher,
     });
     expect(issued.quote.phase).toBe("final");
@@ -135,22 +138,85 @@ describe("RiskPricingService", () => {
     expect(assessor.assess).not.toHaveBeenCalled();
   });
 
-  it("derives confirmation roles from the authenticated wallet and stored quote", async () => {
+  it("requires explicit confirmation roles and binds agents to the requested finalized assignment", async () => {
     const { service } = dependencies(finalTask());
     const issued = await service.issueQuote({
       taskId,
-      expectedTaskFingerprint: fingerprintRiskTask(finalTask()),
+      expectedTaskFingerprint: fingerprintRiskTask(finalTask(), assetId),
       actorWallet: publisher,
     });
     await expect(service.confirmQuote({
-      taskId, quoteId: issued.id, taskFingerprint: issued.quote.taskFingerprint, actorWallet: publisher,
+      taskId, quoteId: issued.id, quoteHash: issued.basisFingerprint, taskFingerprint: issued.quote.taskFingerprint,
+      actorWallet: publisher, actorType: "publisher",
     })).resolves.toMatchObject({ actorType: "publisher", agentId: null });
     await expect(service.confirmQuote({
-      taskId, quoteId: issued.id, taskFingerprint: issued.quote.taskFingerprint, actorWallet: agentWallet,
+      taskId, quoteId: issued.id, quoteHash: issued.basisFingerprint, taskFingerprint: issued.quote.taskFingerprint,
+      actorWallet: agentWallet, actorType: "agent", agentId,
     })).resolves.toMatchObject({ actorType: "agent", agentId });
     await expect(service.confirmQuote({
-      taskId, quoteId: issued.id, taskFingerprint: issued.quote.taskFingerprint, actorWallet: outsider,
+      taskId, quoteId: issued.id, quoteHash: issued.basisFingerprint, taskFingerprint: issued.quote.taskFingerprint,
+      actorWallet: outsider, actorType: "agent", agentId,
     })).rejects.toMatchObject({ code: "RISK_QUOTE_CONFIRM_FORBIDDEN", status: 403 });
+  });
+
+  it("records publisher and agent confirmations separately when one wallet owns both roles", async () => {
+    const task = {
+      ...finalTask(),
+      dag: {
+        ...finalTask().dag!,
+        assignments: [{ ...finalTask().dag!.assignments[0]!, agentWallet: publisher }],
+      },
+    };
+    const { service } = dependencies(task);
+    const issued = await service.issueQuote({
+      taskId,
+      expectedTaskFingerprint: fingerprintRiskTask(task, assetId),
+      actorWallet: publisher,
+    });
+    const common = {
+      taskId,
+      quoteId: issued.id,
+      quoteHash: issued.basisFingerprint,
+      taskFingerprint: issued.quote.taskFingerprint,
+      actorWallet: publisher,
+    };
+    await expect(service.confirmQuote({ ...common, actorType: "publisher" }))
+      .resolves.toEqual({ quoteId: issued.id, actorType: "publisher", agentId: null });
+    await expect(service.confirmQuote({ ...common, actorType: "agent", agentId }))
+      .resolves.toEqual({ quoteId: issued.id, actorType: "agent", agentId });
+  });
+
+  it("rejects an agent identity not owned by the wallet and assignments that are no longer finalized", async () => {
+    const secondAgentId = "33333333-3333-4333-8333-333333333333";
+    const task = {
+      ...finalTask(),
+      dag: {
+        ...finalTask().dag!,
+        assignments: [
+          ...finalTask().dag!.assignments,
+          { ...finalTask().dag!.assignments[0]!, agentId: secondAgentId, agentWallet: outsider },
+        ],
+      },
+    };
+    const { service } = dependencies(task);
+    const issued = await service.issueQuote({
+      taskId,
+      expectedTaskFingerprint: fingerprintRiskTask(task, assetId),
+      actorWallet: publisher,
+    });
+    const common = {
+      taskId,
+      quoteId: issued.id,
+      quoteHash: issued.basisFingerprint,
+      taskFingerprint: issued.quote.taskFingerprint,
+      actorWallet: agentWallet,
+      actorType: "agent" as const,
+    };
+    await expect(service.confirmQuote({ ...common, agentId: secondAgentId }))
+      .rejects.toMatchObject({ code: "RISK_QUOTE_CONFIRM_FORBIDDEN", status: 403 });
+    task.dag.finalized = false;
+    await expect(service.confirmQuote({ ...common, agentId }))
+      .rejects.toMatchObject({ code: "RISK_QUOTE_CONFIRM_FORBIDDEN", status: 403 });
   });
 
   it("keeps confirm available while quote creation is explicitly unavailable", async () => {
@@ -158,23 +224,32 @@ describe("RiskPricingService", () => {
     const configured = dependencies(preliminaryTask(), quotes);
     const issued = await configured.service.issueQuote({
       taskId,
-      expectedTaskFingerprint: fingerprintRiskTask(preliminaryTask()),
+      expectedTaskFingerprint: fingerprintRiskTask(preliminaryTask(), assetId),
       actorWallet: publisher,
     });
-    const unconfigured = new RiskPricingService({ quotes, now: () => new Date(now) });
+    const unconfigured = new RiskPricingService({
+      quotes,
+      tasks: configured.tasks,
+      assetId: () => assetId,
+      now: () => new Date(now),
+    });
     await expect(unconfigured.issueQuote({
       taskId, expectedTaskFingerprint: issued.quote.taskFingerprint, actorWallet: publisher,
     })).rejects.toMatchObject({ code: "RISK_QUOTE_CREATION_UNAVAILABLE", status: 503 });
     await expect(unconfigured.confirmQuote({
-      taskId, quoteId: issued.id, taskFingerprint: issued.quote.taskFingerprint, actorWallet: publisher,
+      taskId, quoteId: issued.id, quoteHash: issued.basisFingerprint, taskFingerprint: issued.quote.taskFingerprint,
+      actorWallet: publisher, actorType: "publisher",
     })).resolves.toMatchObject({ actorType: "publisher" });
   });
 
   it("bootstraps a minimal canonical context for the publisher", async () => {
     const { service } = dependencies(preliminaryTask());
     await expect(service.readRiskContext({ taskId, actorWallet: publisher })).resolves.toEqual({
+      activeQuote: null,
+      assetId,
+      quoteSchemaVersion: 2,
       taskId,
-      taskFingerprint: fingerprintRiskTask(preliminaryTask()),
+      taskFingerprint: fingerprintRiskTask(preliminaryTask(), assetId),
       phase: "preliminary",
       dagRevision: 0,
       quoteStatus: "not_issued",
@@ -216,9 +291,9 @@ describe("risk pricing HTTP routes", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(Object.keys(body).sort()).toEqual([
-      "dagRevision", "phase", "quoteStatus", "requestId", "taskFingerprint", "taskId",
+      "activeQuote", "assetId", "dagRevision", "phase", "quoteSchemaVersion", "quoteStatus", "requestId", "taskFingerprint", "taskId",
     ]);
-    expect(body).toMatchObject({ taskId, phase: "final", dagRevision: 2, quoteStatus: "not_issued", requestId });
+    expect(body).toMatchObject({ activeQuote: null, assetId, quoteSchemaVersion: 2, taskId, phase: "final", dagRevision: 2, quoteStatus: "not_issued", requestId });
     expect(JSON.stringify(body)).not.toMatch(/wallet|description|requirement|permission|budget|assignment/iu);
   });
 
@@ -243,7 +318,7 @@ describe("risk pricing HTTP routes", () => {
       const service = { issueQuote: vi.fn() };
       const response = await createRiskQuoteHandler({ auth: auth(), service, authOrigin: origin })(
         post(`/api/tasks/${taskId}/risk-quote`, {
-          taskFingerprint: fingerprintRiskTask(preliminaryTask()),
+          taskFingerprint: fingerprintRiskTask(preliminaryTask(), assetId),
           [field]: field === "phase" ? "final" : "injected",
         }),
         taskId,
@@ -260,12 +335,12 @@ describe("risk pricing HTTP routes", () => {
     const missingCookie = await handler(new Request(`${origin.origin}/api/tasks/${taskId}/risk-quote`, {
       method: "POST",
       headers: { origin: origin.origin, "content-type": "application/json" },
-      body: JSON.stringify({ taskFingerprint: fingerprintRiskTask(preliminaryTask()) }),
+      body: JSON.stringify({ taskFingerprint: fingerprintRiskTask(preliminaryTask(), assetId) }),
     }), taskId);
     const wrongOrigin = await handler(new Request(`${origin.origin}/api/tasks/${taskId}/risk-quote`, {
       method: "POST",
       headers: { origin: "https://evil.test", cookie: "__Host-agent_market_session=x", "content-type": "application/json" },
-      body: JSON.stringify({ taskFingerprint: fingerprintRiskTask(preliminaryTask()) }),
+      body: JSON.stringify({ taskFingerprint: fingerprintRiskTask(preliminaryTask(), assetId) }),
     }), taskId);
     const malformedJson = await handler(new Request(`${origin.origin}/api/tasks/${taskId}/risk-quote`, {
       method: "POST",
@@ -273,31 +348,48 @@ describe("risk pricing HTTP routes", () => {
       body: "{",
     }), taskId);
     const accepted = await handler(post(`/api/tasks/${taskId}/risk-quote`, {
-      taskFingerprint: fingerprintRiskTask(preliminaryTask()),
+      taskFingerprint: fingerprintRiskTask(preliminaryTask(), assetId),
     }), taskId);
     expect([missingCookie.status, wrongOrigin.status, malformedJson.status, accepted.status]).toEqual([401, 403, 400, 201]);
     expect(accepted.headers.get("x-request-id")).toBe(requestId);
     expect(accepted.headers.get("cache-control")).toBe("no-store");
   });
 
-  it("rejects confirmation role injection and derives the role from the session wallet", async () => {
+  it("requires an exact explicit confirmation actor contract", async () => {
     const { service } = dependencies(finalTask());
     const issued = await service.issueQuote({
       taskId,
-      expectedTaskFingerprint: fingerprintRiskTask(finalTask()),
+      expectedTaskFingerprint: fingerprintRiskTask(finalTask(), assetId),
       actorWallet: publisher,
     });
     const handler = createRiskQuoteConfirmationHandler({ auth: auth(agentWallet), service, authOrigin: origin });
-    const injected = await handler(post(`/api/tasks/${taskId}/risk-quote/confirm`, {
+    const missingActor = await handler(post(`/api/tasks/${taskId}/risk-quote/confirm`, {
       quoteId: issued.id,
+      quoteHash: issued.basisFingerprint,
       taskFingerprint: issued.quote.taskFingerprint,
-      actorType: "publisher",
+    }), taskId);
+    const missingAgentId = await handler(post(`/api/tasks/${taskId}/risk-quote/confirm`, {
+      quoteId: issued.id,
+      quoteHash: issued.basisFingerprint,
+      taskFingerprint: issued.quote.taskFingerprint,
+      actorType: "agent",
+    }), taskId);
+    const extraField = await handler(post(`/api/tasks/${taskId}/risk-quote/confirm`, {
+      quoteId: issued.id,
+      quoteHash: issued.basisFingerprint,
+      taskFingerprint: issued.quote.taskFingerprint,
+      actorType: "agent",
+      agentId,
+      phase: "final",
     }), taskId);
     const accepted = await handler(post(`/api/tasks/${taskId}/risk-quote/confirm`, {
       quoteId: issued.id,
+      quoteHash: issued.basisFingerprint,
       taskFingerprint: issued.quote.taskFingerprint,
+      actorType: "agent",
+      agentId,
     }), taskId);
-    expect(injected.status).toBe(400);
+    expect([missingActor.status, missingAgentId.status, extraField.status]).toEqual([400, 400, 400]);
     expect(accepted.status).toBe(200);
     expect(await accepted.json()).toMatchObject({ confirmation: { actorType: "agent", agentId } });
   });
@@ -339,11 +431,12 @@ describe("public Reputation V2 API", () => {
 
 describe("riskPricingClient", () => {
   it("sends only the public fields and strictly parses aggregate responses", async () => {
+    await withWalletSession(async () => undefined);
     const task = preliminaryTask();
     const { service } = dependencies(task);
     const issued = await service.issueQuote({
       taskId,
-      expectedTaskFingerprint: fingerprintRiskTask(task),
+      expectedTaskFingerprint: fingerprintRiskTask(task, assetId),
       actorWallet: publisher,
     });
     const calls: Array<{ url: string; init: RequestInit | undefined }> = [];
@@ -365,14 +458,14 @@ describe("riskPricingClient", () => {
       if (String(url).endsWith("/confirm")) {
         return Response.json({ confirmation: { quoteId: issued.id, actorType: "publisher", agentId: null }, requestId });
       }
-      return Response.json({ quoteId: issued.id, quote: issued.quote, version: issued.version, requestId }, { status: 201 });
+      return Response.json({ quoteId: issued.id, quoteHash: issued.basisFingerprint, quote: issued.quote, version: issued.version, requestId }, { status: 201 });
     });
     vi.stubGlobal("fetch", fetchMock);
     await requestRiskQuote(taskId, issued.quote.taskFingerprint);
-    await confirmRiskQuote(taskId, issued.id, issued.quote.taskFingerprint);
+    await confirmRiskQuote(taskId, issued.id, issued.quote.taskFingerprint, issued.basisFingerprint);
     await readAgentReputation(agentId);
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ taskFingerprint: issued.quote.taskFingerprint });
-    expect(JSON.parse(String(calls[1]!.init?.body))).toEqual({ quoteId: issued.id, taskFingerprint: issued.quote.taskFingerprint });
+    expect(JSON.parse(String(calls[1]!.init?.body))).toEqual({ quoteId: issued.id, taskFingerprint: issued.quote.taskFingerprint, quoteHash: issued.basisFingerprint });
     expect(calls.slice(0, 2).every(({ init }) => init?.credentials === "include")).toBe(true);
     expect(calls[2]?.init?.credentials).toBe("omit");
 
@@ -384,9 +477,13 @@ describe("riskPricingClient", () => {
   });
 
   it("strictly reads the minimal risk context with authenticated credentials", async () => {
+    await withWalletSession(async () => undefined);
     const expected = {
+      activeQuote: null,
+      assetId,
+      quoteSchemaVersion: 2 as const,
       taskId,
-      taskFingerprint: fingerprintRiskTask(preliminaryTask()),
+      taskFingerprint: fingerprintRiskTask(preliminaryTask(), assetId),
       phase: "preliminary" as const,
       dagRevision: 0,
       quoteStatus: "not_issued" as const,

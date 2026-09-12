@@ -6,6 +6,8 @@ import { bootstrapClient, readRenderStateFromDocument } from "./bootstrap";
 import { LanguageProvider } from "./i18n/LanguageProvider";
 import { startPerformanceCollection } from "./performance/collector";
 import { ServerApp } from "./ssr/ServerApp";
+import { prepareRoute } from "./routeModules";
+import { RouteLoadError } from "./components/RouteBoundary";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -22,19 +24,33 @@ let interactionRecorded = false;
 
 function ClientApplication({ initialInteractive }: { initialInteractive: boolean }) {
   const [interactive, setInteractive] = useState(initialInteractive);
+  const [startupFailed, setStartupFailed] = useState(false);
 
   useEffect(() => {
-    setInteractive(true);
-    if (!interactionRecorded) {
+    let active = true;
+    const timeout = globalThis.setTimeout(() => {
+      if (active) { active = false; setStartupFailed(true); }
+    }, 12_000);
+    // Preserve the server content while the initial route chunk loads.
+    void prepareRoute(globalThis.location.pathname).then(() => {
+      if (active) { globalThis.clearTimeout(timeout); setInteractive(true); }
+    }, () => {
+      if (active) { globalThis.clearTimeout(timeout); setStartupFailed(true); }
+    });
+    return () => { active = false; globalThis.clearTimeout(timeout); };
+  }, []);
+
+  useEffect(() => {
+    if (interactive && !interactionRecorded) {
       interactionRecorded = true;
       performanceCollection?.markInteractive();
     }
-  }, []);
+  }, [interactive]);
 
   return (
     <StrictMode>
       <LanguageProvider>
-        {interactive
+        {startupFailed ? <RouteLoadError /> : interactive
           ? (
               <BrowserRouter>
                 <App />

@@ -42,7 +42,8 @@ export function CocosOfficeFrame({
       const runtimeState = officeFrameStatusFromRuntimeState(frame.document.documentElement.dataset.officeRuntime);
       if (!runtimeState) return;
       setStatus(runtimeState);
-      postOfficeSnapshot(frame, expectedOrigin, snapshot);
+      // Delayed onLoad probes can outlive the filter/locale they captured.
+      // Only observe readiness here; current effects/messages send snapshots.
     } catch {
       // postMessage remains authoritative if the frame ever moves cross-origin.
     }

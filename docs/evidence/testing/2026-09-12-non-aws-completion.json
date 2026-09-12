@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "agent-market.non-aws-completion.v2",
+  "date": "2026-09-12",
+  "status": "verified-local-release-pending",
+  "scope": "Non-AWS implementation, local integration, build, review, and visual acceptance",
+  "source": {
+    "baselineBeforeWork": "4589c72b110fbe17163320eef224bdeca2e25025",
+    "currentState": "committed-local-verified",
+    "verifiedImplementationCommitSha": "c7e52bbc192be468e8fe3507a68f4cb1b2739da8",
+    "finalReleaseCommitSha": null,
+    "boundary": "The locally verified implementation is bound to commit c7e52bbc192be468e8fe3507a68f4cb1b2739da8. No final release SHA, GitHub Actions Run, Cloudflare deployment, or production recording is claimed."
+  },
+  "verified": {
+    "web": { "filesPassed": 50, "testsPassed": 402, "walletHttpTestsPassed": 1, "productionBuild": "passed" },
+    "localAgentRunner": { "filesPassed": 17, "testsPassed": 125, "environmentTestsSkipped": 8 },
+    "transactionEngine": {
+      "nonDatabaseTestsPassed": 348,
+      "environmentTestsSkipped": 46,
+      "realPostgres": { "commercialTestsPassed": 31, "riskTestsPassed": 9, "governanceTestsPassed": 7, "vrfTestsPassed": 14 },
+      "isolatedResourceContentionGroups": [
+        { "testsPassed": 12, "testsFailed": 0 },
+        { "testsPassed": 12, "testsFailed": 0 }
+      ]
+    },
+    "contracts": { "testsPassed": 34 },
+    "trainer": { "testsPassed": 33 },
+    "repositoryAndEvidence": { "checksPassed": 32 },
+    "typecheck": { "projectsPassed": 3 },
+    "goMatcher": { "vet": "passed", "test": "passed" },
+    "visualV4": {
+      "evidence": "docs/evidence/testing/final-visual-20260912/result.json",
+      "routes": 18,
+      "widths": [375, 390, 430, 1440, 1920],
+      "locales": ["zh-CN", "en"],
+      "combinationsChecked": 180,
+      "overflowFindings": 0,
+      "brokenImageFindings": 0,
+      "emptyButtonFindings": 0,
+      "pageErrors": 0,
+      "i18nFindings": 0,
+      "cocosReadyMsRange": [630, 674],
+      "manualScreenshotReview": { "status": "passed", "screenshotsReviewed": 12, "widths": [390, 1920], "locale": "zh-CN" }
+    },
+    "independentReview": { "p0Open": 0, "p1Open": 0, "p2Found": 5, "p2Fixed": 5, "targetedVerification": "passed" }
+  },
+  "pending": {
+    "gitCommitAndPullRequest": "implementation-commit-bound-pull-request-pending",
+    "githubActionsRun": "pending",
+    "cloudflareReleaseAndReadback": "pending",
+    "productionRecordingAndManifest": "pending",
+    "finalArchitectureHandoff": "pending",
+    "chainlinkVrfExternalDeployment": "pending",
+    "chainlinkVrfCallback": "pending",
+    "temporalProductionHostRuntimeAndTunnel": "pending",
+    "theGraph": "deferred"
+  },
+  "externalOperationsThisRound": {
+    "aws": "not-run-or-changed",
+    "sepolia": "no-new-transaction",
+    "cloudflare": "not-written-by-this-closeout"
+  },
+  "claimsBoundary": "Local tests, PostgreSQL, Temporal, build, review, and visual results do not establish AWS activity, a new Sepolia transaction, external Chainlink fulfillment, production Runtime availability, a GitHub release, Cloudflare publication, or production recording."
+}

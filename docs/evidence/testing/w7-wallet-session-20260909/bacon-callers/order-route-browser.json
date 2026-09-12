@@ -1,0 +1,30 @@
+{
+  "boundary": "Real UUID order route and page in isolated browser; all wallet and HTTP responses mocked. No external signature or transaction.",
+  "checks": [
+    {
+      "name": "uuid-order-initial-sign-in-available-no-protected-read",
+      "pass": true
+    },
+    {
+      "name": "explicit-mock-sign-in-loads-actual-order-page",
+      "pass": true
+    },
+    {
+      "name": "same-wallet-logout-failure-restores-enabled-login",
+      "pass": true
+    },
+    {
+      "name": "failed-cleanup-does-not-sign-or-read-order-and-can-retry",
+      "pass": true
+    },
+    {
+      "name": "cleanup-recovery-new-signature-restores-order-access",
+      "pass": true
+    },
+    {
+      "name": "invalidated-delayed-signature-cannot-reopen-order",
+      "pass": true
+    }
+  ],
+  "pageErrors": []
+}

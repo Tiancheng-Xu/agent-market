@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "temporal-server-restart-evidence.v1",
+  "verifiedAt": "2026-09-10T01:50:52.438Z",
+  "status": "verified-local",
+  "server": {
+    "address": "127.0.0.1:7239",
+    "storage": "task-owned-sqlite",
+    "processReplaced": true,
+    "sameStorage": true
+  },
+  "database": "dedicated-local-test",
+  "workflowIds": {
+    "order": "queen-order-v1-6b69a06f6e3b86ae59a6614b2d2ec73fd39f6ead54d8c5814ab1970985e256eb",
+    "planning": "queen-planning-v1-1636790c6bbb42f82d4100910648b82f555c102805655828f811c72c33c9d5ff"
+  },
+  "checks": {
+    "sameOrderRun": true,
+    "samePlanningRun": true,
+    "persistedTimerFired": true,
+    "deadlineEffects": 1,
+    "uncertainEffects": 1,
+    "uncertainLedgerRetained": true,
+    "duplicateWorkflowRejected": true
+  },
+  "limits": [
+    "development-server-only",
+    "fixture-sql-effect-not-provider",
+    "no-production-supervisor",
+    "no-cloud-or-chain"
+  ]
+}

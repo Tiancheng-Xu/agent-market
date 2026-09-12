@@ -107,3 +107,4 @@ export * from "./agent-lifecycle";
 export * from "./orders";
 export * from "./reputation";
 export * from "./risk-pricing";
+export { QueenTransportEventSchema, queenTransportOperationParts, type QueenTransportEvent } from "./queen-transport-event";
