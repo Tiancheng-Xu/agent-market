@@ -1,7 +1,7 @@
 # Agent Market authoritative TODO
 
 Updated: 2026-09-12
-Status: **production released / recording captured / Evidence publication pending**
+Status: **complete / production Evidence verified**
 
 This is the single active delivery queue. Historical checklists are evidence of
 their own time and scope, not current work queues. The implementation follows
@@ -29,8 +29,8 @@ falsifiable acceptance.
 - [x] Commit and merge the verified source: main `2dfe6d0aa6fa40b65762c07ed687921233b0e0c6`; successful main Actions Run `34697552824`.
 - [x] Publish through Cloudflare Git integration: production deployment `d8cf5994-ce54-47f1-8979-0c799eca8b79`; required routes returned 200 and an unknown route returned a real 404.
 - [x] Record the released production experience with Cocos Office, Queen StateGraph and Checkpoint, task/order/reputation/risk, matching/VRF boundary, staking, arbitration, operations, and Evidence. The 331.7-second H.264/AAC artifact passed the audio Gate and is bound to the released source and deployment.
-- [ ] Publish the recording Evidence and bind it to the released source and production deployment.
-- [ ] Send the final architecture, release identifiers, URLs, and remaining external boundaries to task `01a0758e-78f5-75a1-90f7-43d75de6e780`.
+- [x] Publish the recording Evidence through PR #27, merged as main `a9278665d25dad64ab22477a10a39974a2712744`; PR Verify Run `34705871834` succeeded and Cloudflare Production deployment `de287f0d-8e89-4eca-bb0c-b08a1fb5af8f` passed manifest, video Range, reciprocal-link and real-404 readback.
+- [x] Send the final architecture, release identifiers, URLs, and remaining external boundaries to task `01a0758e-78f5-75a1-90f7-43d75de6e780`.
 
 ## Explicit external boundaries
 

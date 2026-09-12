@@ -52,7 +52,7 @@
     "productionRecordingAndManifest": "ce7e4fb873ab007130b4052759ac5af66fb5dd37b403852d6210ea1ce8daac2e-audio-pass"
   },
   "pending": {
-    "finalArchitectureHandoff": "pending",
+    "finalArchitectureHandoff": "completed-task-01a0758e-78f5-75a1-90f7-43d75de6e780",
     "chainlinkVrfExternalDeployment": "pending",
     "chainlinkVrfCallback": "pending",
     "temporalProductionHostRuntimeAndTunnel": "pending",
@@ -62,6 +62,15 @@
     "aws": "not-run-or-changed",
     "sepolia": "no-new-transaction",
     "cloudflare": "production-release-completed-before-recording"
+  },
+  "evidencePublication": {
+    "pullRequest": 27,
+    "mergeCommit": "a9278665d25dad64ab22477a10a39974a2712744",
+    "verifyRunId": "34705871834",
+    "cloudflareProductionDeploymentId": "de287f0d-8e89-4eca-bb0c-b08a1fb5af8f",
+    "productionEvidenceUrl": "https://agent-market.baby2b.online/evidence/",
+    "recordingUrl": "https://agent-market.baby2b.online/evidence/agent-market-production-walkthrough-2026-09-13.mp4",
+    "httpReadback": "passed"
   },
   "claimsBoundary": "The GitHub and Cloudflare release plus narrated production UI recording are established only for their exact identifiers and visible routes. They do not establish AWS activity, a new Sepolia transaction, external Chainlink fulfillment, or Temporal production Runtime availability."
 }
