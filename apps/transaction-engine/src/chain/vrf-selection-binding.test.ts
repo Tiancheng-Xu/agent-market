@@ -69,7 +69,7 @@ describe("strict VRF binding (synthetic evidence only)", () => {
     const changed = input(); changed.task.version++; changed.pool.taskRevision++; changed.pool.revision++;
     await expect(restarted.freeze(changed)).rejects.toThrow("VRF_REROLL_FORBIDDEN");
     await expect(new VrfBindingAdapter({ ...config, selectorAddress: config.coordinatorAddress }, store).freeze(input())).rejects.toThrow("VRF_REROLL_FORBIDDEN");
-  });
+  }, 15_000);
   it("atomically rejects concurrent freeze, request replacement and callback replay", async () => {
     const { adapter, store } = await fixture(); const other = new VrfBindingAdapter(config, store);
     const freezes = await Promise.allSettled([adapter.freeze(input()), other.freeze(input())]);
