@@ -1,7 +1,7 @@
 # Agent Market authoritative TODO
 
 Updated: 2026-09-12
-Status: **local verified / release pending**
+Status: **production released / recording captured / Evidence publication pending**
 
 This is the single active delivery queue. Historical checklists are evidence of
 their own time and scope, not current work queues. The implementation follows
@@ -26,9 +26,9 @@ falsifiable acceptance.
 
 ## Active release queue
 
-- [ ] Commit the verified source state, open/merge the GitHub PR, and record the exact source SHA and successful Actions Run.
-- [ ] Publish through the existing Cloudflare Git integration and read back the exact deployment, production routes, Evidence route, and real 404.
-- [ ] Record the released production experience with an explicit coverage manifest. It must show Cocos Office, Queen workflow and Checkpoint boundary, task/order/reputation/risk, matching/VRF boundary, staking, arbitration, operations, and Evidence without claiming untriggered external actions.
+- [x] Commit and merge the verified source: main `2dfe6d0aa6fa40b65762c07ed687921233b0e0c6`; successful main Actions Run `34697552824`.
+- [x] Publish through Cloudflare Git integration: production deployment `d8cf5994-ce54-47f1-8979-0c799eca8b79`; required routes returned 200 and an unknown route returned a real 404.
+- [x] Record the released production experience with Cocos Office, Queen StateGraph and Checkpoint, task/order/reputation/risk, matching/VRF boundary, staking, arbitration, operations, and Evidence. The 331.7-second H.264/AAC artifact passed the audio Gate and is bound to the released source and deployment.
 - [ ] Publish the recording Evidence and bind it to the released source and production deployment.
 - [ ] Send the final architecture, release identifiers, URLs, and remaining external boundaries to task `01a0758e-78f5-75a1-90f7-43d75de6e780`.
 
@@ -39,7 +39,7 @@ falsifiable acceptance.
 - Chainlink VRF: external deployment and callback are pending. Local contract, persistence, permissions, and no-reroll Gates are not oracle fulfillment.
 - Temporal Runtime: production host and tunnel are pending. Local service and restart recovery do not prove production availability.
 - The Graph: deferred by ADR; current readback strategy remains exact RPC plus Blockscout reconciliation.
-- Source identity: the working tree is not committed, so no final SHA is recorded yet.
+- Recording identity: `ce7e4fb873ab007130b4052759ac5af66fb5dd37b403852d6210ea1ce8daac2e`, captured from production source `2dfe6d0aa6fa40b65762c07ed687921233b0e0c6` without wallet, AWS, Sepolia, GitHub, or Cloudflare mutation during capture.
 
 ## Current acceptance snapshot
 

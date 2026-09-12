@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "agent-market.production-recording.v3",
+  "capturedAtUtc": "2026-09-12T16:29:54Z",
+  "status": "verified-production-ui",
+  "recordedTarget": {
+    "baseUrl": "https://agent-market.baby2b.online",
+    "sourceCommit": "2dfe6d0aa6fa40b65762c07ed687921233b0e0c6",
+    "cloudflareProductionDeploymentId": "d8cf5994-ce54-47f1-8979-0c799eca8b79",
+    "mainVerifyRunId": "34697552824"
+  },
+  "artifact": {
+    "publicPath": "/evidence/agent-market-production-walkthrough-2026-09-13.mp4",
+    "posterPublicPath": "/evidence/agent-market-production-walkthrough-2026-09-13-poster.png",
+    "sourceCapture": "Google Chrome production window captured with ScreenCaptureKit; browser speech synthesis supplied the synchronized Mandarin narration",
+    "durationSeconds": 331.69,
+    "width": 1280,
+    "height": 634,
+    "frameRate": "15/1",
+    "videoCodec": "h264",
+    "audioCodec": "aac",
+    "audioSampleRate": 48000,
+    "audioChannels": 2,
+    "audioHealth": "pass",
+    "meanVolumeDb": -24.4,
+    "sizeBytes": 4292989,
+    "sha256": "ce7e4fb873ab007130b4052759ac5af66fb5dd37b403852d6210ea1ce8daac2e",
+    "posterSha256": "8d499754425020988d5c81163d59344131f2efd6999cf3f07f33e4fe1fc5ae6b",
+    "posterSizeBytes": 203067,
+    "publishedEncoding": "H.264 CRF 27 at 15 fps with AAC 96 kbps; raw ScreenCaptureKit sources preserved outside the repository",
+    "rawScreenSha256": "5f637d0ffde77c9fa62458cab10347bbcf9bd408c66a039e9b42964fd4097b61",
+    "rawAudioSha256": "5a5f7aa08c4f57a9dc44915e11e7140966f4269c92fb5b1f946b3183343651b2"
+  },
+  "recordedFlow": [
+    "production homepage fairness and platform-value boundary",
+    "Agent catalog provenance, ownership, health and cold-start exploration boundary",
+    "Queen StateGraph route and Checkpoint recovery boundary on the Live Agent page",
+    "Cocos Office and sanitized OfficeSnapshot boundary",
+    "task acceptance, reputation, risk quote, P+A+B and symmetric-deposit surfaces",
+    "explainable matching and pending external Chainlink VRF boundary",
+    "staking intent and receipt boundary without transaction submission",
+    "sole-platform Final Arbiter flow without DAO-vote or transaction claims",
+    "operations page with SNS, SQS, DLQ and pending Temporal production boundary",
+    "Evidence page high-level runtime architecture and independent evidence ledgers"
+  ],
+  "deterministicObservations": {
+    "productionUiCaptured": true,
+    "mandarinNarrationPresent": true,
+    "queenStateGraphBoundaryVisible": true,
+    "checkpointRecoveryBoundaryVisible": true,
+    "runtimeOfflineBoundaryVisible": true,
+    "cocosOfficeVisible": true,
+    "riskQuoteAndSymmetricDepositVisible": true,
+    "explainableMatchingVisible": true,
+    "solePlatformArbiterUiVisible": true,
+    "runtimeArchitectureVisible": true,
+    "walletConnected": false,
+    "taskFormSubmitted": false,
+    "stakingTransactionSent": false,
+    "arbitrationTransactionSent": false,
+    "awsMutationPerformed": false,
+    "sepoliaTransactionSent": false,
+    "secretValuesVisible": false
+  },
+  "truthBoundary": [
+    "This recording proves visible Cloudflare production UI behavior for the recorded routes only; it does not prove every backend dependency was online.",
+    "The Live Agent runtime remained fail-closed when offline; no provider prompt or private runtime request was submitted.",
+    "No wallet was connected and no task, staking or arbitration transaction was submitted. Existing Sepolia proof remains a separate historical RPC readback ledger.",
+    "No AWS mutation, AWS sampling, GitHub mutation or Cloudflare mutation occurred during capture.",
+    "Chainlink VRF external deployment and callback, Temporal production runtime and tunnel, and The Graph remain outside this recording scope.",
+    "The narration explains boundaries; it is not execution evidence and cannot replace receipts, runtime readback or cloud logs."
+  ]
+}

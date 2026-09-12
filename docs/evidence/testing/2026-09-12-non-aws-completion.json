@@ -1,14 +1,16 @@
 {
   "schemaVersion": "agent-market.non-aws-completion.v2",
   "date": "2026-09-12",
-  "status": "verified-local-release-pending",
+  "status": "verified-production-ui-recorded",
   "scope": "Non-AWS implementation, local integration, build, review, and visual acceptance",
   "source": {
     "baselineBeforeWork": "4589c72b110fbe17163320eef224bdeca2e25025",
-    "currentState": "committed-local-verified",
-    "verifiedImplementationCommitSha": "c7e52bbc192be468e8fe3507a68f4cb1b2739da8",
-    "finalReleaseCommitSha": null,
-    "boundary": "The locally verified implementation is bound to commit c7e52bbc192be468e8fe3507a68f4cb1b2739da8. No final release SHA, GitHub Actions Run, Cloudflare deployment, or production recording is claimed."
+    "currentState": "released-production-recorded",
+    "verifiedImplementationCommitSha": "1d0b349427b81c5ac9a8b5e9c9114730e7ae71e4",
+    "finalReleaseCommitSha": "2dfe6d0aa6fa40b65762c07ed687921233b0e0c6",
+    "mainActionsRunId": "34697552824",
+    "cloudflareProductionDeploymentId": "d8cf5994-ce54-47f1-8979-0c799eca8b79",
+    "boundary": "Production UI release and recording are verified for their recorded scope. Runtime availability, wallet signatures, AWS activity, new Sepolia transactions, external Chainlink fulfillment and Temporal production availability remain separate evidence ledgers."
   },
   "verified": {
     "web": { "filesPassed": 50, "testsPassed": 402, "walletHttpTestsPassed": 1, "productionBuild": "passed" },
@@ -43,11 +45,13 @@
     },
     "independentReview": { "p0Open": 0, "p1Open": 0, "p2Found": 5, "p2Fixed": 5, "targetedVerification": "passed" }
   },
+  "completedExternalDelivery": {
+    "gitCommitAndPullRequest": "completed",
+    "githubActionsRun": "34697552824-success",
+    "cloudflareReleaseAndReadback": "d8cf5994-ce54-47f1-8979-0c799eca8b79-success",
+    "productionRecordingAndManifest": "ce7e4fb873ab007130b4052759ac5af66fb5dd37b403852d6210ea1ce8daac2e-audio-pass"
+  },
   "pending": {
-    "gitCommitAndPullRequest": "implementation-commit-bound-pull-request-pending",
-    "githubActionsRun": "pending",
-    "cloudflareReleaseAndReadback": "pending",
-    "productionRecordingAndManifest": "pending",
     "finalArchitectureHandoff": "pending",
     "chainlinkVrfExternalDeployment": "pending",
     "chainlinkVrfCallback": "pending",
@@ -57,7 +61,7 @@
   "externalOperationsThisRound": {
     "aws": "not-run-or-changed",
     "sepolia": "no-new-transaction",
-    "cloudflare": "not-written-by-this-closeout"
+    "cloudflare": "production-release-completed-before-recording"
   },
-  "claimsBoundary": "Local tests, PostgreSQL, Temporal, build, review, and visual results do not establish AWS activity, a new Sepolia transaction, external Chainlink fulfillment, production Runtime availability, a GitHub release, Cloudflare publication, or production recording."
+  "claimsBoundary": "The GitHub and Cloudflare release plus narrated production UI recording are established only for their exact identifiers and visible routes. They do not establish AWS activity, a new Sepolia transaction, external Chainlink fulfillment, or Temporal production Runtime availability."
 }
