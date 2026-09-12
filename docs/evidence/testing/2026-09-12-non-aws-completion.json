@@ -5,9 +5,10 @@
   "scope": "Non-AWS implementation, local integration, build, review, and visual acceptance",
   "source": {
     "baselineBeforeWork": "4589c72b110fbe17163320eef224bdeca2e25025",
-    "currentState": "uncommitted",
-    "finalCommitSha": null,
-    "boundary": "The verified working tree has not been committed. No final release SHA is claimed."
+    "currentState": "committed-local-verified",
+    "verifiedImplementationCommitSha": "9097b4acc9461bb71fbe1983461936ca5a6af190",
+    "finalReleaseCommitSha": null,
+    "boundary": "The locally verified implementation is bound to commit 9097b4acc9461bb71fbe1983461936ca5a6af190. No final release SHA, GitHub Actions Run, Cloudflare deployment, or production recording is claimed."
   },
   "verified": {
     "web": { "filesPassed": 50, "testsPassed": 402, "walletHttpTestsPassed": 1, "productionBuild": "passed" },
@@ -43,7 +44,7 @@
     "independentReview": { "p0Open": 0, "p1Open": 0, "p2Found": 5, "p2Fixed": 5, "targetedVerification": "passed" }
   },
   "pending": {
-    "gitCommitAndPullRequest": "pending",
+    "gitCommitAndPullRequest": "implementation-commit-bound-pull-request-pending",
     "githubActionsRun": "pending",
     "cloudflareReleaseAndReadback": "pending",
     "productionRecordingAndManifest": "pending",
