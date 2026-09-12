@@ -1,10 +1,10 @@
 {
   "schemaVersion": "agent-market.recording-coverage-plan.v1",
-  "status": "planned-not-recorded",
+  "status": "recorded-production-ui",
   "authority": "docs/delivery/todolist.md",
   "purpose": "Acceptance coverage for the final non-AWS delivery recording; this document is not execution evidence.",
-  "release": { "commit": null, "actionsRun": null, "deployment": null },
-  "recording": { "path": null, "sha256": null, "durationSeconds": null },
+  "release": { "commit": "2dfe6d0aa6fa40b65762c07ed687921233b0e0c6", "actionsRun": "34697552824", "deployment": "d8cf5994-ce54-47f1-8979-0c799eca8b79" },
+  "recording": { "path": "/evidence/agent-market-production-walkthrough-2026-09-13.mp4", "sha256": "e7e651d220c44f5910bb67fcce760b4cb91dcece88003240e307c3eb65449d9d", "durationSeconds": 331.690667, "audioHealth": "pass" },
   "preconditions": [
     "Complete the relevant functionality and fresh acceptance gates before recording it as working",
     "Coordinate with other tasks and establish exclusive ownership of one dedicated visible window and recorder",
@@ -18,28 +18,32 @@
       "id": "presentation-navigation",
       "routes": ["/", "/agents", "/dashboard"],
       "requiredObservation": "Readable desktop/mobile typography, independent card heights, working route navigation and correct scroll reset",
-      "status": "pending"
+      "status": "partially-recorded",
+      "observation": "Homepage, Agent catalog and route transitions were recorded; deterministic 180-combination evidence remains authoritative for mobile and bilingual coverage."
     },
     {
       "id": "wallet-session",
       "routes": ["/agents/local"],
       "requiredObservation": "Explicit authentication state, disconnect and account/network changes revoke old UI results; failures do not become signed-in success",
       "boundary": "A mock wallet video does not prove an external wallet signature; signature evidence is a separate requirement",
-      "status": "pending"
+      "status": "boundary-recorded",
+      "observation": "The disconnected/offline state was visible; no wallet signature was requested."
     },
     {
       "id": "queen-planning",
       "routes": ["/agents/local"],
       "requiredObservation": "An authenticated task-bound request proceeds from queued to a persisted plan readback; graph branches, node assignments and exact-version confirmation are visible",
       "boundary": "Queued, committed planning and approved planning do not imply completed Agent execution",
-      "status": "pending"
+      "status": "boundary-recorded",
+      "observation": "StateGraph structure and offline fail-closed boundary were narrated; no authenticated runtime plan was executed."
     },
     {
       "id": "checkpoint-recovery",
       "routes": ["/agents/local"],
       "requiredObservation": "A previously persisted task can be read after reconnect; show the matching task/version and the separate restart acceptance record",
       "boundary": "A browser reload alone is not proof of a server restart or provider-side exactly-once execution",
-      "status": "pending"
+      "status": "boundary-recorded",
+      "observation": "Checkpoint purpose and recovery boundary were recorded; server restart proof remains the separate local acceptance ledger."
     },
     {
       "id": "risk-quote",
@@ -47,7 +51,8 @@
       "navigation": "Open a real authorized task through its existing detail link",
       "requiredObservation": "Display P, symmetric deposits, fee, canonical asset and quote hash; both participants read the same quote; a changed/expired quote loses confirmation readiness",
       "boundary": "Quote confirmation is not payment, investment, yield accrual or a receipt",
-      "status": "pending"
+      "status": "ui-recorded",
+      "observation": "The task fixture showed P+A+B, symmetric deposits, risk factors and simulation labels; no quote was confirmed or funded."
     },
     {
       "id": "order-and-matching",
@@ -55,34 +60,39 @@
       "navigation": "Use the task detail and explainable matching controls",
       "requiredObservation": "Role-scoped order actions, explicit current status, qualification constraints and matching evidence; pending oracle state does not select a random winner",
       "boundary": "No duplicate historical chain transactions or fabricated VRF fulfillment",
-      "status": "pending"
+      "status": "ui-recorded",
+      "observation": "Explainable matching and the pending external VRF boundary were recorded; no oracle result or winner was fabricated."
     },
     {
       "id": "cocos-office",
       "routes": ["/office"],
       "requiredObservation": "Visible Office navigation, actual Cocos rendering, desk selection, status filtering and desktop/mobile resize without clipped hit targets",
       "boundary": "Public demonstration desks stay labeled as demonstration data, not private live work",
-      "status": "pending"
+      "status": "ui-recorded",
+      "observation": "The production Cocos Office route and its sanitized snapshot boundary were recorded."
     },
     {
       "id": "staking-and-arbitration",
       "routes": ["/staking", "/committee"],
       "requiredObservation": "Explain wallet/role prerequisites, conflict review and both outcome directions; identify the independently verified receipt/status evidence",
       "boundary": "Showing the form is not proof of settlement; historical receipts retain their original scope and date",
-      "status": "pending"
+      "status": "ui-recorded",
+      "observation": "Staking and sole-platform-arbiter surfaces were recorded without wallet connection or transaction submission."
     },
     {
       "id": "governance",
       "routes": ["/ops"],
       "requiredObservation": "Authenticated permissions, review context and versions, self-review rejection, revocation/expired-session behavior, audit readback and clear unavailable states",
       "boundary": "Governance database actions are not cloud deployment, DAO voting or transfer of funds",
-      "status": "pending"
+      "status": "ui-recorded",
+      "observation": "Operations and SNS/SQS/DLQ boundaries were recorded; governance mutations were not executed."
     },
     {
       "id": "delivery-evidence",
       "routes": ["/evidence"],
       "requiredObservation": "Current runtime architecture, readable evidence links, correct local/production/chain boundaries and clearly historical previous recordings",
-      "status": "pending"
+      "status": "recorded",
+      "observation": "The high-level runtime architecture and independent evidence boundaries were recorded with Mandarin narration."
     }
   ],
   "acceptance": [

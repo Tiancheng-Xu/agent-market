@@ -2,7 +2,7 @@
 
 Baseline before this work: `4589c72b110fbe17163320eef224bdeca2e25025`.
 
-Current decision: **local verified / release pending**. The locally verified implementation is bound to commit `c7e52bbc192be468e8fe3507a68f4cb1b2739da8`; this implementation commit is not yet claimed as a released production SHA. Local implementation, tests, build, visual review, production publication, Runtime availability, and external chain/cloud proof remain separate ledgers.
+Current decision: **production released / UI recording verified**. The released source is main `2dfe6d0aa6fa40b65762c07ed687921233b0e0c6`, main Actions Run `34697552824` succeeded, and Cloudflare production deployment `d8cf5994-ce54-47f1-8979-0c799eca8b79` passed route and real-404 readback. Local implementation, tests, build, visual review, production publication, Runtime availability, and external chain/cloud proof remain separate ledgers.
 
 ## Accepted local implementation
 
@@ -29,15 +29,13 @@ The accepted implementation includes L1-L4, deterministic and explainable matchi
 - No AWS operation or Free Plan change occurred in this round.
 - No new Sepolia transaction occurred in this round.
 - The Graph remains deferred.
-- The verified implementation commit is `c7e52bbc192be468e8fe3507a68f4cb1b2739da8`; no PR, GitHub Actions Run, Cloudflare write, final release SHA, or production recording is claimed by this acceptance update.
+- The production recording is a 331.7-second H.264/AAC Chrome capture with Mandarin narration and SHA-256 `e7e651d220c44f5910bb67fcce760b4cb91dcece88003240e307c3eb65449d9d`. It records production UI and status boundaries, not wallet, AWS, Sepolia, Chainlink or Temporal execution.
 
-## Release acceptance still required
+## Final closeout still required
 
-1. Bind implementation commit `c7e52bbc192be468e8fe3507a68f4cb1b2739da8` to a successful GitHub Actions Run and accepted PR.
-2. Publish through the existing Cloudflare Git integration and record the exact deployment plus production route/readback results.
-3. Record and publish a production walkthrough with a truthful coverage manifest.
-4. Reconcile the final source, deployment, recording, Evidence, and architecture.
-5. Send that final architecture and the remaining external boundaries to task `01a0758e-78f5-75a1-90f7-43d75de6e780`.
+1. Publish the new recording asset and truthful coverage manifest through the final Evidence PR.
+2. Read back the final Evidence deployment and recording URL.
+3. Send the final architecture and remaining external boundaries to task `01a0758e-78f5-75a1-90f7-43d75de6e780`.
 
 Structured evidence: `docs/evidence/testing/2026-09-12-non-aws-completion.json`.
 
