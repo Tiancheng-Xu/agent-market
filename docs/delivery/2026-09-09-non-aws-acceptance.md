@@ -2,7 +2,7 @@
 
 Baseline before this work: `4589c72b110fbe17163320eef224bdeca2e25025`.
 
-Current decision: **local verified / release pending**. The locally verified implementation is bound to commit `9097b4acc9461bb71fbe1983461936ca5a6af190`; this implementation commit is not yet claimed as a released production SHA. Local implementation, tests, build, visual review, production publication, Runtime availability, and external chain/cloud proof remain separate ledgers.
+Current decision: **local verified / release pending**. The locally verified implementation is bound to commit `c7e52bbc192be468e8fe3507a68f4cb1b2739da8`; this implementation commit is not yet claimed as a released production SHA. Local implementation, tests, build, visual review, production publication, Runtime availability, and external chain/cloud proof remain separate ledgers.
 
 ## Accepted local implementation
 
@@ -29,11 +29,11 @@ The accepted implementation includes L1-L4, deterministic and explainable matchi
 - No AWS operation or Free Plan change occurred in this round.
 - No new Sepolia transaction occurred in this round.
 - The Graph remains deferred.
-- The verified implementation commit is `9097b4acc9461bb71fbe1983461936ca5a6af190`; no PR, GitHub Actions Run, Cloudflare write, final release SHA, or production recording is claimed by this acceptance update.
+- The verified implementation commit is `c7e52bbc192be468e8fe3507a68f4cb1b2739da8`; no PR, GitHub Actions Run, Cloudflare write, final release SHA, or production recording is claimed by this acceptance update.
 
 ## Release acceptance still required
 
-1. Bind implementation commit `9097b4acc9461bb71fbe1983461936ca5a6af190` to a successful GitHub Actions Run and accepted PR.
+1. Bind implementation commit `c7e52bbc192be468e8fe3507a68f4cb1b2739da8` to a successful GitHub Actions Run and accepted PR.
 2. Publish through the existing Cloudflare Git integration and record the exact deployment plus production route/readback results.
 3. Record and publish a production walkthrough with a truthful coverage manifest.
 4. Reconcile the final source, deployment, recording, Evidence, and architecture.

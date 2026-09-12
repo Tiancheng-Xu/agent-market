@@ -4,7 +4,7 @@ Status: **local verified / release pending**
 Workspace: `agent-market-non-aws-20260909`
 Branch: `feature/non-aws-completion-20260909`
 Pre-work production baseline: `4589c72b110fbe17163320eef224bdeca2e25025`
-Locally verified implementation commit: `9097b4acc9461bb71fbe1983461936ca5a6af190`
+Locally verified implementation commit: `c7e52bbc192be468e8fe3507a68f4cb1b2739da8`
 
 ## Resume from here
 
@@ -12,7 +12,7 @@ The non-AWS implementation and local acceptance work are complete. Do not reopen
 
 The remaining sequence is:
 
-1. Use implementation commit `9097b4acc9461bb71fbe1983461936ca5a6af190` as the tested source anchor without claiming it is already the production release SHA.
+1. Use implementation commit `c7e52bbc192be468e8fe3507a68f4cb1b2739da8` as the tested source anchor without claiming it is already the production release SHA.
 2. Open/merge the PR and capture the successful GitHub Actions Run.
 3. Confirm the existing Cloudflare project and publish only through Git integration; capture the exact deployment and production readback.
 4. Coordinate one recorder, then record the released production walkthrough.
@@ -40,7 +40,7 @@ The remaining sequence is:
 - Temporal production host/runtime/tunnel is pending.
 - The Graph is deferred.
 - Production recording, PR, Cloudflare release, and architecture handoff are pending.
-- The locally verified implementation is committed at `9097b4acc9461bb71fbe1983461936ca5a6af190`; the final release SHA remains unknown until PR merge and production publication.
+- The locally verified implementation is committed at `c7e52bbc192be468e8fe3507a68f4cb1b2739da8`; the final release SHA remains unknown until PR merge and production publication.
 
 Authoritative queue: `docs/delivery/todolist.md`
 Machine evidence: `docs/evidence/testing/2026-09-12-non-aws-completion.json`
