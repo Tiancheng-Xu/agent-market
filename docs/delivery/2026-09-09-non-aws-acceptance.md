@@ -31,11 +31,11 @@ The accepted implementation includes L1-L4, deterministic and explainable matchi
 - The Graph remains deferred.
 - The production recording is a 331.7-second H.264/AAC Chrome capture with Mandarin narration and SHA-256 `ce7e4fb873ab007130b4052759ac5af66fb5dd37b403852d6210ea1ce8daac2e`. It records production UI and status boundaries, not wallet, AWS, Sepolia, Chainlink or Temporal execution.
 
-## Final closeout still required
+## Final closeout completed
 
-1. Publish the new recording asset and truthful coverage manifest through the final Evidence PR.
-2. Read back the final Evidence deployment and recording URL.
-3. Send the final architecture and remaining external boundaries to task `01a0758e-78f5-75a1-90f7-43d75de6e780`.
+1. Recording Evidence PR #27 merged as main `a9278665d25dad64ab22477a10a39974a2712744`; PR Verify Run `34705871834` succeeded.
+2. Cloudflare Production deployment `de287f0d-8e89-4eca-bb0c-b08a1fb5af8f` passed deployment-specific, custom-domain, manifest, video Range, reciprocal-link and real-404 readback.
+3. The final architecture and remaining external boundaries were sent to task `01a0758e-78f5-75a1-90f7-43d75de6e780`.
 
 Structured evidence: `docs/evidence/testing/2026-09-12-non-aws-completion.json`.
 
