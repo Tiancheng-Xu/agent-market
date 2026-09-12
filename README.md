@@ -4,6 +4,34 @@ Agent Market is a bilingual, evidence-first course project for verifiable agent 
 
 Agent Market 是一个中英双语、证据优先的可验证智能体协作课程项目。仓库严格区分实现、本地验证和外部生产证据，界面展示本身不代表交付完成。
 
+## Current release candidate / 当前发布候选
+
+Status: **local verified / release pending**.
+
+The current non-AWS candidate has completed its local implementation,
+integration, build, independent review, and visual Gates. The source tree is not
+committed yet, so no final SHA, GitHub Run, Cloudflare deployment, or production
+recording is claimed.
+
+当前非 AWS 候选版本已完成本地实现、集成、构建、独立审查和视觉 Gate。
+工作树尚未提交，因此这里不声明最终 SHA、GitHub Run、Cloudflare deployment
+或生产录屏。
+
+- Web: 50 files / 402 tests, plus wallet HTTP 1/1; production build passed.
+- Transaction Engine: 348 non-DB tests; real local PostgreSQL commercial 31,
+  risk 9, governance 7, and VRF 14 passed.
+- Local Agent Runner: 17 files / 125 tests passed; 8 environment tests skipped.
+- Contracts 34, trainer 33, repository/evidence 32, three TypeScript typechecks,
+  and Go `vet`/`test` passed.
+- Visual v4 checked 18 routes x 5 widths x 2 locales = 180 combinations with no
+  overflow, broken image, empty button, page error, or i18n finding. Cocos became
+  ready in 630-674 ms; 12 key Chinese screenshots were manually reviewed.
+- Final review found no P0/P1. All five P2 findings were repaired and received
+  targeted verification.
+
+Authoritative status:
+`docs/evidence/testing/2026-09-12-non-aws-completion.json`.
+
 ## Delivery truth / 交付事实
 
 ### V1 verified production / V1 已验证生产状态
@@ -15,17 +43,25 @@ Agent Market 是一个中英双语、证据优先的可验证智能体协作课�
 - AWS 性能链路已有项目归属证据，覆盖 API Gateway、Lambda、SNS、SQS/DLQ、ECS Fargate 退出码 `0`、PostgreSQL 回读、公开 Evidence 回读和可逆暂停。
 - `apps/web/public/evidence/` 中的脱敏截图仅证明 V1，不作为 V2 部署证据。
 
-### V2 local and pending / V2 本地与待外部验证
+### V2 evidence boundaries / V2 证据边界
 
 - Local code and tests cover Web SSR/hydration/CSR recovery, wallet challenge-sign-verify with HttpOnly session handling, server-derived unsigned intents, contracts, Go matcher, grouped OOF/CV trainer, safe JSON artifacts, and non-deploy CI gates.
-- V2 Sepolia deployment and transaction/event readback are `pending-external`.
-- V2 AWS and Cloudflare deployments are `pending-external`.
-- Real PostgreSQL/pgvector integration remains pending where the local gate reports a skipped database test.
+- Existing Sepolia and AWS evidence remains valid only for its recorded release
+  and scope. No new AWS operation or Sepolia transaction occurred in this round.
+- The current candidate's GitHub PR, Cloudflare publication, and production
+  recording are pending.
+- Real local PostgreSQL commercial, risk, governance, and VRF suites passed. This
+  is local integration evidence, not production database evidence.
+- Chainlink VRF external deployment/callback and the Temporal production
+  host/runtime/tunnel remain pending.
 - The Graph is `deferred`; Phase 2 uses exact RPC receipt/log verification plus Blockscout reconciliation.
 - 本地代码与测试覆盖 Web SSR/hydration/CSR 恢复、钱包 challenge-sign-verify 与 HttpOnly session、服务端生成 unsigned intent、合约、Go matcher、grouped OOF/CV trainer、安全 JSON artifact 和无部署 CI 门禁。
-- V2 Sepolia 部署及交易/事件回读为 `pending-external`。
-- V2 AWS 与 Cloudflare 部署为 `pending-external`。
-- 本地数据库 Gate 跳过时，真实 PostgreSQL/pgvector integration 仍是待验证状态。
+- 既有 Sepolia 与 AWS Evidence 只在原记录版本和范围内有效；本轮没有新的
+  AWS 操作或 Sepolia transaction。
+- 当前候选版本的 GitHub PR、Cloudflare 发布和生产录屏仍待完成。
+- 本地真实 PostgreSQL 的 commercial、risk、governance 与 VRF 套件已通过；
+  这不是生产数据库证据。
+- Chainlink VRF 外部部署/回调和 Temporal 生产 host/runtime/tunnel 仍待完成。
 - The Graph 状态为 `deferred`；二期先使用 RPC 精确回执/日志校验与 Blockscout 对账。
 
 See `docs/architecture/adr/0001-defer-the-graph.md` for the indexer decision.
@@ -160,6 +196,61 @@ pnpm verify
 pnpm --dir apps/web build
 ```
 
-Canonical status is recorded in `docs/evidence/requirements.yaml` and `docs/evidence/phase2-local-validation.json`.
+Canonical current-candidate status is recorded in
+`docs/evidence/testing/2026-09-12-non-aws-completion.json`. Historical phase
+evidence remains in `docs/evidence/requirements.yaml` and
+`docs/evidence/phase2-local-validation.json`.
 
-权威状态记录在 `docs/evidence/requirements.yaml` 与 `docs/evidence/phase2-local-validation.json`。
+当前候选版本的权威状态记录在
+`docs/evidence/testing/2026-09-12-non-aws-completion.json`；历史阶段证据保留在
+`docs/evidence/requirements.yaml` 与 `docs/evidence/phase2-local-validation.json`。
+
+### Runtime caller identity: signed scope is not task authority
+
+Runtime HMAC keys have an explicit `keyId -> allowed caller scopes` ACL. The
+Edge requires `AGENT_RUNTIME_PUBLIC_KEY_ID` and
+`AGENT_RUNTIME_PUBLIC_SECRET`; that key may sign only `public` scope. The
+Transaction Engine risk assessor separately requires
+`AGENT_RUNTIME_OWNER_KEY_ID` and `AGENT_RUNTIME_OWNER_SECRET`; that key may
+sign only `owner` scope. Missing key IDs or secrets fail closed, and neither
+caller falls back to the former shared single-key configuration. The local
+Runtime composition root loads both scoped keys into `signingKeys`, and the
+production supervisor preflight requires all four key ID/secret variables.
+`AGENT_RUNTIME_KEY_ID` and `AGENT_RUNTIME_SHARED_SECRET` are rejected by the
+Runtime with an explicit dual-key migration error rather than being silently
+reused for both scopes.
+
+Changing a public request header to `owner`, stripping owner scope, or using
+the public key to calculate an owner-domain HMAC is rejected. Body, path, expiry
+and single-use nonce checks still apply. Secrets must never be logged or included
+in evidence.
+
+This proves request integrity, not platform fairness by itself. It does not
+prove wallet ownership, assignment acceptance, a business task grant, successful
+execution or payment. Queen GraphQL continues to require an independent
+server-side authorization callback; the production host integration is still
+pending, not bypassed. Local coverage and its limitations are recorded in
+`docs/evidence/testing/2026-09-09-runtime-scope-signing.json` (40 tests and Runtime
+TypeScript passed). These are local tests, not a new production or on-chain claim.
+
+### Commercial draft: platform fee must not reduce Agent principal
+
+The L3 draft now keeps accepted Agent compensation intact. With original task
+budget `P`, the separately charged platform fee is
+`B = ceil(P * feeBps / 10000)`. Accepted principal plus unused/cancelled principal
+refund equals `P`; the non-refundable platform fee is a separate obligation, not
+a deduction from an Agent's accepted allocation. Its amount and policy version
+freeze when the draft is created. Changing server configuration cannot silently
+reprice that draft.
+
+Example in atomic units: `P=101`, `feeBps=600`, so `B=7`. An accepted full-budget
+Agent allocation remains `101`, not `94`. The accounting obligations total `108`
+before deposits and independently observed income. Nine real local PostgreSQL
+tests and the Transaction Engine typecheck passed; see
+`docs/evidence/testing/2026-09-09-commercial-additive-fee.json`.
+
+The current local implementation also binds the accepted risk quote, symmetric
+deposits, finalized Queen assignments, adjudicated deposit outcomes, and income
+attribution. Its local PostgreSQL acceptance is recorded in the current non-AWS
+completion ledger. It remains an accounting and intent model, not a production
+funding receipt, actual payout, external Chainlink callback, or guaranteed return.

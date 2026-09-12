@@ -1,0 +1,74 @@
+{
+  "scope": "Historical W7 run; not rerun during this follow-up. Mock EIP-1193 only; no real user signature or chain transaction.",
+  "cases": [
+    {
+      "name": "stable-connect",
+      "pass": true
+    },
+    {
+      "name": "event-accountsChanged",
+      "pass": true
+    },
+    {
+      "name": "event-chainChanged",
+      "pass": true
+    },
+    {
+      "name": "event-disconnect",
+      "pass": true
+    },
+    {
+      "name": "pending-connect-accountsChanged",
+      "pass": true
+    },
+    {
+      "name": "pending-connect-chainChanged",
+      "pass": true
+    },
+    {
+      "name": "pending-connect-disconnect",
+      "pass": true
+    },
+    {
+      "name": "connect-rejected",
+      "pass": true
+    },
+    {
+      "name": "switch-result-after-disconnect",
+      "pass": true
+    },
+    {
+      "name": "reconnect-rejected-clears-identity",
+      "pass": true
+    },
+    {
+      "name": "reconnect-new-account",
+      "pass": true
+    },
+    {
+      "name": "switch-stable-readback",
+      "pass": true
+    },
+    {
+      "name": "switch-rejected",
+      "pass": true
+    },
+    {
+      "name": "pending-switch-accountsChanged",
+      "pass": true
+    },
+    {
+      "name": "pending-switch-chainChanged",
+      "pass": true
+    },
+    {
+      "name": "switch-rejection-after-disconnect",
+      "pass": true
+    },
+    {
+      "name": "provider-disappears",
+      "pass": true
+    }
+  ],
+  "pageErrorCount": 0
+}

@@ -5,6 +5,7 @@ import {
   RiskAssessmentSchema,
   RiskAssessorResultSchema,
   RiskQuoteSchema,
+  RiskAssetIdSchema,
   RiskScoreSchema,
   type AgentDepositAllocation,
   type AgentDepositNode,
@@ -99,7 +100,9 @@ export function allocateAgentTeamDeposit(
   const allocatedBase = provisional.reduce((total, agent) => total + agent.amount, 0n);
   const remainderUnits = Number(agentTeamDeposit - allocatedBase);
   const remainderOrder = [...provisional].sort((left, right) => {
-    if (left.remainder !== right.remainder) return left.remainder > right.remainder ? -1 : 1;
+    const leftWeight = aggregated.get(left.agentId)!;
+    const rightWeight = aggregated.get(right.agentId)!;
+    if (leftWeight !== rightWeight) return leftWeight > rightWeight ? -1 : 1;
     return left.agentId.localeCompare(right.agentId);
   });
   for (let index = 0; index < remainderUnits; index += 1) {
@@ -112,6 +115,7 @@ export function allocateAgentTeamDeposit(
 }
 
 export interface CreateRiskQuoteInput {
+  assetId?: string;
   phase: RiskQuotePhase;
   policyVersion: string;
   taskFingerprint: string;
@@ -123,6 +127,7 @@ export interface CreateRiskQuoteInput {
 }
 
 export function createRiskQuote(input: CreateRiskQuoteInput): RiskQuote {
+  const assetId = RiskAssetIdSchema.parse(input.assetId);
   const assessment = RiskAssessmentSchema.parse(input.assessment);
   const P = BigInt(AtomicAmountSchema.parse(input.budgetAtomic));
   if (P <= 0n) throw new Error("RISK_BUDGET_REQUIRED");
@@ -138,6 +143,7 @@ export function createRiskQuote(input: CreateRiskQuoteInput): RiskQuote {
   }
 
   return RiskQuoteSchema.parse({
+    schemaVersion: 2, assetId,
     phase: input.phase,
     policyVersion: input.policyVersion,
     taskFingerprint: input.taskFingerprint,

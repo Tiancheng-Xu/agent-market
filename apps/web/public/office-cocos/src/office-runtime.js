@@ -230,8 +230,22 @@ System.register([], function (_export) {
     });
   }
 
+  function syncOfficeViewport(cc) {
+    var engineRoot = cc.director && cc.director.root;
+    var size = cc.screen && cc.screen.windowSize;
+    if (!engineRoot || !engineRoot.mainWindow || !size
+      || !Number.isFinite(size.width) || !Number.isFinite(size.height)
+      || size.width <= 0 || size.height <= 0) return false;
+    if (engineRoot.mainWindow.width === size.width && engineRoot.mainWindow.height === size.height) return false;
+    // CSS/iframe resizing can update the canvas before its render window.
+    // Keep camera projection and pointer coordinates on the same pixel extent.
+    engineRoot.resize(size.width, size.height);
+    return true;
+  }
+
   function render(cc, root) {
     cc.view.setDesignResolutionSize(DESIGN_WIDTH, DESIGN_HEIGHT, cc.ResolutionPolicy.SHOW_ALL);
+    syncOfficeViewport(cc);
     var transform = root.getComponent(cc.UITransform) || root.addComponent(cc.UITransform);
     transform.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
     root.removeAllChildren();
@@ -280,7 +294,19 @@ System.register([], function (_export) {
       snapshot = message.payload;
       render(cc, root);
     });
-    window.addEventListener("resize", function () { render(cc, root); });
+    var resizeFrame = 0;
+    function scheduleLayoutRefresh() {
+      if (resizeFrame) return;
+      resizeFrame = window.requestAnimationFrame(function () {
+        resizeFrame = 0;
+        render(cc, root);
+      });
+    }
+    window.addEventListener("resize", scheduleLayoutRefresh);
+    if (typeof ResizeObserver !== "undefined") {
+      var host = document.getElementById("GameDiv");
+      if (host) new ResizeObserver(scheduleLayoutRefresh).observe(host);
+    }
     cc.director.runSceneImmediate(scene);
     Promise.all([
       loadTexture(cc, "/office-cocos/art/starbuddy-office-background.webp"),
@@ -303,6 +329,9 @@ System.register([], function (_export) {
 
   return {
     setters: [],
-    execute: function () { _export("startOffice", startOffice); }
+    execute: function () {
+      _export("startOffice", startOffice);
+      _export("syncOfficeViewport", syncOfficeViewport);
+    }
   };
 });

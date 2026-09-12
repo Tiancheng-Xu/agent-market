@@ -1,0 +1,42 @@
+{
+  "boundary": "Mock EIP-1193; real browser BroadcastChannel; mocked logout HTTP here. Real auth HTTP fixture is tested separately. No real user signature or transaction.",
+  "checks": [
+    {
+      "name": "both-tabs-connected",
+      "pass": true
+    },
+    {
+      "name": "logout-503-clears-local-ui-and-reports-unconfirmed-cookie",
+      "pass": true
+    },
+    {
+      "name": "remote-tab-cleared",
+      "pass": true
+    },
+    {
+      "name": "late-remote-connect-cannot-restore-identity",
+      "pass": true
+    },
+    {
+      "name": "invalidation-only-payload-no-echo",
+      "pass": true
+    },
+    {
+      "name": "both-tabs-veto-old-protected-session",
+      "pass": true
+    },
+    {
+      "name": "logout-retry-does-not-grant-client-authentication",
+      "pass": true
+    },
+    {
+      "name": "channel-closed-on-unmount",
+      "pass": true
+    },
+    {
+      "name": "unmounted-tab-has-no-channel-or-provider-listener",
+      "pass": true
+    }
+  ],
+  "pageErrors": []
+}

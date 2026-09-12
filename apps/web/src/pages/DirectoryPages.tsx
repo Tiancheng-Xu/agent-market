@@ -29,7 +29,8 @@ import {
 const expertTypes = ["Research agent", "Data analyst", "Content operator", "Code agent", "Security reviewer", "Final arbiter"];
 
 function FilterBar({ query, setQuery, action }: { query: string; setQuery(value: string): void; action: React.ReactNode }) {
-  return <div className="filter-bar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, category, or tag" />{action}</div>;
+  const { t } = useLanguage();
+  return <div className="filter-bar"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Filter by name, category, or tag")} /><Localized>{action}</Localized></div>;
 }
 
 export function AgentsPage({ walletAddress = null }: { walletAddress?: string | null }) {
@@ -125,8 +126,9 @@ export function AgentDetailPage() {
 }
 
 export function TasksPage() {
+  const { t } = useLanguage();
   const [query, setQuery] = useState(""); const filtered = tasks.filter((task) => `${task.title} ${task.category} ${task.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase()));
-  return <Localized><><PageHeader eyebrow="TASK MARKET" title="Open work with explicit settlement" description="Budgets are denominated in test YD and become open only after Sepolia escrow verification." actions={<Link className="button button-primary" to="/tasks/new">Publish task</Link>} /><DemoNotice /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="neutral">{filtered.length} TASKS</Badge>} /><div className="task-list stagger">{filtered.map((task) => <Panel key={task.id} className="task-row"><div><Badge tone={task.status === "open" ? "cyan" : "indigo"}>{task.status.toUpperCase()}</Badge><h2>{task.title}</h2><p>{task.summary}</p><div className="tag-row">{task.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="task-value"><strong>{task.budget} YD</strong><span>{task.due}</span><Link className="button button-ghost" to={`/tasks/${task.id}`}>Details</Link></div></Panel>)}</div></></Localized>;
+  return <Localized><><PageHeader eyebrow="TASK MARKET" title="Open work with explicit settlement" description="Budgets are denominated in test YD and become open only after Sepolia escrow verification." actions={<Link className="button button-primary" to="/tasks/new">{t("Publish task")}</Link>} /><DemoNotice /><FilterBar query={query} setQuery={setQuery} action={<Badge tone="neutral">{filtered.length} TASKS</Badge>} /><div className="task-list stagger">{filtered.map((task) => <Panel key={task.id} className="task-row"><div><Badge tone={task.status === "open" ? "cyan" : "indigo"}>{task.status.toUpperCase()}</Badge><h2>{task.title}</h2><p>{task.summary}</p><div className="tag-row">{task.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="task-value"><strong>{task.budget} YD</strong><span>{task.due}</span><Link className="button button-ghost" to={`/tasks/${task.id}`}>Details</Link></div></Panel>)}</div></></Localized>;
 }
 
 export function TaskNewPage({ walletAddress = null }: { walletAddress?: string | null }) {

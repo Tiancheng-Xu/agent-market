@@ -1,0 +1,110 @@
+{
+  "passed": 26,
+  "failed": 0,
+  "cases": [
+    {
+      "name": "mock-only transaction submission identity boundary binds the exact request to Sepolia and returns only a hash reference",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary does not invoke send for preflight account",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary does not invoke send for preflight chain",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary does not invoke send for preflight disconnect",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary does not invoke send for preflight unauthenticated",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary rejects a revision changed during preflight even after reauthentication",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary does not send when the selected account changes silently during the chain read",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary retains a delayed hash as uncertain after account, without resending or rebinding",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary retains a delayed hash as uncertain after chain, without resending or rebinding",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary retains a delayed hash as uncertain after disconnect, without resending or rebinding",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary retains a delayed hash as uncertain after revision, without resending or rebinding",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary retains a delayed hash as uncertain after provider, without resending or rebinding",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary detects an account event even when the final account returns to its original value",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary keeps the original intent reference when invalid-hash leaves submission unknown",
+      "status": "passed"
+    },
+    {
+      "name": "mock-only transaction submission identity boundary keeps the original intent reference when transport-error leaves submission unknown",
+      "status": "passed"
+    },
+    {
+      "name": "chain client deterministic gates converts whole test YD amounts without floating-point loss",
+      "status": "passed"
+    },
+    {
+      "name": "chain client deterministic gates formats atomic YD readback without floating-point rounding",
+      "status": "passed"
+    },
+    {
+      "name": "chain client deterministic gates accepts only a live Sepolia intent owned by the connected wallet",
+      "status": "passed"
+    },
+    {
+      "name": "order callers reject a superseded session rejects a delayed read response after invalidation and a new login",
+      "status": "passed"
+    },
+    {
+      "name": "order callers reject a superseded session rejects a delayed command response after invalidation and a new login",
+      "status": "passed"
+    },
+    {
+      "name": "BrowserOrderCommand excludes system-only lifecycle commands from the browser contract",
+      "status": "passed"
+    },
+    {
+      "name": "BrowserOrderCommand requires confirmed quote context for browser funding preparation",
+      "status": "passed"
+    },
+    {
+      "name": "uses real auth HTTP handlers: failed logout preserves cookie, local veto blocks reuse, retry revokes server session, fresh login recovers",
+      "status": "passed"
+    },
+    {
+      "name": "order route query ownership provides an explicit login gate before reading a UUID order (guest)",
+      "status": "passed"
+    },
+    {
+      "name": "order route query ownership provides an explicit login gate before reading a UUID order (connected)",
+      "status": "passed"
+    },
+    {
+      "name": "order route query ownership does not reuse a browser singleton across mounted wallet sessions",
+      "status": "passed"
+    }
+  ]
+}

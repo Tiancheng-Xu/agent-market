@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "w2-local-http.v1",
+  "recordedAt": "2026-09-10T02:20:19.647Z",
+  "status": "passed",
+  "stage": "complete",
+  "checks": [
+    "isolated-database-created-from-real-migrations",
+    "real-https-challenge-signature-verify-cookie-and-postgres-auth",
+    "http-task-version-propose-queued-duplicate-real-worker-committed-ledger-checkpoint-readback",
+    "http-origin-other-wallet-missing-session-and-exact-revision-fingerprint-denials",
+    "http-confirm-queued-duplicate-real-approval-outbox-no-execution-or-approval-ledger-claim",
+    "real-pg-expired-grant-denies-http-approval-and-reproposal-preserves-history",
+    "real-pg-revoked-grant-denies-http-approval-and-reproposal-preserves-history",
+    "history-readable-with-producer-gates-closed-real-pg-session-logout-and-expiry-denied",
+    "ui-client-queued-committed-executionVerified-false-boundaries-and-zero-execution-ports"
+  ],
+  "transport": "real loopback HTTPS client to Edge, loopback HTTP Edge to actual TE route handlers",
+  "postgresPort": 55439,
+  "temporalPort": 7239,
+  "sharedServicesRestarted": false,
+  "isolatedDatabaseRemoved": true,
+  "realWalletAuthAndBusinessServices": true,
+  "planningRuntime": "existing createTemporalWorker/createTemporalScheduler; real PG authorization/ledger/PostgresSaver",
+  "fixtureBoundary": "software wallets in memory; open task SQL fixtures; static provider catalog; deterministic planning, no provider/model execution",
+  "dispatchBoundary": "test-owned trusted host dispatches persisted outbox reference; production outbox poller/supervisor not validated",
+  "httpBoundary": "actual handlers hosted by test Node adapters, not a deployed Next.js server or browser UI automation",
+  "executionVerified": false,
+  "productionVerified": false,
+  "secretsIncluded": false,
+  "forbiddenActions": "no chain, AWS, Git, Cloudflare deployment or shared-service restart"
+}

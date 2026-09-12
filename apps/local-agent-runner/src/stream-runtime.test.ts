@@ -6,7 +6,8 @@ import { createLocalStreamRuntime } from "./stream-runtime";
 import { signedHeaders, signRequest } from "./signing";
 
 const now = () => new Date("2026-08-22T12:00:00.000Z");
-const signingKey = { keyId: "edge-runtime-v1", secret: "runtime-secret" };
+const publicSigningKey = { keyId: "edge-runtime-public-v1", secret: "runtime-public-secret", allowedCallerScopes: ["public"] as const };
+const ownerSigningKey = { keyId: "runtime-owner-v1", secret: "runtime-owner-secret", allowedCallerScopes: ["owner"] as const };
 
 describe("local stream runtime", () => {
   it("reports public health without private endpoints", async () => {
@@ -45,7 +46,7 @@ describe("local stream runtime", () => {
           onDelta({ content: " world", raw: {} });
         },
       },
-      signingKey,
+      signingKeys: [publicSigningKey, ownerSigningKey],
       now,
     });
     const body = JSON.stringify({
@@ -53,7 +54,7 @@ describe("local stream runtime", () => {
       agentId: "personal-ai-agent-runtime-v4-1",
       messages: [{ role: "user", content: "hi" }],
     });
-    const headers = signRequest("POST", "/agent/chat", body, { key: signingKey, now, nonce: () => "nonce-1" });
+    const headers = signRequest("POST", "/agent/chat", body, { key: ownerSigningKey, callerScope: "owner", now, nonce: () => "nonce-1" });
 
     const response = await runtime.fetch(new Request("http://127.0.0.1:8789/agent/chat", {
       method: "POST",
@@ -72,7 +73,7 @@ describe("local stream runtime", () => {
     const runtime = createLocalStreamRuntime({
       manifests: [manifest()],
       ollamaClient: { chatStream: vi.fn() },
-      signingKey,
+      signingKeys: [publicSigningKey, ownerSigningKey],
       now,
     });
 
@@ -86,13 +87,13 @@ describe("local stream runtime", () => {
 
   it("rejects owner-only chat from a public caller without invoking Ollama", async () => {
     const chatStream = vi.fn();
-    const runtime = createLocalStreamRuntime({ manifests: [manifest()], ollamaClient: { chatStream }, signingKey, now });
+    const runtime = createLocalStreamRuntime({ manifests: [manifest()], ollamaClient: { chatStream }, signingKeys: [publicSigningKey, ownerSigningKey], now });
     const body = JSON.stringify({
       requestId: "11111111-1111-4111-8111-111111111111",
       agentId: "personal-ai-agent-runtime-v4-1",
       messages: [{ role: "user", content: "hi" }],
     });
-    const headers = signRequest("POST", "/agent/chat", body, { key: signingKey, now, nonce: () => "public-owner-only" });
+    const headers = signRequest("POST", "/agent/chat", body, { key: publicSigningKey, now, nonce: () => "public-owner-only" });
 
     const response = await runtime.fetch(new Request("http://127.0.0.1:8789/agent/chat", {
       method: "POST",
@@ -107,13 +108,13 @@ describe("local stream runtime", () => {
 
   it("rejects a replayed signed request before a second model call", async () => {
     const chatStream = vi.fn(async (_request, onDelta) => onDelta({ content: "ok", raw: {} }));
-    const runtime = createLocalStreamRuntime({ manifests: [manifest()], ollamaClient: { chatStream }, signingKey, now });
+    const runtime = createLocalStreamRuntime({ manifests: [manifest()], ollamaClient: { chatStream }, signingKeys: [publicSigningKey, ownerSigningKey], now });
     const body = JSON.stringify({
       requestId: "11111111-1111-4111-8111-111111111111",
       agentId: "personal-ai-agent-runtime-v4-1",
       messages: [{ role: "user", content: "hi" }],
     });
-    const signed = signRequest("POST", "/agent/chat", body, { key: signingKey, now, nonce: () => "single-use-nonce" });
+    const signed = signRequest("POST", "/agent/chat", body, { key: ownerSigningKey, callerScope: "owner", now, nonce: () => "single-use-nonce" });
     const request = () => new Request("http://127.0.0.1:8789/agent/chat", {
       method: "POST",
       headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(signed) },
@@ -152,7 +153,7 @@ describe("local stream runtime", () => {
             : vi.fn().mockResolvedValue({ content: "provider" }),
         },
       },
-      signingKey,
+      signingKeys: [publicSigningKey, ownerSigningKey],
       now,
       requestTimeoutMs: timeoutMs,
     });
@@ -161,7 +162,7 @@ describe("local stream runtime", () => {
       operationName: "OrchestrateAgents",
       variables: { input: { requestId: "11111111-1111-4111-8111-111111111111", agentIds: [manifest().id, provider.id], messages: [{ role: "user", content: "hi" }] } },
     });
-    const signed = signRequest("POST", "/graphql", body, { key: signingKey, now, nonce: () => `terminal-${expectedCode}` });
+    const signed = signRequest("POST", "/graphql", body, { key: ownerSigningKey, callerScope: "owner", now, nonce: () => `terminal-${expectedCode}` });
     const responsePromise = runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
       method: "POST",
       headers: { "content-type": "application/json", "x-agent-caller-scope": "owner", ...signedHeaders(signed) },
@@ -207,7 +208,7 @@ describe("local stream runtime", () => {
         },
       },
       providerClients: { deepseek: { chat: providerChat } },
-      signingKey,
+      signingKeys: [publicSigningKey, ownerSigningKey],
       now,
     });
     const body = JSON.stringify({
@@ -221,7 +222,7 @@ describe("local stream runtime", () => {
         },
       },
     });
-    const headers = signRequest("POST", "/graphql", body, { key: signingKey, now, nonce: () => "nonce-graphql" });
+    const headers = signRequest("POST", "/graphql", body, { key: ownerSigningKey, callerScope: "owner", now, nonce: () => "nonce-graphql" });
 
     const response = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
       method: "POST",
@@ -251,7 +252,7 @@ describe("local stream runtime", () => {
     const runtime = createLocalStreamRuntime({
       manifests: [manifest()],
       ollamaClient: { chatStream: vi.fn() },
-      signingKey,
+      signingKeys: [publicSigningKey, ownerSigningKey],
       now,
       authorizeQueenGraphql: async () => true,
     });
@@ -265,7 +266,7 @@ describe("local stream runtime", () => {
         },
       },
     });
-    const headers = signRequest("POST", "/graphql", body, { key: signingKey, now, nonce: () => "nonce-queen" });
+    const headers = signRequest("POST", "/graphql", body, { key: publicSigningKey, now, nonce: () => "nonce-queen" });
 
     const response = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
       method: "POST",
@@ -286,7 +287,7 @@ describe("local stream runtime", () => {
     const runtime = createLocalStreamRuntime({
       manifests: [manifest()],
       ollamaClient: { chatStream: vi.fn() },
-      signingKey,
+      signingKeys: [publicSigningKey, ownerSigningKey],
       now,
     });
 
@@ -307,7 +308,7 @@ describe("local stream runtime", () => {
     const runtime = createLocalStreamRuntime({
       manifests: [manifest()],
       ollamaClient: { chatStream: vi.fn() },
-      signingKey,
+      signingKeys: [publicSigningKey, ownerSigningKey],
       now,
     });
     const body = JSON.stringify({
@@ -315,7 +316,7 @@ describe("local stream runtime", () => {
       operationName: "ProposeTaskGraph",
       variables: { input: { requirement: "Build workflow" } },
     });
-    const signed = signRequest("POST", "/graphql", body, { key: signingKey, now, nonce: () => "nonce-queen-denied" });
+    const signed = signRequest("POST", "/graphql", body, { key: publicSigningKey, now, nonce: () => "nonce-queen-denied" });
     const response = await runtime.fetch(new Request("http://127.0.0.1:8789/graphql", {
       method: "POST",
       headers: { "content-type": "application/json", ...signedHeaders(signed) },
@@ -336,7 +337,7 @@ describe("local stream runtime", () => {
           onDelta({ content: "runtime executor output", raw: {} });
         },
       },
-      signingKey,
+      signingKeys: [publicSigningKey, ownerSigningKey],
       now,
       authorizeQueenGraphql: async () => true,
     });
@@ -344,7 +345,8 @@ describe("local stream runtime", () => {
     const mutateRuntime = async (operationName: string, query: string, input: Record<string, unknown>) => {
       const body = JSON.stringify({ query, operationName, variables: { input } });
       const signed = signRequest("POST", "/graphql", body, {
-        key: signingKey,
+        key: ownerSigningKey,
+        callerScope: "owner",
         now,
         nonce: () => `nonce-runtime-${operationName}-${nonceIndex++}`,
       });

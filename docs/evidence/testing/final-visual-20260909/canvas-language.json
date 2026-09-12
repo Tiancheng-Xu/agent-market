@@ -1,0 +1,52 @@
+[
+  {
+    "width": 375,
+    "locale": "zh-CN",
+    "headingRendered": true
+  },
+  {
+    "width": 375,
+    "locale": "en",
+    "headingRendered": true
+  },
+  {
+    "width": 390,
+    "locale": "zh-CN",
+    "headingRendered": true
+  },
+  {
+    "width": 390,
+    "locale": "en",
+    "headingRendered": true
+  },
+  {
+    "width": 430,
+    "locale": "zh-CN",
+    "headingRendered": true
+  },
+  {
+    "width": 430,
+    "locale": "en",
+    "headingRendered": true
+  },
+  {
+    "width": 1440,
+    "locale": "zh-CN",
+    "headingRendered": true
+  },
+  {
+    "width": 1440,
+    "locale": "en",
+    "headingRendered": true
+  },
+  {
+    "width": 1920,
+    "locale": "zh-CN",
+    "headingRendered": true
+  },
+  {
+    "width": 1920,
+    "locale": "en",
+    "headingRendered": true
+  }
+]

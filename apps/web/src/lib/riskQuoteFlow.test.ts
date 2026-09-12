@@ -1,21 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { confirmCurrentRiskQuote, loadCurrentRiskQuote, refreshCurrentRiskQuote } from "./riskQuoteFlow";
-import { confirmRiskQuote, readRiskContext, requestRiskQuote, type BrowserRiskQuote } from "./riskPricingClient";
+import { confirmCurrentRiskQuote, createCurrentRiskQuote, loadCurrentRiskQuote, refreshCurrentRiskQuote } from "./riskQuoteFlow";
+import { confirmRiskQuote, readCurrentRiskQuote, readRiskContext, requestRiskQuote, type BrowserRiskQuote } from "./riskPricingClient";
 
 vi.mock("./riskPricingClient", () => ({
-  readRiskContext: vi.fn(), requestRiskQuote: vi.fn(), confirmRiskQuote: vi.fn(),
+  readRiskContext: vi.fn(), readCurrentRiskQuote: vi.fn(), requestRiskQuote: vi.fn(), confirmRiskQuote: vi.fn(),
 }));
 
 const taskId = "11111111-1111-4111-8111-111111111111";
 const quoteId = "22222222-2222-4222-8222-222222222222";
 const fingerprint = `sha256:${"a".repeat(64)}`;
+const quoteHash = `sha256:${"c".repeat(64)}`;
+const assetId = `eip155:11155111/erc20:0x${"1".repeat(40)}`;
 const context = {
+  activeQuote: { quoteId, version: 1, quoteHash },
+  assetId, quoteSchemaVersion: 2 as const,
   taskId, taskFingerprint: fingerprint, phase: "final" as const,
   dagRevision: 2, quoteStatus: "active" as const, requestId: taskId,
 };
 const record: BrowserRiskQuote = {
-  quoteId, version: 1, requestId: taskId,
+  quoteId, quoteHash, version: 1, requestId: taskId,
   quote: {
+    schemaVersion: 2, assetId,
     phase: "final", policyVersion: "risk-pricing-v2", taskFingerprint: fingerprint,
     riskScore: 40, riskTier: "R2", depositRateBps: 1000, serviceFeeBps: 600,
     manualReviewRequired: false, reasonCodes: [], P: "1000", A: "100", B: "60",
@@ -28,11 +33,29 @@ const record: BrowserRiskQuote = {
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(readRiskContext).mockResolvedValue(context);
+  vi.mocked(readCurrentRiskQuote).mockResolvedValue({ context, record });
   vi.mocked(requestRiskQuote).mockResolvedValue(record);
   vi.mocked(confirmRiskQuote).mockResolvedValue({ quoteId, actorType: "publisher", agentId: null });
 });
 
 describe("authoritative risk quote flow", () => {
+  it("submits the exact displayed quote hash with confirmation", async () => {
+    await confirmCurrentRiskQuote(taskId, record);
+    expect(confirmRiskQuote).toHaveBeenCalledWith(taskId, quoteId, fingerprint, quoteHash);
+  });
+  it("rejects asset drift before submitting confirmation", async () => {
+    vi.mocked(readRiskContext).mockResolvedValue({ ...context, assetId: `eip155:11155111/erc20:0x${"2".repeat(40)}` });
+    await expect(confirmCurrentRiskQuote(taskId, record)).rejects.toThrow("RISK_QUOTE_CONTEXT_CHANGED");
+    expect(confirmRiskQuote).not.toHaveBeenCalled();
+  });
+  it("revokes funding when the asset changes during confirmation", async () => {
+    vi.mocked(readRiskContext).mockResolvedValueOnce(context).mockResolvedValueOnce({ ...context, assetId: `eip155:1/erc20:0x${"1".repeat(40)}`, quoteStatus: "confirmed" });
+    await expect(confirmCurrentRiskQuote(taskId, record)).rejects.toThrow("RISK_QUOTE_CONTEXT_CHANGED");
+  });
+  it("rejects a legacy quote before confirming it", async () => {
+    await expect(confirmCurrentRiskQuote(taskId, { ...record, quote: { ...record.quote, schemaVersion: 1, assetId: undefined } })).rejects.toThrow("RISK_QUOTE_CONTEXT_CHANGED");
+    expect(confirmRiskQuote).not.toHaveBeenCalled();
+  });
   it("refreshes final readiness without resubmitting a confirmation", async () => {
     vi.mocked(readRiskContext).mockResolvedValue({ ...context, quoteStatus: "confirmed" });
     await expect(refreshCurrentRiskQuote(taskId, record)).resolves.toMatchObject({ fundingContext: { quoteId, taskFingerprint: fingerprint } });
@@ -47,18 +70,35 @@ describe("authoritative risk quote flow", () => {
     vi.mocked(readRiskContext).mockResolvedValue({ ...context, quoteStatus: "confirmed" });
     await expect(refreshCurrentRiskQuote(taskId, { ...record, quote: { ...record.quote, expiresAt: "2000-01-01T00:00:00.000Z" } })).rejects.toThrow("RISK_QUOTE_CONTEXT_CHANGED");
   });
-  it("requests a quote using only the freshly read task fingerprint", async () => {
+  it("loads the same quote without creating or replacing it", async () => {
     await expect(loadCurrentRiskQuote(taskId)).resolves.toEqual(record);
+    expect(readCurrentRiskQuote).toHaveBeenCalledWith(taskId);
+    expect(requestRiskQuote).not.toHaveBeenCalled();
+  });
+  it("only explicitly creates using the fresh task fingerprint", async () => {
+    await expect(createCurrentRiskQuote(taskId)).resolves.toEqual(record);
     expect(requestRiskQuote).toHaveBeenCalledWith(taskId, fingerprint);
   });
   it("does not request a quote when authoritative context is unavailable", async () => {
-    vi.mocked(readRiskContext).mockRejectedValue(new Error("UNAVAILABLE"));
+    vi.mocked(readCurrentRiskQuote).mockRejectedValue(new Error("UNAVAILABLE"));
     await expect(loadCurrentRiskQuote(taskId)).rejects.toThrow("UNAVAILABLE");
     expect(requestRiskQuote).not.toHaveBeenCalled();
   });
-  it("rejects a response for a different task fingerprint", async () => {
-    vi.mocked(requestRiskQuote).mockResolvedValue({ ...record, quote: { ...record.quote, taskFingerprint: `sha256:${"b".repeat(64)}` } });
+  it("rejects a response for a different current quote identity", async () => {
+    vi.mocked(readCurrentRiskQuote).mockResolvedValue({ context: { ...context, activeQuote: { ...context.activeQuote, version: 2 } }, record });
     await expect(loadCurrentRiskQuote(taskId)).rejects.toThrow("RISK_QUOTE_CONTEXT_CHANGED");
+  });
+  it("keeps a missing quote read-only", async () => {
+    vi.mocked(readCurrentRiskQuote).mockResolvedValue({ context: { ...context, activeQuote: null, quoteStatus: "not_issued" }, record: null });
+    await expect(loadCurrentRiskQuote(taskId)).resolves.toBeNull();
+    expect(requestRiskQuote).not.toHaveBeenCalled();
+  });
+  it.each(["quoteId", "version", "quoteHash"] as const)("revokes readiness for changed %s even when the fingerprint is unchanged", async (field) => {
+    const activeQuote = { ...context.activeQuote, [field]: field === "version" ? 2 : field === "quoteId" ? taskId : fingerprint };
+    vi.mocked(readRiskContext).mockResolvedValue({ ...context, activeQuote, quoteStatus: "confirmed" });
+    await expect(refreshCurrentRiskQuote(taskId, record)).rejects.toThrow("RISK_QUOTE_CONTEXT_CHANGED");
+    await expect(confirmCurrentRiskQuote(taskId, record)).rejects.toThrow("RISK_QUOTE_CONTEXT_CHANGED");
+    expect(confirmRiskQuote).not.toHaveBeenCalled();
   });
   it("never treats a single confirmation response as funding readiness", async () => {
     const result = await confirmCurrentRiskQuote(taskId, record);

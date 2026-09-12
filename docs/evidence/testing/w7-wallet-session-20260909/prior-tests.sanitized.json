@@ -1,0 +1,103 @@
+{
+  "scope": "Historical mock wallet integration run, not rerun during this follow-up.",
+  "passed": 24,
+  "failed": 0,
+  "cases": [
+    {
+      "name": "chain client deterministic gates converts whole test YD amounts without floating-point loss",
+      "status": "passed"
+    },
+    {
+      "name": "chain client deterministic gates formats atomic YD readback without floating-point rounding",
+      "status": "passed"
+    },
+    {
+      "name": "chain client deterministic gates accepts only a live Sepolia intent owned by the connected wallet",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) completes a stable mock login without any transaction method",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects account at initial even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects chain at initial even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects disconnect at initial even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects account at challenge even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects chain at challenge even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects disconnect at challenge even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects account at sign even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects chain at sign even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects disconnect at sign even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects account at verify even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects chain at verify even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects disconnect at verify even without provider events",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) clears the session after challenge failure",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) clears the session after sign failure",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) clears the session after verify failure",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) rejects a malformed signature before verification",
+      "status": "passed"
+    },
+    {
+      "name": "W7 mock EIP-1193 login safety (not real wallet or chain evidence) does not restore a login invalidated while verification was pending",
+      "status": "passed"
+    },
+    {
+      "name": "revokes a late verification before allowing a new login",
+      "status": "passed"
+    },
+    {
+      "name": "does not run a queued signature for a superseded identity",
+      "status": "passed"
+    },
+    {
+      "name": "revokes verification cookies when identity readback fails without provider events",
+      "status": "passed"
+    }
+  ]
+}

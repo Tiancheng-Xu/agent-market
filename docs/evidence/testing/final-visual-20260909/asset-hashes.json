@@ -1,0 +1,14 @@
+[
+  {
+    "path": "apps/web/dist/_worker.js",
+    "sha256": "30b3542e3e5bf8ba6cca3554d68f41f26facce662c8c94e56dd8a69bed1e0fa3"
+  },
+  {
+    "path": "apps/web/dist/assets/index-BNxAE6JL.css",
+    "sha256": "f473dea7896008a1855e7da14627a396cfd93b672fff69b619d33cc1c4f4778d"
+  },
+  {
+    "path": "apps/web/dist/assets/index-CI-dIod9.js",
+    "sha256": "7104336b470bb351468eb64eb025c729cbbba7baf771aa64efc88a15ce90bc6e"
+  }
+]

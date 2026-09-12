@@ -123,6 +123,7 @@ async function runPath(path: TerminalPath, index: number): Promise<TerminalObser
   });
   const signature = signRequest("POST", "/graphql", body, {
     key: signingKey,
+    callerScope: "owner",
     now,
     nonce: () => `terminal-gate-${path}`,
   });

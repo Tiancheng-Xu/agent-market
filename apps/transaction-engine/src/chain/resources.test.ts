@@ -60,4 +60,39 @@ describe("chain resource authorization", () => {
     await expect(repository.requireAuthorized(RESOURCE_ID, publisher, "resolveWorkflowTask"))
       .rejects.toMatchObject({ code: "CHAIN_RESOURCE_FORBIDDEN" });
   });
+
+  it("persists a revision-bound arbitration review and rejects stale, expired, or switched resolution args", async () => {
+    const publisher = Wallet.createRandom().address;
+    const arbiter = Wallet.createRandom().address;
+    const repository = new MemoryChainResourceRepository([{
+      resourceId: RESOURCE_ID, publisherWallet: publisher, agentWallet: null,
+      budgetAtomic: "100", status: "disputed", revision: 7,
+    }], [], arbiter);
+    const reviewedAt = new Date("2026-09-12T12:00:00.000Z");
+
+    await expect(repository.recordArbitrationReview(
+      RESOURCE_ID, publisher, { agentsWin: true }, reviewedAt,
+    )).rejects.toMatchObject({ code: "CHAIN_RESOURCE_FORBIDDEN" });
+
+    const review = await repository.recordArbitrationReview(
+      RESOURCE_ID, arbiter, { agentsWin: true }, reviewedAt,
+    );
+    expect(review).toMatchObject({
+      resourceId: RESOURCE_ID,
+      resourceRevision: 7,
+      reviewerWallet: arbiter.toLowerCase(),
+      agentsWin: true,
+      args: { agentsWin: true },
+    });
+    expect(review.reviewId).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(review.reviewHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    expect(Date.parse(review.expiresAt)).toBeGreaterThan(reviewedAt.getTime());
+    await expect(repository.readArbitrationReview(RESOURCE_ID, arbiter, reviewedAt)).resolves.toEqual(review);
+    await expect(repository.requireResolutionReview(
+      RESOURCE_ID, arbiter, { agentsWin: false }, reviewedAt,
+    )).rejects.toMatchObject({ code: "CHAIN_ARBITRATION_REVIEW_ARGS_MISMATCH" });
+    await expect(repository.requireResolutionReview(
+      RESOURCE_ID, arbiter, { agentsWin: true }, new Date(review.expiresAt),
+    )).rejects.toMatchObject({ code: "CHAIN_ARBITRATION_REVIEW_EXPIRED" });
+  });
 });

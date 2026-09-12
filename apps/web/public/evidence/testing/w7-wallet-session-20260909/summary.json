@@ -1,0 +1,29 @@
+{
+  "scope": "W7 targeted follow-up; NOT full requirements completion",
+  "signatureBoundary": "Browser: mock EIP-1193 only. Auth HTTP fixture: ephemeral software test signature, not a real external/user wallet signature. No real transactions.",
+  "prior": {
+    "browserPassed": 17,
+    "integrationPassed": 24,
+    "rerun": false
+  },
+  "current": {
+    "targetedTests": 5,
+    "crossTabBrowserChecks": 9,
+    "pageErrors": 0,
+    "webTypecheck": "passed"
+  },
+  "sanitized": true,
+  "removed": [
+    "wallet addresses",
+    "session/cookie/signature values",
+    "private filesystem paths",
+    "browser profile and raw logs"
+  ],
+  "gaps": [
+    "external wallet signing",
+    "deployed Gateway and database",
+    "browser HttpOnly/Secure cookie enforcement",
+    "cross-browser and unsupported BroadcastChannel fallback",
+    "full W7 product requirements"
+  ]
+}

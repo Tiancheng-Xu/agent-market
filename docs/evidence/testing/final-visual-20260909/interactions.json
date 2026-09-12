@@ -1,0 +1,263 @@
+{
+  "results": [
+    {
+      "width": 375,
+      "scrollBefore": 8462,
+      "navigation": true,
+      "scrollReset": true,
+      "moreOpened": true,
+      "opsNavigation": true,
+      "moreClosed": true,
+      "ops": {
+        "governancePresent": true,
+        "authBoundary": true,
+        "statusHonest": true
+      },
+      "graph": {
+        "nodes": 8,
+        "edges": 8,
+        "fixtureLabel": true,
+        "offline": true,
+        "transform": "translate(-193.95px, 201.15px) scale(0.35)",
+        "zoomWorks": true
+      },
+      "cocosReady": true,
+      "cocos": {
+        "runtime": "ready",
+        "bootstrap": "game-start",
+        "hits": 3,
+        "sceneNodes": 16,
+        "frames": 17,
+        "canvas": [
+          341,
+          212
+        ],
+        "renderWindow": [
+          341,
+          212
+        ],
+        "x": 221.83333333333334,
+        "y": 412.2256236436632
+      },
+      "cocosHit": {
+        "messageReceived": true,
+        "taskId": "task-visual-review",
+        "inspectorChanged": true,
+        "matchingInspectorLink": true,
+        "readyEvent": true
+      }
+    },
+    {
+      "width": 390,
+      "scrollBefore": 8218,
+      "navigation": true,
+      "scrollReset": true,
+      "moreOpened": true,
+      "opsNavigation": true,
+      "moreClosed": true,
+      "ops": {
+        "governancePresent": true,
+        "authBoundary": true,
+        "statusHonest": true
+      },
+      "graph": {
+        "nodes": 8,
+        "edges": 8,
+        "fixtureLabel": true,
+        "offline": true,
+        "transform": "translate(-186.45px, 201.15px) scale(0.35)",
+        "zoomWorks": true
+      },
+      "cocosReady": true,
+      "cocos": {
+        "runtime": "ready",
+        "bootstrap": "game-start",
+        "hits": 3,
+        "sceneNodes": 16,
+        "frames": 13,
+        "canvas": [
+          356,
+          222
+        ],
+        "renderWindow": [
+          356,
+          222
+        ],
+        "x": 231,
+        "y": 415.14278401692707
+      },
+      "cocosHit": {
+        "messageReceived": true,
+        "taskId": "task-visual-review",
+        "inspectorChanged": true,
+        "matchingInspectorLink": true,
+        "readyEvent": true
+      }
+    },
+    {
+      "width": 430,
+      "scrollBefore": 7948,
+      "navigation": true,
+      "scrollReset": true,
+      "moreOpened": true,
+      "opsNavigation": true,
+      "moreClosed": true,
+      "ops": {
+        "governancePresent": true,
+        "authBoundary": true,
+        "statusHonest": true
+      },
+      "graph": {
+        "nodes": 8,
+        "edges": 8,
+        "fixtureLabel": true,
+        "offline": true,
+        "transform": "translate(-166.45px, 201.15px) scale(0.35)",
+        "zoomWorks": true
+      },
+      "cocosReady": true,
+      "cocos": {
+        "runtime": "ready",
+        "bootstrap": "game-start",
+        "hits": 3,
+        "sceneNodes": 16,
+        "frames": 13,
+        "canvas": [
+          396,
+          247
+        ],
+        "renderWindow": [
+          396,
+          247
+        ],
+        "x": 255.16666666666666,
+        "y": 414.5546119520399
+      },
+      "cocosHit": {
+        "messageReceived": true,
+        "taskId": "task-visual-review",
+        "inspectorChanged": true,
+        "matchingInspectorLink": true,
+        "readyEvent": true
+      }
+    },
+    {
+      "width": 1440,
+      "scrollBefore": 4193,
+      "navigation": true,
+      "scrollReset": true,
+      "opsNavigation": true,
+      "ops": {
+        "governancePresent": true,
+        "authBoundary": true,
+        "statusHonest": true
+      },
+      "graph": {
+        "nodes": 8,
+        "edges": 8,
+        "fixtureLabel": true,
+        "offline": true,
+        "transform": "translate(75px, 194.91px) scale(0.430179)",
+        "zoomWorks": true
+      },
+      "cocosReady": true,
+      "cocos": {
+        "runtime": "ready",
+        "bootstrap": "game-start",
+        "hits": 3,
+        "sceneNodes": 16,
+        "frames": 17,
+        "canvas": [
+          759,
+          474
+        ],
+        "renderWindow": [
+          759,
+          474
+        ],
+        "x": 764.09375,
+        "y": 432.06353841145835
+      },
+      "cocosHit": {
+        "messageReceived": true,
+        "taskId": "task-visual-review",
+        "inspectorChanged": true,
+        "matchingInspectorLink": true,
+        "readyEvent": true
+      }
+    },
+    {
+      "width": 1920,
+      "scrollBefore": 3825,
+      "navigation": true,
+      "scrollReset": true,
+      "opsNavigation": true,
+      "ops": {
+        "governancePresent": true,
+        "authBoundary": true,
+        "statusHonest": true
+      },
+      "graph": {
+        "nodes": 8,
+        "edges": 8,
+        "fixtureLabel": true,
+        "offline": true,
+        "transform": "translate(93px, 189.21px) scale(0.531969)",
+        "zoomWorks": true
+      },
+      "cocosReady": true,
+      "cocos": {
+        "runtime": "ready",
+        "bootstrap": "game-start",
+        "hits": 3,
+        "sceneNodes": 16,
+        "frames": 17,
+        "canvas": [
+          970,
+          606
+        ],
+        "renderWindow": [
+          970,
+          606
+        ],
+        "x": 1014,
+        "y": 385.7392325846354
+      },
+      "cocosHit": {
+        "messageReceived": true,
+        "taskId": "task-visual-review",
+        "inspectorChanged": true,
+        "matchingInspectorLink": true,
+        "readyEvent": true
+      }
+    }
+  ],
+  "pageErrors": [],
+  "backendReadbacks": [
+    {
+      "path": "/agent/healthz",
+      "status": 200,
+      "body": {
+        "status": "offline",
+        "checkedAt": "2026-09-10T02:34:17.513Z",
+        "runtime": "edge",
+        "agents": [],
+        "reasonCode": "RUNTIME_OFFLINE"
+      }
+    },
+    {
+      "path": "/api/governance/events",
+      "status": 503,
+      "body": {
+        "error": "TRANSACTION_ENGINE_OFFLINE"
+      }
+    },
+    {
+      "path": "/api/tasks/11111111-1111-4111-8111-111111111111/risk-context",
+      "status": 503,
+      "body": {
+        "error": "TRANSACTION_ENGINE_OFFLINE"
+      }
+    }
+  ]
+}

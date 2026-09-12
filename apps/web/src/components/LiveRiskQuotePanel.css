@@ -1,0 +1,8 @@
+.risk-quote-panel .risk-factor-guide { margin-block: 16px; border-block: 1px solid var(--line); }
+.risk-quote-panel .risk-factor-guide summary { min-height: 44px; padding-block: 12px; cursor: pointer; color: var(--cyan); }
+.risk-quote-panel .risk-factor-guide dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.risk-quote-panel .risk-factor-guide dt { font-weight: 600; }
+.risk-quote-panel .risk-factor-guide dd { margin: 6px 0 0; color: var(--muted); }
+.risk-quote-panel .risk-quote-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.risk-quote-panel button { min-height: 44px; white-space: normal; }
+@media (max-width: 600px) { .risk-quote-panel .risk-factor-guide dl { grid-template-columns: 1fr; } }

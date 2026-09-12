@@ -17,16 +17,14 @@ import {
 } from "./provider-api-client";
 import { createLocalStreamRuntime } from "./stream-runtime";
 import { openQueenRuntimePersistence } from "./queen-runtime-persistence";
+import { runtimeSigningKeysFromEnv } from "./signing";
 
 const env = loadRuntimeEnv();
 const config = parseRunnerConfig(env);
 const ollamaClient = new OllamaClient(config);
 const providerClients = buildProviderClients(env);
 const manifests = await buildManifests(env, config, ollamaClient);
-const signingSecret = env.AGENT_RUNTIME_SHARED_SECRET;
-if (!signingSecret) {
-  throw new Error("AGENT_RUNTIME_SHARED_SECRET is required for local stream runtime");
-}
+const signingKeys = runtimeSigningKeysFromEnv(env);
 
 const persistence = await openQueenRuntimePersistence(env);
 const runtime = createLocalStreamRuntime({
@@ -34,7 +32,7 @@ const runtime = createLocalStreamRuntime({
   manifests,
   ollamaClient,
   providerClients,
-  signingKey: { keyId: env.AGENT_RUNTIME_KEY_ID ?? "edge-runtime-v1", secret: signingSecret },
+  signingKeys,
 });
 
 const host = "127.0.0.1";

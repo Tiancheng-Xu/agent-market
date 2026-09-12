@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "project": "agent-market",
+  "recordedAt": "2026-09-10T01:24:21.287Z",
+  "status": "verified-local",
+  "scope": "Cocos responsive rendering and public demo interactions",
+  "workingTree": "feature/non-aws-completion-20260909",
+  "releaseState": "uncommitted-not-published",
+  "interactions": {
+    "scope": "local-demo-canvas-interactions",
+    "status": "passed",
+    "syntheticBusinessData": true,
+    "realPointerInput": true,
+    "awsOperations": false,
+    "chainTransactions": false,
+    "productionVerified": false,
+    "results": [
+      {
+        "name": "desktop-real-canvas-selection",
+        "passed": true,
+        "detail": {
+          "x": 764.09375,
+          "y": 551.0579842122396,
+          "hitCount": 3,
+          "selection": "task-visual-review",
+          "taskPath": "/tasks/task-visual-review",
+          "downloads": 0,
+          "width": 1440,
+          "scrollWidth": 1440
+        }
+      },
+      {
+        "name": "desktop-public-only",
+        "passed": true,
+        "detail": 0
+      },
+      {
+        "name": "completed-filter-selects-only-completed-desk",
+        "passed": true,
+        "detail": {
+          "x": 542.89375,
+          "y": 523.9939583333334,
+          "hitCount": 1,
+          "selection": "task-research-closed",
+          "taskPath": "/tasks/task-research-closed",
+          "downloads": 0,
+          "width": 1440,
+          "scrollWidth": 1440
+        }
+      },
+      {
+        "name": "mobile-real-canvas-selection",
+        "passed": true,
+        "detail": {
+          "x": 231,
+          "y": 394.3152083333333,
+          "hitCount": 3,
+          "selection": "task-visual-review",
+          "taskPath": "/tasks/task-visual-review",
+          "downloads": 0,
+          "width": 390,
+          "scrollWidth": 390
+        }
+      },
+      {
+        "name": "mobile-no-horizontal-overflow",
+        "passed": true,
+        "detail": {
+          "x": 231,
+          "y": 394.3152083333333,
+          "hitCount": 3,
+          "selection": "task-visual-review",
+          "taskPath": "/tasks/task-visual-review",
+          "downloads": 0,
+          "width": 390,
+          "scrollWidth": 390
+        }
+      },
+      {
+        "name": "mobile-public-only",
+        "passed": true,
+        "detail": 0
+      },
+      {
+        "name": "no-uncaught-browser-exceptions",
+        "passed": true,
+        "detail": []
+      }
+    ]
+  },
+  "resize": {
+    "scope": "local-cocos-resize-without-document-reload",
+    "passed": true,
+    "readings": [
+      {
+        "ready": true,
+        "width": 1440,
+        "scrollWidth": 1440,
+        "frameWidth": 759,
+        "frameHeight": 474,
+        "canvas": {
+          "width": 759,
+          "height": 474
+        },
+        "renderWindow": {
+          "width": 759,
+          "height": 474
+        },
+        "center": {
+          "x": 379.5,
+          "y": 237
+        }
+      },
+      {
+        "ready": true,
+        "width": 390,
+        "scrollWidth": 390,
+        "frameWidth": 356,
+        "frameHeight": 222,
+        "canvas": {
+          "width": 356,
+          "height": 222
+        },
+        "renderWindow": {
+          "width": 356,
+          "height": 222
+        },
+        "center": {
+          "x": 178,
+          "y": 111
+        }
+      },
+      {
+        "ready": true,
+        "width": 1440,
+        "scrollWidth": 1440,
+        "frameWidth": 759,
+        "frameHeight": 474,
+        "canvas": {
+          "width": 759,
+          "height": 474
+        },
+        "renderWindow": {
+          "width": 759,
+          "height": 474
+        },
+        "center": {
+          "x": 379.5,
+          "y": 237
+        }
+      }
+    ]
+  },
+  "automatedGates": {
+    "web": {
+      "tests": 221,
+      "passed": 221,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    "cocosRuntimeAndArtifact": {
+      "tests": 6,
+      "passed": 6
+    }
+  },
+  "screenshot": {
+    "path": "apps/web/public/evidence/2026-09-09-cocos-mobile-resize-local.png",
+    "url": "/evidence/2026-09-09-cocos-mobile-resize-local.png",
+    "bytes": 286907,
+    "sha256": "66c3253a5c379c0fa4668aba4e942d1a859d99d299952fad3432296b41f962ca"
+  },
+  "boundaries": [
+    "Real pointer events against an actual Cocos scene using public demo fixtures.",
+    "No authenticated private-task, wallet signature, payment or arbitration transaction is proven.",
+    "No AWS operation, Sepolia transaction or production deployment occurred.",
+    "Earlier GPU-disabled-browser fallback and later GPU-enabled rendering are distinct observations.",
+    "Final recording, backend production availability and overall release acceptance remain open."
+  ]
+}

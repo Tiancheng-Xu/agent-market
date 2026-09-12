@@ -13,7 +13,7 @@ import (
 )
 
 func TestRecallSQLAppliesHardFiltersBeforeBoundedVectorRecall(t *testing.T) {
-	required := []string{"MATERIALIZED", "request_id = $2", "status = 'matching'", "a.status = 'active'", "a.available = TRUE", "a.embedding IS NOT NULL", "vector_norm(a.embedding) > 0", "a.capabilities @> t.requirements", "t.category = ANY(a.categories)", "a.tags @> t.tags", "t.budget_atomic >= a.minimum_budget_atomic", "agent_score_events", "INTERVAL '90 days'", "LIMIT 20", "embedding <=> task_embedding", "LIMIT $3"}
+	required := []string{"MATERIALIZED", "request_id = $2", "status = 'matching'", "publisher_wallet", "a.status = 'active'", "a.available = TRUE", "a.embedding IS NOT NULL", "vector_norm(a.embedding) > 0", "a.capabilities @> t.requirements", "t.category = ANY(a.categories)", "a.tags @> t.tags", "t.budget_atomic >= a.minimum_budget_atomic", "a.selection_access = 'public-market'", "lower(a.owner_wallet) = lower(t.publisher_wallet)", "agent_score_events", "INTERVAL '90 days'", "LIMIT 20", "embedding <=> task_embedding", "LIMIT $3"}
 	for _, fragment := range required {
 		if !strings.Contains(recallSQL, fragment) {
 			t.Errorf("recall SQL missing %q", fragment)
@@ -173,6 +173,9 @@ func (tx *fakeTransaction) Query(_ context.Context, sql string, _ ...any) (rowIt
 	return tx.rows, tx.queryErr
 }
 func (tx *fakeTransaction) QueryRow(_ context.Context, sql string, _ ...any) pgx.Row {
+	if sql == selectionGateSQL {
+		return fakeSelectionRow{}
+	}
 	tx.queryRowSQL = sql
 	valid := tx.taskValid
 	if !valid && tx.rows != nil {
@@ -194,6 +197,10 @@ type fakeRow struct {
 	valid bool
 	err   error
 }
+
+type fakeSelectionRow struct{}
+
+func (fakeSelectionRow) Scan(dest ...any) error { *(dest[0].(*string)) = "ranked"; return nil }
 
 func (row fakeRow) Scan(dest ...any) error {
 	if row.err != nil {

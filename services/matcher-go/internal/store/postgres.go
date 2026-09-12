@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Tiancheng-Xu/agent-market/services/matcher-go/internal/contracts"
@@ -22,6 +23,8 @@ const (
 
 const matchableTaskStatus = "matching"
 
+const selectionGateSQL = `SELECT agent_market.vrf_match_gate($1::uuid,$2::uuid,$3::uuid,$4)`
+
 const claimEventSQL = `
 INSERT INTO agent_market.consumed_events (event_id, request_id, consumer)
 VALUES ($1, $2, $3)
@@ -37,7 +40,7 @@ FOR SHARE`
 
 const recallSQL = `
 WITH target AS MATERIALIZED (
-  SELECT embedding, requirements, budget_atomic, category, tags
+  SELECT embedding, requirements, budget_atomic, category, tags, publisher_wallet
   FROM agent_market.tasks
   WHERE id = $1 AND request_id = $2
     AND status = 'matching'
@@ -54,6 +57,8 @@ WITH target AS MATERIALIZED (
     AND (t.category = '' OR t.category = ANY(a.categories))
     AND a.tags @> t.tags
     AND t.budget_atomic >= a.minimum_budget_atomic
+    AND (a.selection_access = 'public-market'
+      OR lower(a.owner_wallet) = lower(t.publisher_wallet))
 )
 SELECT
   id::text,
@@ -91,6 +96,8 @@ INSERT INTO agent_market.match_candidates (
 type ProcessResult struct {
 	Duplicate  bool
 	Candidates []ranking.Candidate
+	// Explicit pending/stale outcomes must never be interpreted as permission to rerank.
+	SelectionStatus string
 }
 
 type rowIterator interface {
@@ -157,15 +164,43 @@ func (postgres *Postgres) Process(ctx context.Context, event contracts.MatchRequ
 		}
 	}()
 
+	var selectionStatus string
+	if err = tx.QueryRow(ctx, selectionGateSQL, event.TaskID, event.RequestID, event.MatchJobID, event.ModelVersion).Scan(&selectionStatus); err != nil {
+		var pgError *pgconn.PgError
+		if errors.As(err, &pgError) && pgError.Message == "MATCH_TASK_LOCKED" {
+			return ProcessResult{}, ErrTaskRequestMismatch
+		}
+		return ProcessResult{}, fmt.Errorf("validate selection binding: %w", err)
+	}
+	verified := strings.HasPrefix(selectionStatus, "verified:")
+	if selectionStatus != "ranked" && selectionStatus != "oracle_pending" && selectionStatus != "binding_stale" && !verified {
+		return ProcessResult{}, errors.New("invalid matcher selection gate result")
+	}
 	claim, err := tx.Exec(ctx, claimEventSQL, event.EventID, event.RequestID, ConsumerName)
 	if err != nil {
 		return ProcessResult{}, fmt.Errorf("claim match event: %w", err)
 	}
-	if claim.RowsAffected() == 0 {
+	if claim.RowsAffected() == 0 && !verified {
 		if err = tx.Commit(ctx); err != nil {
 			return ProcessResult{}, fmt.Errorf("commit duplicate match event: %w", err)
 		}
-		return ProcessResult{Duplicate: true}, nil
+		return ProcessResult{Duplicate: true, SelectionStatus: selectionStatus}, nil
+	}
+	if verified {
+		candidate := ranking.Candidate{ID: strings.TrimPrefix(selectionStatus, "verified:"), Eligible: true, Exploration: true, ModelVersion: event.ModelVersion}
+		if _, err = tx.Exec(ctx, persistCandidateSQL+" ON CONFLICT (match_job_id,agent_id) DO NOTHING", event.MatchJobID, candidate.ID, event.RequestID, 1, 0, "{}", `{"summary":"verified VRF exploration binding"}`, event.ModelVersion, true); err != nil {
+			return ProcessResult{}, err
+		}
+		if err = tx.Commit(ctx); err != nil {
+			return ProcessResult{}, err
+		}
+		return ProcessResult{Duplicate: claim.RowsAffected() == 0, SelectionStatus: "verified", Candidates: []ranking.Candidate{candidate}}, nil
+	}
+	if selectionStatus != "ranked" {
+		if err = tx.Commit(ctx); err != nil {
+			return ProcessResult{}, err
+		}
+		return ProcessResult{SelectionStatus: selectionStatus}, nil
 	}
 	var taskValid bool
 	if err = tx.QueryRow(ctx, lockTaskSQL, event.TaskID, event.RequestID).Scan(&taskValid); errors.Is(err, pgx.ErrNoRows) {
@@ -203,7 +238,7 @@ func (postgres *Postgres) Process(ctx context.Context, event contracts.MatchRequ
 	if err = tx.Commit(ctx); err != nil {
 		return ProcessResult{}, fmt.Errorf("commit matcher transaction: %w", err)
 	}
-	return ProcessResult{Candidates: selected}, nil
+	return ProcessResult{Candidates: selected, SelectionStatus: "ranked"}, nil
 }
 
 func scanCandidates(rows rowIterator) ([]ranking.Candidate, error) {

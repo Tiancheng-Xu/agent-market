@@ -198,8 +198,149 @@ describe("Cloudflare Pages edge renderer", () => {
   it("rejects unsupported methods on dynamic transaction routes", async () => {
     const taskId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
     const handler = createPagesHandler({ logger: { info() {}, error() {} } });
-    const response = await handler.fetch(new Request(`https://agent-market.test/api/tasks/${taskId}/risk-quote`), environment());
+    const response = await handler.fetch(new Request(`https://agent-market.test/api/tasks/${taskId}/risk-quote`, { method: "PATCH" }), environment());
     expect(response.status).toBe(405);
+  });
+
+  it.each(["GET", "POST"])("proxies exact task selection %s requests", async method => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        calls.push(new Request(input, init));
+        return Response.json({ selection: [] });
+      },
+    });
+    const taskId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(`https://agent-market.test/api/tasks/${taskId}/selection`, {
+      method,
+      ...(method === "POST" ? { headers: { origin: "https://agent-market.test" }, body: "{}" } : {}),
+    }), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(200);
+    expect(calls[0]?.method).toBe(method);
+    expect(calls[0]?.url).toBe(`https://transaction.internal/api/tasks/${taskId}/selection`);
+  });
+
+  it("proxies exact agent selection-access POST and preserves the TE failure boundary", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        calls.push(new Request(input, init));
+        return Response.json({ error: "internal" }, { status: 500 });
+      },
+    });
+    const agentId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(`https://agent-market.test/api/agents/${agentId}/selection-access`, {
+      method: "POST",
+      headers: { origin: "https://agent-market.test" },
+      body: "{}",
+    }), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "TRANSACTION_ENGINE_UNAVAILABLE" });
+    expect(calls[0]?.url).toBe(`https://transaction.internal/api/agents/${agentId}/selection-access`);
+  });
+
+  it("rejects illegal methods on the exact selection routes", async () => {
+    const handler = createPagesHandler({ logger: { info() {}, error() {} } });
+    const id = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const taskResponse = await handler.fetch(new Request(`https://agent-market.test/api/tasks/${id}/selection`, { method: "PATCH" }), environment());
+    const agentResponse = await handler.fetch(new Request(`https://agent-market.test/api/agents/${id}/selection-access`, { method: "GET" }), environment());
+
+    expect(taskResponse.status).toBe(405);
+    expect(agentResponse.status).toBe(405);
+  });
+
+  it.each(["GET", "POST"])("proxies exact authenticated arbitration review %s requests", async method => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        calls.push(new Request(input, init));
+        return Response.json({ review: { status: "pending" } });
+      },
+    });
+    const resourceId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(
+      `https://agent-market.test/api/chain/resources/${resourceId}/arbitration-review`,
+      {
+        method,
+        headers: {
+          cookie: "__Host-agent_market_session=opaque",
+          ...(method === "POST" ? { origin: "https://agent-market.test", "content-type": "application/json" } : {}),
+        },
+        ...(method === "POST" ? { body: '{"decision":"approve"}' } : {}),
+      },
+    ), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(200);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.method).toBe(method);
+    expect(calls[0]?.headers.get("cookie")).toBe("__Host-agent_market_session=opaque");
+    expect(calls[0]?.url).toBe(`https://transaction.internal/api/chain/resources/${resourceId}/arbitration-review`);
+    if (method === "POST") expect(await calls[0]!.text()).toBe('{"decision":"approve"}');
+  });
+
+  it("rejects PATCH on the exact arbitration review route", async () => {
+    const handler = createPagesHandler({ logger: { info() {}, error() {} } });
+    const resourceId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(
+      `https://agent-market.test/api/chain/resources/${resourceId}/arbitration-review`,
+      { method: "PATCH" },
+    ), environment());
+
+    expect(response.status).toBe(405);
+    await expect(response.json()).resolves.toEqual({ error: "METHOD_NOT_ALLOWED" });
+  });
+
+  it("rejects arbitration review POST bodies over 32 KiB before proxying", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        calls.push(new Request(input, init));
+        return Response.json({ review: {} });
+      },
+    });
+    const resourceId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(
+      `https://agent-market.test/api/chain/resources/${resourceId}/arbitration-review`,
+      {
+        method: "POST",
+        headers: { origin: "https://agent-market.test", "content-type": "application/json" },
+        body: "x".repeat(32_769),
+      },
+    ), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toEqual({ error: "PAYLOAD_TOO_LARGE" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("rejects cross-origin arbitration review POST requests before proxying", async () => {
+    const calls: Request[] = [];
+    const handler = createPagesHandler({
+      logger: { info() {}, error() {} },
+      async upstreamFetch(input, init) {
+        calls.push(new Request(input, init));
+        return Response.json({ review: {} });
+      },
+    });
+    const resourceId = "7dc42790-a91c-4d62-9d5d-a08bb5211141";
+    const response = await handler.fetch(new Request(
+      `https://agent-market.test/api/chain/resources/${resourceId}/arbitration-review`,
+      {
+        method: "POST",
+        headers: { origin: "https://attacker.test", "content-type": "application/json" },
+        body: "{}",
+      },
+    ), { ...environment(), TRANSACTION_ENGINE_ORIGIN: "https://transaction.internal" });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "AUTH_ORIGIN_MISMATCH" });
+    expect(calls).toHaveLength(0);
   });
 
   it("proxies authenticated risk-context GET with the session cookie intact", async () => {
@@ -329,7 +470,8 @@ describe("Cloudflare Pages edge renderer", () => {
     }), {
       ...environment(),
       AGENT_RUNTIME_ORIGIN: "https://runtime.agent-market.test",
-      AGENT_RUNTIME_SHARED_SECRET: "runtime-secret",
+      AGENT_RUNTIME_PUBLIC_KEY_ID: "edge-runtime-public-v1",
+      AGENT_RUNTIME_PUBLIC_SECRET: "runtime-public-secret",
     });
 
     expect(response.headers.get("content-type")).toContain("text/event-stream");
@@ -377,7 +519,8 @@ describe("Cloudflare Pages edge renderer", () => {
     }), {
       ...environment(),
       AGENT_RUNTIME_ORIGIN: "https://runtime.agent-market.test",
-      AGENT_RUNTIME_SHARED_SECRET: "runtime-secret",
+      AGENT_RUNTIME_PUBLIC_KEY_ID: "edge-runtime-public-v1",
+      AGENT_RUNTIME_PUBLIC_SECRET: "runtime-public-secret",
     });
     const payload = await response.json();
 
@@ -430,7 +573,8 @@ describe("Cloudflare Pages edge renderer", () => {
     }), {
       ...environment(),
       AGENT_RUNTIME_ORIGIN: "https://runtime.agent-market.test",
-      AGENT_RUNTIME_SHARED_SECRET: "runtime-secret",
+      AGENT_RUNTIME_PUBLIC_KEY_ID: "edge-runtime-public-v1",
+      AGENT_RUNTIME_PUBLIC_SECRET: "runtime-public-secret",
     });
     const payload = await response.json();
 
@@ -460,7 +604,8 @@ describe("Cloudflare Pages edge renderer", () => {
     }), {
       ...environment(),
       AGENT_RUNTIME_ORIGIN: "https://runtime.agent-market.test",
-      AGENT_RUNTIME_SHARED_SECRET: "runtime-secret",
+      AGENT_RUNTIME_PUBLIC_KEY_ID: "edge-runtime-public-v1",
+      AGENT_RUNTIME_PUBLIC_SECRET: "runtime-public-secret",
     });
     const forwarded = await calls[0]!.json() as { variables: { input: { callerScope: string } } };
 

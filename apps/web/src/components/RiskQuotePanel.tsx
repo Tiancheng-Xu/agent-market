@@ -42,6 +42,7 @@ const copy = {
     confirm: "Confirm quote intent",
     blocked: "Quote cannot be confirmed in this state",
     noAllocations: "Agent allocation is produced only for the final quote.",
+    quoteMetadata: "Quote metadata",
   },
   "zh-CN": {
     eyebrow: "风险定价 / 可审计报价",
@@ -66,6 +67,7 @@ const copy = {
     confirm: "发出报价确认意图",
     blocked: "当前状态不可确认报价",
     noAllocations: "仅最终报价生成 Agent 分配。",
+    quoteMetadata: "报价元数据",
   },
 } as const;
 
@@ -99,7 +101,7 @@ export function RiskQuotePanel({
         </div>
       </header>
 
-      <div className="risk-quote-meta" aria-label="Quote metadata">
+      <div className="risk-quote-meta" aria-label={text.quoteMetadata}>
         <span><small>{text.phase}</small><strong>{view.phase}</strong></span>
         <span><small>{text.policy}</small><strong>{view.policyVersion}</strong></span>
         <span><small>{text.expires}</small><strong>{new Date(view.expiresAt).toLocaleString(locale)}</strong></span>

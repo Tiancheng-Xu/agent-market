@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "service": "agent-market-runtime",
+  "environment": "production",
+  "cwd": "/opt/agent-market/current/apps/local-agent-runner",
+  "healthIntervalSeconds": 30,
+  "entry": { "path": "", "sha256": "", "args": [] },
+  "probes": {
+    "tls": { "path": "", "sha256": "" },
+    "authentication": { "path": "", "sha256": "" },
+    "database": { "path": "", "sha256": "" },
+    "temporal": { "path": "", "sha256": "" },
+    "backup": { "path": "", "sha256": "" },
+    "providerSigning": { "path": "", "sha256": "" },
+    "revocation": { "path": "", "sha256": "" },
+    "readiness": { "path": "", "sha256": "" }
+  }
+}

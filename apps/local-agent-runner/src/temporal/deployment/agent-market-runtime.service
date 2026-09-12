@@ -1,0 +1,32 @@
+# Proposed Linux systemd unit. Not installed or started by this delivery.
+[Unit]
+Description=Agent Market production Runtime guarded supervisor
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=agent-market
+Group=agent-market
+WorkingDirectory=/opt/agent-market/current/apps/local-agent-runner
+EnvironmentFile=/etc/agent-market/runtime.env
+ExecStartPre=/usr/bin/node /opt/agent-market/current/apps/local-agent-runner/src/temporal/deployment/runtime-supervisor.mjs preflight /etc/agent-market/runtime-supervisor.json
+ExecStart=/usr/bin/node /opt/agent-market/current/apps/local-agent-runner/src/temporal/deployment/runtime-supervisor.mjs run /etc/agent-market/runtime-supervisor.json
+Restart=on-failure
+RestartSec=15
+TimeoutStartSec=180
+TimeoutStopSec=45
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/agent-market
+UMask=0077
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

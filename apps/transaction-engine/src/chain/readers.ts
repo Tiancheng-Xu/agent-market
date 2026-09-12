@@ -184,7 +184,7 @@ export class JsonRpcVaultPositionReader implements VaultPositionReader {
 }
 
 export class BlockscoutMcpChainReader implements ChainReader {
-  private unlockPromise?: Promise<void>;
+  private unlockPromise: Promise<void> | undefined;
 
   constructor(
     private readonly fetcher: FetchLike = fetch,
@@ -196,10 +196,16 @@ export class BlockscoutMcpChainReader implements ChainReader {
     const url = new URL(`https://mcp.blockscout.com/v1/${tool}`);
     for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
     for (let attempt = 1; attempt <= 3; attempt += 1) {
-      const response = await this.fetcher(url, {
-        headers: { "user-agent": "Blockscout-SkillGuidedScript/0.6.0", accept: "application/json" },
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
+      let response: Response;
+      try {
+        response = await this.fetcher(url, {
+          headers: { "user-agent": "Blockscout-SkillGuidedScript/0.6.0", accept: "application/json" },
+          signal: AbortSignal.timeout(this.timeoutMs),
+        });
+      } catch {
+        if (attempt === 3) throw new Error("BLOCKSCOUT_UNAVAILABLE");
+        continue;
+      }
       if (response.ok) return response.json();
       if (response.status < 500 || attempt === 3) throw new Error("BLOCKSCOUT_UNAVAILABLE");
     }
@@ -207,7 +213,10 @@ export class BlockscoutMcpChainReader implements ChainReader {
   }
 
   private async unlock(): Promise<void> {
-    this.unlockPromise ??= this.call("unlock_blockchain_analysis").then(() => undefined);
+    this.unlockPromise ??= this.call("unlock_blockchain_analysis").then(() => undefined).catch((error: unknown) => {
+      this.unlockPromise = undefined;
+      throw error;
+    });
     return this.unlockPromise;
   }
 

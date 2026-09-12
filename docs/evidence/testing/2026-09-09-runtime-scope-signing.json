@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "agent-market.local-validation.v1",
+  "date": "2026-09-09",
+  "status": "verified-local",
+  "scope": "Runtime caller-scope integrity; not wallet ownership or business task authorization",
+  "command": "pnpm --dir apps/local-agent-runner test src/signing-scope.test.ts src/stream-runtime.test.ts src/local-agent-runner.test.ts && pnpm --dir apps/local-agent-runner typecheck",
+  "testFilesPassed": 3,
+  "testsPassed": 40,
+  "typecheckExitCode": 0,
+  "invariants": [
+    "Existing public Edge canonical signatures remain compatible",
+    "Changing a public signed request to owner is rejected",
+    "Stripping owner scope from an owner-signed request is rejected",
+    "Unknown caller scopes are rejected",
+    "Body, path, timestamp and single-use nonce checks remain enforced",
+    "Owner requests without a configured signing key are rejected"
+  ],
+  "remainingBoundaries": [
+    "Queen GraphQL business authorization callback is not wired into the production runtime server",
+    "A signed caller scope does not establish wallet ownership, task permission, agent assignment acceptance or payment authorization",
+    "No live provider invocation, AWS operation, Sepolia transaction or production deployment was performed for this validation"
+  ]
+}

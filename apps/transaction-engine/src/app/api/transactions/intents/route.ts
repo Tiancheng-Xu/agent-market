@@ -48,14 +48,26 @@ export function createIntentHandler({ auth, store, resources, contracts, now = (
       if (!parsedMethod.success) throw new AuthError("CHAIN_METHOD_INVALID", 400);
       const method = parsedMethod.data as BuildIntentInput["method"];
       const resourceId = normalizeResourceId(body.resourceId);
-      requestId = deriveIntentRequestId(session.walletAddress, resourceId, method);
       let record;
+      let review;
       try {
-        record = await resources.requireAuthorized(resourceId, session.walletAddress, method);
+        if (method === "resolveWorkflowTask") {
+          const keys = Object.keys(body.args as Record<string, unknown>);
+          const agentsWin = (body.args as Record<string, unknown>).agentsWin;
+          if (keys.length !== 1 || keys[0] !== "agentsWin" || typeof agentsWin !== "boolean") {
+            throw new AuthError("CHAIN_INTENT_INVALID", 400);
+          }
+          const binding = await resources.requireResolutionReview(resourceId, session.walletAddress, { agentsWin }, now());
+          record = binding.resource;
+          review = binding.review;
+        } else {
+          record = await resources.requireAuthorized(resourceId, session.walletAddress, method);
+        }
       } catch (error) {
         if (error instanceof ChainResourceError) throw new AuthError(error.code, error.status);
         throw error;
       }
+      requestId = deriveIntentRequestId(session.walletAddress, resourceId, method, review ? `${review.reviewId}:${review.reviewHash}` : "");
       const resource = deriveChainResource(resourceId);
       const normalizedContracts = contracts;
       let intent;
@@ -71,11 +83,12 @@ export function createIntentHandler({ auth, store, resources, contracts, now = (
           method, body.args as Record<string, unknown>, resource, normalizedContracts, record,
         ),
         createdAt: now(),
+        ...(review ? { expiresAt: review.expiresAt } : {}),
         } as BuildIntentInput);
       } catch {
         throw new AuthError("CHAIN_INTENT_INVALID", 400);
       }
-      const persisted = await store.createIntent(intent, buildTransactionExpectation(record, method));
+      const persisted = await store.createIntent(intent, buildTransactionExpectation(record, method, review));
       return Response.json({ intent: persisted, requestId }, {
         status: 201,
         headers: { "cache-control": "no-store", "x-request-id": requestId },

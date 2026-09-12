@@ -1,0 +1,186 @@
+{
+  "schemaVersion": "runtime-supervisor-preparation.v1",
+  "recordedAt": "2026-09-10T01:57:10.659Z",
+  "status": "prepared-production-blocked",
+  "productionHost": "undetermined",
+  "tests": {
+    "passed": 2,
+    "failed": 0,
+    "scope": "fail-closed-unit-only"
+  },
+  "preflight": {
+    "expectedExitCode": 2,
+    "passed": false,
+    "checks": [
+      {
+        "gate": "env:AGENT_RUNTIME_PRODUCTION_ENABLED",
+        "passed": false
+      },
+      {
+        "gate": "env:AGENT_RUNTIME_PUBLIC_ORIGIN",
+        "passed": false
+      },
+      {
+        "gate": "env:AGENT_RUNTIME_PUBLIC_KEY_ID",
+        "passed": false
+      },
+      {
+        "gate": "env:AGENT_RUNTIME_PUBLIC_SECRET",
+        "passed": false
+      },
+      {
+        "gate": "env:AGENT_RUNTIME_OWNER_KEY_ID",
+        "passed": false
+      },
+      {
+        "gate": "env:AGENT_RUNTIME_OWNER_SECRET",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_PUBLIC_DATABASE_URL",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_OWNER_DATABASE_URL",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_CHECKPOINT_DATABASE_URL",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_CHECKPOINT_SCHEMA",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_TEMPORAL_ADDRESS",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_TEMPORAL_NAMESPACE",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_TEMPORAL_TASK_QUEUE",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_TEMPORAL_TLS_CA_FILE",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_TEMPORAL_TLS_CERT_FILE",
+        "passed": false
+      },
+      {
+        "gate": "env:QUEEN_TEMPORAL_TLS_KEY_FILE",
+        "passed": false
+      },
+      {
+        "gate": "env:AGENT_RUNTIME_REVOCATION_URL",
+        "passed": false
+      },
+      {
+        "gate": "env:AGENT_RUNTIME_PROVIDER_SIGNING_KEY_ID",
+        "passed": false
+      },
+      {
+        "gate": "explicit-production-opt-in",
+        "passed": false
+      },
+      {
+        "gate": "no-forced-readiness",
+        "passed": true
+      },
+      {
+        "gate": "https:AGENT_RUNTIME_PUBLIC_ORIGIN",
+        "passed": false
+      },
+      {
+        "gate": "https:AGENT_RUNTIME_REVOCATION_URL",
+        "passed": false
+      },
+      {
+        "gate": "reviewed-entry",
+        "passed": false
+      },
+      {
+        "gate": "tls",
+        "passed": false
+      },
+      {
+        "gate": "authentication",
+        "passed": false
+      },
+      {
+        "gate": "database",
+        "passed": false
+      },
+      {
+        "gate": "temporal",
+        "passed": false
+      },
+      {
+        "gate": "backup",
+        "passed": false
+      },
+      {
+        "gate": "providerSigning",
+        "passed": false
+      },
+      {
+        "gate": "revocation",
+        "passed": false
+      },
+      {
+        "gate": "readiness",
+        "passed": false
+      }
+    ]
+  },
+  "serviceStarted": false,
+  "unitInstalled": false,
+  "liveProductionVerified": false,
+  "parentReportedHostInventory": {
+    "source": "parent-task-read-only-observation",
+    "recordedAt": "2026-09-10T01:59:04.996Z",
+    "scope": {
+      "processFields": [
+        "pid",
+        "comm"
+      ],
+      "launchAgentsMaxDepth": 1,
+      "launchAgentFilenameFilters": [
+        "agent*market",
+        "cloudflared",
+        "ollama",
+        "queen",
+        "temporal"
+      ]
+    },
+    "observed": {
+      "ollamaApplicationProcess": true,
+      "temporalBinaries": [
+        {
+          "path": "/tmp/am-temporal-tools-20260909/temporal",
+          "ownership": "unknown",
+          "stopForbidden": true
+        },
+        {
+          "path": "/tmp/agent-market-temporal.m7smAO/temporal",
+          "ownership": "task-test-service",
+          "productionRuntime": false
+        }
+      ],
+      "cloudflaredProcessFound": false,
+      "matchingLaunchAgentFilesFound": false
+    },
+    "limits": [
+      "parent-reported-not-independently-rechecked",
+      "limited-inventory-not-proof-all-hosts-absent",
+      "ollama-process-not-production-runtime-evidence",
+      "ollama-process-not-tunnel-evidence"
+    ],
+    "decision": "production-host-and-secret-configuration-still-unmet"
+  }
+}

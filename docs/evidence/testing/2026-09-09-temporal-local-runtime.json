@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "agent-market.local-validation.v1",
+  "date": "2026-09-09",
+  "status": "verified-local",
+  "scope": "Real local Temporal service, SDK Worker and PostgreSQL; not production-host integration",
+  "runtime": { "cli": "1.8.3", "server": "1.31.2", "typescriptSdk": "1.23.0", "network": "loopback-only" },
+  "testFile": "apps/local-agent-runner/src/temporal/runtime.integration.test.ts",
+  "testsPassed": 1,
+  "compositeAssertions": [
+    "An actual Temporal timer survives SDK Worker shutdown and replacement",
+    "A deadline dispatch records one test SQL effect",
+    "A committed SQL effect followed by failure remains uncertain and is not repeated",
+    "Wrong scope is rejected",
+    "A persisted rejected approval resumes the real StateGraph/PostgresSaver to rejected with no pending nodes",
+    "Duplicate committed approval is deduplicated and expired approval is rejected",
+    "Rejected approval does not invoke a provider"
+  ],
+  "setupRepairs": [
+    "Execute explicit test migrations through sql.begin rather than unmanaged BEGIN on a connection pool",
+    "Initialize idempotent runtime migrations even when the core task table already exists"
+  ],
+  "notProven": [
+    "Production host wiring and availability",
+    "Full Temporal server or machine restart",
+    "Approved live model execution",
+    "Real compensation, refund or payment",
+    "AWS deployment or external queue behavior"
+  ],
+  "officialLocalSetup": "https://docs.temporal.io/cli/setup-cli"
+}

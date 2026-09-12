@@ -1,0 +1,18 @@
+{
+  "serviceSession": 60177,
+  "browserSession": 72099,
+  "shutdown": "SIGINT to owned sessions only",
+  "ports": [
+    {
+      "port": 4198,
+      "state": "closed"
+    },
+    {
+      "port": 9418,
+      "state": "closed"
+    }
+  ],
+  "foregroundBrowserTouched": false,
+  "cdp9226Touched": false,
+  "recording": false
+}

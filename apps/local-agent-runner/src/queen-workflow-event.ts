@@ -1,34 +1,14 @@
 import { createHash } from "node:crypto";
-import { z } from "zod";
+import { QueenTransportEventSchema as QueenWorkflowEventSchema,
+  queenTransportOperationParts, type QueenTransportEvent } from "@agent-market/shared-contracts";
 
-const Digest = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
-export const QueenWorkflowEventSchema = z.object({
-  schemaVersion: z.literal("queen-workflow-event.v1"),
-  eventId: z.string().uuid(),
-  eventType: z.enum(["task.requested", "task.approval-recorded", "task.resume-requested"]),
-  taskId: z.string().uuid(),
-  scopeId: z.string().uuid(),
-  graphRevision: z.number().int().positive(),
-  taskFingerprint: Digest,
-  operationKey: Digest,
-  payloadRef: z.string().uuid(),
-  payloadHash: Digest,
-  occurredAt: z.string().datetime(),
-  expiresAt: z.string().datetime(),
-}).strict().superRefine((value, ctx) => {
-  if (Date.parse(value.expiresAt) <= Date.parse(value.occurredAt)) {
-    ctx.addIssue({ code: "custom", message: "QUEEN_EVENT_EXPIRY_INVALID", path: ["expiresAt"] });
-  }
-});
-export type QueenWorkflowEvent = z.infer<typeof QueenWorkflowEventSchema>;
+export { QueenWorkflowEventSchema };
+export type QueenWorkflowEvent = QueenTransportEvent;
 
 export function queenEventOperationKey(event: Pick<QueenWorkflowEvent,
   "eventType" | "taskId" | "scopeId" | "graphRevision" | "taskFingerprint" | "payloadRef" | "payloadHash">): string {
   // Transport retries can have different SNS/SQS IDs. Bind business identity instead.
-  return `sha256:${createHash("sha256").update(JSON.stringify([
-    "queen-workflow-event.v1", event.eventType, event.scopeId, event.taskId,
-    event.graphRevision, event.taskFingerprint, event.payloadRef, event.payloadHash,
-  ])).digest("hex")}`;
+  return `sha256:${createHash("sha256").update(JSON.stringify(queenTransportOperationParts(event))).digest("hex")}`;
 }
 
 export interface QueenWorkflowConsumerPorts {

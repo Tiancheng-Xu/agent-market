@@ -1,0 +1,7 @@
+{
+  "apps/web/src/lib/walletSession.ts": "b64c40522e3f190392adc1e4b3955ec06856cdb1591e3a2e994036363d5b038c",
+  "apps/web/src/lib/chainClient.ts": "4c98b78bc86c75fcc3a96cd09685edeab6bbfea2a353a55313a9719ed3019469",
+  "apps/web/src/hooks/useWallet.ts": "60e083365f8cf766269f8be77f49b72a3e9503ba89f8d48dd9cb546bad0eedca",
+  "apps/web/src/lib/walletSession.http.test.ts": "0568abdd4c64698f0c581755565e9f94fbc7c3367c5a58e4ea0fd3b9cf6e0c9f",
+  "apps/web/src/lib/walletSession.crossTab.test.ts": "76328d55a4957e8d11d8006b7fd7c8cbc217187662f58c5383618f1496d1703f"
+}
