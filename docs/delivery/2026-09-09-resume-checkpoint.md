@@ -1,23 +1,20 @@
 # Agent Market resume checkpoint
 
-Status: **local verified / release pending**
+Status: **production released / recording captured / Evidence publication pending**
 Workspace: `agent-market-non-aws-20260909`
 Branch: `feature/non-aws-completion-20260909`
 Pre-work production baseline: `4589c72b110fbe17163320eef224bdeca2e25025`
-Locally verified implementation commit: `c7e52bbc192be468e8fe3507a68f4cb1b2739da8`
+Locally verified implementation commit: `1d0b349427b81c5ac9a8b5e9c9114730e7ae71e4`
 
 ## Resume from here
 
-The non-AWS implementation and local acceptance work are complete. Do not reopen L1-L4, StateGraph, Checkpoint, commercial, governance, VRF local integration, wallet safety, Cocos, bilingual layout, or the final visual Gate unless a new regression is observed.
+The non-AWS implementation, local acceptance, production release, and narrated production recording are complete. Do not reopen L1-L4, StateGraph, Checkpoint, commercial, governance, VRF local integration, wallet safety, Cocos, bilingual layout, or the final visual Gate unless a new regression is observed.
 
 The remaining sequence is:
 
-1. Use implementation commit `c7e52bbc192be468e8fe3507a68f4cb1b2739da8` as the tested source anchor without claiming it is already the production release SHA.
-2. Open/merge the PR and capture the successful GitHub Actions Run.
-3. Confirm the existing Cloudflare project and publish only through Git integration; capture the exact deployment and production readback.
-4. Coordinate one recorder, then record the released production walkthrough.
-5. Add the recording manifest/Evidence, publish that Evidence update, and bind source, Run, deployment, URLs, and recording digest.
-6. Send the final architecture package to `01a0758e-78f5-75a1-90f7-43d75de6e780`.
+1. Publish the recording manifest and narrated MP4 through the final Evidence PR.
+2. Read back the Evidence URL and final Cloudflare deployment.
+3. Send the final architecture package to `01a0758e-78f5-75a1-90f7-43d75de6e780`.
 
 ## Verified checkpoint
 
@@ -39,8 +36,8 @@ The remaining sequence is:
 - Chainlink VRF external deployment/callback is pending.
 - Temporal production host/runtime/tunnel is pending.
 - The Graph is deferred.
-- Production recording, PR, Cloudflare release, and architecture handoff are pending.
-- The locally verified implementation is committed at `c7e52bbc192be468e8fe3507a68f4cb1b2739da8`; the final release SHA remains unknown until PR merge and production publication.
+- Final Evidence publication and architecture handoff are pending.
+- Released source: `2dfe6d0aa6fa40b65762c07ed687921233b0e0c6`; Actions Run: `34697552824`; Cloudflare deployment: `d8cf5994-ce54-47f1-8979-0c799eca8b79`; recording SHA-256: `ce7e4fb873ab007130b4052759ac5af66fb5dd37b403852d6210ea1ce8daac2e`.
 
 Authoritative queue: `docs/delivery/todolist.md`
 Machine evidence: `docs/evidence/testing/2026-09-12-non-aws-completion.json`
