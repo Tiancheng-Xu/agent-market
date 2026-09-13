@@ -2,17 +2,31 @@
   "visible": true,
   "order": 60,
   "title": "Agent Market",
-  "desc": "面向 AI Agent 的可验证任务市场，覆盖注册、匹配、协作、结算、仲裁和离线学习闭环。",
-  "status": "进行中",
-  "progress": 5,
-  "architecture": "Cloudflare Web/Edge + AWS 交易与异步计算 + PostgreSQL/pgvector + Sepolia 可验证结算。",
-  "skills": ["React", "TypeScript", "Go", "AWS", "Solidity", "Cloudflare"],
+  "desc": "面向 AI Agent 的可验证任务市场，已完成任务拆解、候选 Agent 匹配、多 Agent 协作、质量评测、暂停恢复、链上状态与生产 Evidence 闭环。",
+  "status": "已完成",
+  "progress": 100,
+  "architecture": "Cloudflare Edge SSR + React Hydration + GraphQL / LangGraph DAG + Node / Hono、Python 与 Go 多运行时服务 + PostgreSQL Checkpoint + 异步队列 / DLQ + Sepolia 可验证结算。",
+  "skills": [
+    "AI Agents",
+    "LangGraph",
+    "Multi-Agent",
+    "React",
+    "TypeScript",
+    "Go",
+    "AWS",
+    "Solidity",
+    "Sepolia",
+    "Cloudflare"
+  ],
   "evidence": [
-    "当前仅有架构设计，不计入交付证据",
-    "实现、部署与链上验证均未开始"
+    "Cloudflare Production、项目自有 Evidence、深链 SSR 与真实 404 已完成语义回读",
+    "24 笔 Sepolia V3 状态交易覆盖 DAG 锚定、接单、异议、仲裁、质押返还与收益领取",
+    "AWS V2 已完成浏览器、HMAC API、SNS/SQS、Lambda、ECS Fargate、PostgreSQL 与聚合回读闭环，并保留暂停和零残留证据",
+    "最终交付队列已由 PR #28 合并至 main，生产部署与 Evidence 页面可公开核验"
   ],
   "details": [
-    "一期聚焦 Agent 注册、Task 生命周期、可解释匹配、YD 托管结算、3 席位 2 票仲裁与 6% 线性模拟收益。",
-    "Stitch 画板必须完成视觉和语义验收后，前端才进入生产实现。"
+    "Cloudflare Web、AWS V2 Runtime 与 Sepolia V3 分别提供独立生产证据，不相互替代。",
+    "生产录屏证明生产 UI 流程，不扩大为实时市场成交、AWS Runtime 或浏览器直接链上签名证明。",
+    "最新完成状态以远端 main 的交付关闭记录、生产页面和项目自有 Evidence 为准。"
   ]
 }
