@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "agent-market-routing-v1",
+  "frozenAt": "2026-08-23T00:00:00.000Z",
+  "cases": [
+    {
+      "id": "qualified-lower-cost-first",
+      "nodeType": "execute",
+      "requiredCapabilities": ["completion"],
+      "now": "2026-08-23T00:00:00.000Z",
+      "candidates": [
+        { "agentId": "expensive", "displayName": "Expensive", "capabilities": ["completion"], "tags": ["general"], "provider": "qwen", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.9, "costPer1kTokensUsd": 0.02, "latencyMs": 900, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "qwen-max", "modelDigest": "provider-managed", "riskCodes": [] },
+        { "agentId": "cheap", "displayName": "Cheap", "capabilities": ["completion"], "tags": ["general"], "provider": "deepseek", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.82, "costPer1kTokensUsd": 0.001, "latencyMs": 900, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "deepseek-chat", "modelDigest": "provider-managed", "riskCodes": [] }
+      ],
+      "expectedRanking": ["cheap", "expensive"],
+      "prohibitedAgentIds": []
+    },
+    {
+      "id": "owner-only-never-enters-public-pool",
+      "nodeType": "execute",
+      "requiredCapabilities": ["completion"],
+      "now": "2026-08-23T00:00:00.000Z",
+      "candidates": [
+        { "agentId": "owner-local", "displayName": "Owner Local", "capabilities": ["completion"], "tags": ["local"], "provider": "ollama", "ownership": "owner-trained", "selectableBy": "owner-only", "status": "online", "qualityScore": 0.99, "costPer1kTokensUsd": 0, "latencyMs": 300, "firstSeenAt": "2026-08-22T00:00:00.000Z", "modelTag": "personal-ai-agent-runtime:v4.1", "modelDigest": "2c422ec89024", "riskCodes": [] },
+        { "agentId": "provider-public", "displayName": "Provider Public", "capabilities": ["completion"], "tags": ["general"], "provider": "qwen", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.8, "costPer1kTokensUsd": 0.004, "latencyMs": 900, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "qwen-plus", "modelDigest": "provider-managed", "riskCodes": [] }
+      ],
+      "expectedRanking": ["provider-public"],
+      "prohibitedAgentIds": ["owner-local"]
+    },
+    {
+      "id": "retire-old-low-quality-model",
+      "nodeType": "execute",
+      "requiredCapabilities": ["completion"],
+      "now": "2026-08-23T00:00:00.000Z",
+      "candidates": [
+        { "agentId": "old-low", "displayName": "Old Low", "capabilities": ["completion"], "tags": ["legacy"], "provider": "qwen", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.3, "costPer1kTokensUsd": 0, "latencyMs": 700, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "qwen-old", "modelDigest": "provider-managed", "riskCodes": [] },
+        { "agentId": "stable", "displayName": "Stable", "capabilities": ["completion"], "tags": ["general"], "provider": "deepseek", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.75, "costPer1kTokensUsd": 0.01, "latencyMs": 900, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "deepseek-v4-flash", "modelDigest": "provider-managed", "riskCodes": [] }
+      ],
+      "expectedRanking": ["stable"],
+      "prohibitedAgentIds": ["old-low"]
+    },
+    {
+      "id": "deduplicate-three-choice-models",
+      "nodeType": "execute",
+      "requiredCapabilities": ["completion"],
+      "now": "2026-08-23T00:00:00.000Z",
+      "candidates": [
+        { "agentId": "same-a", "displayName": "Same A", "capabilities": ["completion"], "tags": ["general"], "provider": "qwen", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.81, "costPer1kTokensUsd": 0.001, "latencyMs": 900, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "qwen-plus", "modelDigest": "provider-managed", "riskCodes": [] },
+        { "agentId": "same-b", "displayName": "Same B", "capabilities": ["completion"], "tags": ["general"], "provider": "qwen", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.99, "costPer1kTokensUsd": 0.002, "latencyMs": 900, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "qwen-plus", "modelDigest": "provider-managed", "riskCodes": [] },
+        { "agentId": "other", "displayName": "Other", "capabilities": ["completion"], "tags": ["general"], "provider": "deepseek", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.83, "costPer1kTokensUsd": 0.003, "latencyMs": 900, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "deepseek-v4-flash", "modelDigest": "provider-managed", "riskCodes": [] }
+      ],
+      "expectedRanking": ["same-a", "other"],
+      "prohibitedAgentIds": ["same-b"]
+    },
+    {
+      "id": "bounded-new-model-exploration",
+      "nodeType": "execute",
+      "requiredCapabilities": ["completion"],
+      "now": "2026-08-23T00:00:00.000Z",
+      "candidates": [
+        { "agentId": "stable", "displayName": "Stable", "capabilities": ["completion"], "tags": ["general"], "provider": "deepseek", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.83, "costPer1kTokensUsd": 0.004, "latencyMs": 900, "firstSeenAt": "2026-01-01T00:00:00.000Z", "modelTag": "deepseek-v4-flash", "modelDigest": "provider-managed", "riskCodes": [] },
+        { "agentId": "new", "displayName": "New", "capabilities": ["completion"], "tags": ["new-model"], "provider": "qwen", "ownership": "third-party/provider-api", "selectableBy": "public-market", "status": "online", "qualityScore": 0.78, "costPer1kTokensUsd": 0.004, "latencyMs": 900, "firstSeenAt": "2026-08-22T00:00:00.000Z", "modelTag": "qwen-new", "modelDigest": "provider-managed", "riskCodes": [] }
+      ],
+      "expectedRanking": ["new", "stable"],
+      "prohibitedAgentIds": []
+    }
+  ]
+}
