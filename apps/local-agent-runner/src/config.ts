@@ -16,10 +16,17 @@ export type RunnerConfig = {
 
 export type RunnerEnv = Record<string, string | undefined>;
 
+export type JevShadowConfig = {
+  enabled: boolean;
+  apiKey: string | undefined;
+  timeoutMs: number;
+};
+
 const DEFAULT_ALLOWLIST = ["*"];
 const DEFAULT_MAX_CONCURRENCY = 1;
 const DEFAULT_TIMEOUT_MS = 120_000;
 const DEFAULT_MAX_PAYLOAD_BYTES = 1_048_576;
+const DEFAULT_JEV_TIMEOUT_MS = 1_500;
 
 export function assertCanonicalOllamaOrigin(value: string): typeof CANONICAL_OLLAMA_ORIGIN {
   let parsed: URL;
@@ -52,6 +59,20 @@ export function parseRunnerConfig(env: RunnerEnv = process.env): RunnerConfig {
     ),
     defaultOwnerModel: DEFAULT_OWNER_MODEL,
     defaultOwnerModelDigest: DEFAULT_OWNER_MODEL_DIGEST,
+  };
+}
+
+export function parseJevShadowConfig(env: RunnerEnv = process.env): JevShadowConfig {
+  const enabledValue = env.JEV_SHADOW_ENABLED?.trim().toLowerCase();
+  if (enabledValue !== undefined && enabledValue !== "true" && enabledValue !== "false") {
+    throw new Error("JEV_SHADOW_ENABLED must be true or false");
+  }
+  const apiKey = env.TYPESAFE_API_KEY?.trim();
+
+  return {
+    enabled: enabledValue === "true",
+    apiKey: apiKey === undefined || apiKey === "" ? undefined : apiKey,
+    timeoutMs: parseBoundedInteger(env.JEV_SHADOW_TIMEOUT_MS, DEFAULT_JEV_TIMEOUT_MS, 100, 10_000, "JEV_SHADOW_TIMEOUT_MS"),
   };
 }
 

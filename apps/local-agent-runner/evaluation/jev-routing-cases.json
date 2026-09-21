@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "agent-market-jev-synthetic-v1",
+  "frozenAt": "2026-09-21T00:00:00.000Z",
+  "scope": "synthetic-only",
+  "cases": [
+    {
+      "id": "disabled-match-zero-transport",
+      "decisionType": "agent_match",
+      "adapter": {
+        "enabled": false,
+        "policyMode": "synthetic-only",
+        "calibrated": false
+      },
+      "decision": {
+        "schemaVersion": 1,
+        "decisionType": "agent_match",
+        "decisionId": "match_disabled_01",
+        "taskRefHmac": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "requiredCapabilityCodes": [
+          "typescript"
+        ],
+        "candidates": [
+          {
+            "candidateRef": "candidate_opaque_01",
+            "passedImplementedGates": true,
+            "passedAllRequiredGates": false,
+            "capabilityMatch": true,
+            "health": "online",
+            "costBucket": "low",
+            "latencyBucket": "fast",
+            "qualityBucket": 4,
+            "newcomer": false,
+            "allowedRiskCodes": []
+          }
+        ]
+      },
+      "expected": {
+        "status": "fallback",
+        "reason": "disabled",
+        "networkCalls": 0,
+        "baselinePreserved": true
+      }
+    },
+    {
+      "id": "observed-match-in-pool",
+      "decisionType": "agent_match",
+      "adapter": {
+        "enabled": true,
+        "policyMode": "synthetic-only",
+        "calibrated": false
+      },
+      "decision": {
+        "schemaVersion": 1,
+        "decisionType": "agent_match",
+        "decisionId": "match_observed_01",
+        "taskRefHmac": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "requiredCapabilityCodes": [
+          "typescript"
+        ],
+        "candidates": [
+          {
+            "candidateRef": "candidate_opaque_01",
+            "passedImplementedGates": true,
+            "passedAllRequiredGates": false,
+            "capabilityMatch": true,
+            "health": "online",
+            "costBucket": "low",
+            "latencyBucket": "fast",
+            "qualityBucket": 4,
+            "newcomer": false,
+            "allowedRiskCodes": []
+          },
+          {
+            "candidateRef": "candidate_opaque_02",
+            "passedImplementedGates": true,
+            "passedAllRequiredGates": false,
+            "capabilityMatch": true,
+            "health": "degraded",
+            "costBucket": "medium",
+            "latencyBucket": "medium",
+            "qualityBucket": 5,
+            "newcomer": true,
+            "allowedRiskCodes": [
+              "newcomer"
+            ]
+          }
+        ]
+      },
+      "response": {
+        "model": "jev-test-double",
+        "answers": {
+          "selection": {
+            "type": "choice",
+            "choice": "candidate_opaque_01",
+            "confidence": 0.94,
+            "probabilities": {
+              "candidate_opaque_01": 0.94,
+              "candidate_opaque_02": 0.04,
+              "abstain": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 20,
+          "output_tokens": 3
+        }
+      },
+      "expected": {
+        "status": "observed",
+        "value": "candidate_opaque_01",
+        "networkCalls": 1,
+        "baselinePreserved": true
+      }
+    },
+    {
+      "id": "observed-quality-score",
+      "decisionType": "agent_quality",
+      "adapter": {
+        "enabled": true,
+        "policyMode": "synthetic-only",
+        "calibrated": false
+      },
+      "decision": {
+        "schemaVersion": 1,
+        "decisionType": "agent_quality",
+        "decisionId": "quality_observed_01",
+        "taskRefHmac": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidateRef": "candidate_opaque_01",
+        "completionStatus": "completed",
+        "retryBucket": "none",
+        "latencyBucket": "fast",
+        "costBucket": "low",
+        "evidenceCompleteness": "complete",
+        "reasonCodes": [
+          "tests_passed"
+        ]
+      },
+      "response": {
+        "model": "jev-test-double",
+        "answers": {
+          "quality": {
+            "type": "score",
+            "score": 3,
+            "confidence": 0.9,
+            "probabilities": {
+              "0": 0.01,
+              "1": 0.02,
+              "2": 0.05,
+              "3": 0.9,
+              "4": 0.02
+            },
+            "legend": {
+              "0": "unusable",
+              "1": "poor",
+              "2": "mixed",
+              "3": "good",
+              "4": "excellent"
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 18,
+          "output_tokens": 4
+        }
+      },
+      "expected": {
+        "status": "observed",
+        "value": 3,
+        "networkCalls": 1,
+        "baselinePreserved": true
+      }
+    },
+    {
+      "id": "observed-ai-dispute-route",
+      "decisionType": "dispute_route",
+      "adapter": {
+        "enabled": true,
+        "policyMode": "synthetic-only",
+        "calibrated": false
+      },
+      "decision": {
+        "schemaVersion": 1,
+        "decisionType": "dispute_route",
+        "decisionId": "dispute_observed_01",
+        "taskRefHmac": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "riskLevel": "high",
+        "judgeOutcome": "needs_revision",
+        "retryBucket": "one",
+        "evidenceCompleteness": "partial",
+        "highRiskPolicyLocked": true,
+        "permittedRoutes": [
+          "red_team",
+          "repair",
+          "ai_final_arbiter_review"
+        ],
+        "reasonCodes": [
+          "high_risk"
+        ]
+      },
+      "response": {
+        "model": "jev-test-double",
+        "answers": {
+          "route": {
+            "type": "choice",
+            "choice": "red_team",
+            "confidence": 0.95,
+            "probabilities": {
+              "red_team": 0.95,
+              "repair": 0.03,
+              "ai_final_arbiter_review": 0.01,
+              "abstain": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 16,
+          "output_tokens": 3
+        }
+      },
+      "expected": {
+        "status": "observed",
+        "value": "red_team",
+        "networkCalls": 1,
+        "baselinePreserved": true
+      }
+    },
+    {
+      "id": "out-of-pool-match-fallback",
+      "decisionType": "agent_match",
+      "adapter": {
+        "enabled": true,
+        "policyMode": "synthetic-only",
+        "calibrated": false
+      },
+      "decision": {
+        "schemaVersion": 1,
+        "decisionType": "agent_match",
+        "decisionId": "match_out_of_pool_01",
+        "taskRefHmac": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "requiredCapabilityCodes": [
+          "typescript"
+        ],
+        "candidates": [
+          {
+            "candidateRef": "candidate_opaque_01",
+            "passedImplementedGates": true,
+            "passedAllRequiredGates": false,
+            "capabilityMatch": true,
+            "health": "online",
+            "costBucket": "low",
+            "latencyBucket": "fast",
+            "qualityBucket": 4,
+            "newcomer": false,
+            "allowedRiskCodes": []
+          }
+        ]
+      },
+      "response": {
+        "model": "jev-test-double",
+        "answers": {
+          "selection": {
+            "type": "choice",
+            "choice": "candidate_not_allowed",
+            "confidence": 1,
+            "probabilities": {
+              "candidate_not_allowed": 1
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 12,
+          "output_tokens": 2
+        }
+      },
+      "expected": {
+        "status": "fallback",
+        "reason": "out_of_pool",
+        "networkCalls": 1,
+        "baselinePreserved": true
+      }
+    },
+    {
+      "id": "uncalibrated-shadow-zero-transport",
+      "decisionType": "dispute_route",
+      "adapter": {
+        "enabled": true,
+        "policyMode": "shadow",
+        "calibrated": false
+      },
+      "decision": {
+        "schemaVersion": 1,
+        "decisionType": "dispute_route",
+        "decisionId": "dispute_uncalibrated_01",
+        "taskRefHmac": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "riskLevel": "medium",
+        "judgeOutcome": "unknown",
+        "retryBucket": "none",
+        "evidenceCompleteness": "missing",
+        "highRiskPolicyLocked": false,
+        "permittedRoutes": [
+          "judge"
+        ],
+        "reasonCodes": [
+          "insufficient_evidence"
+        ]
+      },
+      "expected": {
+        "status": "fallback",
+        "reason": "uncalibrated",
+        "networkCalls": 0,
+        "baselinePreserved": true
+      }
+    }
+  ]
+}

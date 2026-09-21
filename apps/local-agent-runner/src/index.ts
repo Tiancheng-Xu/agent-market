@@ -5,7 +5,9 @@ export {
   PROVIDER_MANAGED_DIGEST,
   assertCanonicalOllamaOrigin,
   isModelAllowed,
+  parseJevShadowConfig,
   parseRunnerConfig,
+  type JevShadowConfig,
   type RunnerConfig,
   type RunnerEnv,
 } from "./config";
@@ -48,3 +50,12 @@ export { ControlPlaneClient, type ControlPlaneClientOptions, type ControlPlaneFe
 export { MockControlPlane } from "./mock-control-plane";
 export { LocalAgentRunner, type LocalAgentRunnerOptions, type PollStatus } from "./runner";
 export { createLocalStreamRuntime, type LocalStreamRuntimeOptions } from "./stream-runtime";
+export {
+  createJevDecisionAdapter,
+  type JevDecisionAdapter,
+  type JevDecisionAdapterConfig,
+  type JevFetch,
+  type JevShadowFallback,
+  type JevShadowObserved,
+  type JevShadowResult,
+} from "./jev-decision-adapter";

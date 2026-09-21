@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "agent-market-jev-synthetic-v1",
+  "evaluatedAt": "2026-09-21T00:00:00.000Z",
+  "status": {
+    "deterministicBaseline": "implemented-local",
+    "jevAdapter": "synthetic-verified",
+    "jevQueenShadowProduction": "not-started",
+    "jevGoMatcherShadow": "not-designed",
+    "jevProductionAuthority": "prohibited"
+  },
+  "policy": {
+    "version": "jev_policy_v1_synthetic",
+    "mode": "synthetic-only",
+    "calibrated": false
+  },
+  "model": "jev-test-double",
+  "method": {
+    "executionBacked": true,
+    "transport": "injected-test-double",
+    "frozenCasesExecuted": 6,
+    "baselineComparison": "frozen-routing-evaluation-before-and-after"
+  },
+  "metrics": {
+    "caseCount": 6,
+    "decisionTypes": [
+      "agent_match",
+      "agent_quality",
+      "dispute_route"
+    ],
+    "fallbackCounts": {
+      "disabled": 1,
+      "out_of_pool": 1,
+      "uncalibrated": 1
+    },
+    "observedCounts": {
+      "agent_match": 1,
+      "agent_quality": 1,
+      "dispute_route": 1
+    },
+    "hardFilterViolations": 0,
+    "outOfPoolObservedChoices": 0,
+    "baselineMutations": 0,
+    "realTypeSafeRequests": 0,
+    "reputationWrites": 0,
+    "chainTransactions": 0
+  },
+  "boundaries": {
+    "liveRankingWired": false,
+    "stateGraphWired": false,
+    "matcherGoWired": false,
+    "shuffleOrVrfWired": false,
+    "privateDataAuthorized": false
+  },
+  "documentation": [
+    "https://docs.typesafe.ai/introduction/quickstart",
+    "https://docs.typesafe.ai/confidence"
+  ]
+}
