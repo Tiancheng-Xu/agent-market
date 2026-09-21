@@ -5,7 +5,9 @@ export {
   PROVIDER_MANAGED_DIGEST,
   assertCanonicalOllamaOrigin,
   isModelAllowed,
+  parseJevShadowConfig,
   parseRunnerConfig,
+  type JevShadowConfig,
   type RunnerConfig,
   type RunnerEnv,
 } from "./config";
@@ -55,3 +57,12 @@ export {
   type RiskAssessorExecutionRequest,
   type RiskAssessorExecutor,
 } from "./risk-assessor";
+export {
+  createJevDecisionAdapter,
+  type JevDecisionAdapter,
+  type JevDecisionAdapterConfig,
+  type JevFetch,
+  type JevShadowFallback,
+  type JevShadowObserved,
+  type JevShadowResult,
+} from "./jev-decision-adapter";
