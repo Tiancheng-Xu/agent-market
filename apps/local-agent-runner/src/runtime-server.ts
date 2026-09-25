@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 
 import type { AgentManifest } from "@agent-market/shared-contracts";
 
-import { parseRunnerConfig, type RunnerEnv } from "./config";
+import { parseRunnerConfig, parseSystemOneShadowConfig, type RunnerEnv } from "./config";
 import { discoverOllamaManifests, ollamaMetadataToManifest } from "./model-registry";
 import { OllamaClient } from "./ollama-client";
 import { providerManifests } from "./provider-adapters";
@@ -18,6 +18,7 @@ import {
 import { createLocalStreamRuntime } from "./stream-runtime";
 import { openQueenRuntimePersistence } from "./queen-runtime-persistence";
 import { runtimeSigningKeysFromEnv } from "./signing";
+import { createSystemOneRuntime } from "./system-one-runtime";
 
 const env = loadRuntimeEnv();
 const config = parseRunnerConfig(env);
@@ -25,6 +26,12 @@ const ollamaClient = new OllamaClient(config);
 const providerClients = buildProviderClients(env);
 const manifests = await buildManifests(env, config, ollamaClient);
 const signingKeys = runtimeSigningKeysFromEnv(env);
+const systemOneConfig = parseSystemOneShadowConfig(env);
+const systemOneRuntime = createSystemOneRuntime(systemOneConfig, {
+  sink: async (evidence) => {
+    console.info(JSON.stringify({ event: "system-one.shadow-observation", evidence }));
+  },
+});
 
 const persistence = await openQueenRuntimePersistence(env);
 const runtime = createLocalStreamRuntime({
@@ -33,6 +40,8 @@ const runtime = createLocalStreamRuntime({
   ollamaClient,
   providerClients,
   signingKeys,
+  ...(systemOneRuntime.coordinator ? { systemOneShadow: systemOneRuntime.coordinator } : {}),
+  ...(systemOneConfig.mode === "dual-shadow" ? { systemOneShadowRefKey: systemOneConfig.referenceHmacKey } : {}),
 });
 
 const host = "127.0.0.1";
@@ -51,6 +60,7 @@ server.listen(port, host, () => {
       provider: manifest.provider,
       status: manifest.health.status,
     })),
+    systemOne: systemOneRuntime.readiness(),
   }));
 });
 
@@ -176,13 +186,23 @@ async function readBody(incoming: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+let closing: Promise<void> | undefined;
+
 function closeServer(): void {
-  server.close(() => {
-    void (persistence?.close() ?? Promise.resolve()).then(() => {
-      console.info(JSON.stringify({ event: "local-runtime.stopped" }));
-    }).catch(() => {
-      console.error(JSON.stringify({ event: "local-runtime.persistence-close-failed" }));
-      process.exitCode = 1;
-    });
+  closing ??= new Promise<void>((resolve) => {
+    server.close(() => resolve());
+  }).then(async () => {
+    const results = await Promise.allSettled([
+      persistence?.close() ?? Promise.resolve(),
+      systemOneRuntime.close(),
+    ]);
+    if (results.some((result) => result.status === "rejected")) {
+      throw new Error("runtime dependency close failed");
+    }
+    console.info(JSON.stringify({ event: "local-runtime.stopped" }));
+  });
+  void closing.catch(() => {
+    console.error(JSON.stringify({ event: "local-runtime.close-failed" }));
+    process.exitCode = 1;
   });
 }

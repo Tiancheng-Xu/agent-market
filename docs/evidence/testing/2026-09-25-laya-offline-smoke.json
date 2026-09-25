@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "evidenceId": "system-one-laya-offline-smoke-2026-09-25",
+  "validatedAt": "2026-09-25T04:13:49Z",
+  "source": {
+    "repository": "receptron/laya-onnx",
+    "revision": "68f27dfe5a27a54fb2b1fefc432f43f972e90868",
+    "license": "Apache-2.0",
+    "url": "https://huggingface.co/receptron/laya-onnx/tree/68f27dfe5a27a54fb2b1fefc432f43f972e90868"
+  },
+  "modelBundle": {
+    "storage": "outside repository in local cache",
+    "files": [
+      {
+        "path": "laya.onnx",
+        "bytes": 3807291,
+        "sha256": "a874eb254b58b0fcb1e7ad56fbb188c29d64e08c9a46b689433e1f52c66dba1e"
+      },
+      {
+        "path": "laya.onnx.data",
+        "bytes": 1685258240,
+        "sha256": "487746363a8da57bcadb4345352997d22a0fb90d70aa22c6856668d023242aba"
+      }
+    ]
+  },
+  "runtime": {
+    "node": "v22.23.2",
+    "architecture": "arm64",
+    "distribution": "nodejs.org",
+    "archiveSha256": "5eff7a9011895aae3f29d06f167b84a62b028a591370c7cafb59103559fd26e1"
+  },
+  "offlineSmoke": {
+    "networkPolicy": "macOS sandbox-exec denied network*",
+    "hfTokenProvided": false,
+    "typeSafeApiKeyProvided": false,
+    "globalFetchCalls": 0,
+    "inputKind": "synthetic bucketed decisions",
+    "results": [
+      {
+        "decisionType": "agent_match",
+        "status": "observed",
+        "value": "candidate_opaque_01",
+        "coldStartAndInferenceMs": 1492
+      },
+      {
+        "decisionType": "agent_quality",
+        "status": "observed",
+        "value": 2.9337,
+        "warmInferenceMs": 119
+      },
+      {
+        "decisionType": "dispute_route",
+        "status": "observed",
+        "value": "ai_final_arbiter_review",
+        "warmInferenceMs": 159
+      }
+    ],
+    "readinessBeforeClose": "ready",
+    "readinessAfterClose": "closed"
+  },
+  "unitTests": {
+    "node": "v22.23.2",
+    "file": "apps/local-agent-runner/src/laya-decision-adapter.test.ts",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "networkPolicy": "macOS sandbox-exec denied network*"
+  },
+  "fullLocalAgentRunnerSuite": {
+    "node": "v22.23.2",
+    "filesPassed": 25,
+    "filesSkipped": 7,
+    "testsPassed": 199,
+    "testsSkipped": 8,
+    "typecheck": "passed",
+    "networkPolicy": "macOS sandbox-exec denied network*"
+  },
+  "scopeNote": "Local offline inference smoke and fail-closed adapter tests only. Inputs are synthetic; this is not real-data evaluation, calibration, live routing, production rollout, or authority to act."
+}

@@ -75,6 +75,8 @@ describe("Jev decision adapter", () => {
       enabled: false,
       apiKey: undefined,
       timeoutMs: 1_500,
+      sampleRate: 0.1,
+      maxRequests: 100,
     });
   });
 
@@ -131,7 +133,7 @@ describe("Jev decision adapter", () => {
           type: "score",
           score: 3,
           confidence: 0.9,
-          probabilities: { "0": 0, "1": 0.02, "2": 0.08, "3": 0.9, "4": 0 },
+          probabilities: { "0": 0, "1": 0, "2": 0, "3": 1, "4": 0 },
           legend: { "0": "unusable", "1": "poor", "2": "mixed", "3": "good", "4": "excellent" },
         },
       }),
@@ -168,6 +170,72 @@ describe("Jev decision adapter", () => {
     });
   });
 
+  it("preserves a fractional quality score from a valid live response", async () => {
+    const adapter = createJevDecisionAdapter({
+      enabled: true,
+      apiKey: "test-only",
+      policy,
+      fetchImpl: async () => jevResponse({
+        quality: {
+          type: "score",
+          score: 3.97,
+          confidence: 0.98,
+          probabilities: { "0": 0, "1": 0, "2": 0, "3": 0.03, "4": 0.97 },
+          legend: { "0": "unusable", "1": "poor", "2": "mixed", "3": "good", "4": "excellent" },
+        },
+      }),
+    });
+
+    await expect(adapter.scoreQuality(qualityDecision)).resolves.toMatchObject({
+      status: "observed",
+      value: 3.97,
+    });
+  });
+
+  it("rejects a score distribution whose probabilities do not sum to one", async () => {
+    const adapter = createJevDecisionAdapter({
+      enabled: true,
+      apiKey: "test-only",
+      policy,
+      fetchImpl: async () => jevResponse({
+        quality: {
+          type: "score",
+          score: 3.2,
+          confidence: 0.7,
+          probabilities: { "0": 0, "1": 0, "2": 0.1, "3": 0.3, "4": 0.3 },
+          legend: { "0": "unusable", "1": "poor", "2": "mixed", "3": "good", "4": "excellent" },
+        },
+      }),
+    });
+
+    await expect(adapter.scoreQuality(qualityDecision)).resolves.toMatchObject({
+      status: "fallback",
+      reason: "invalid_response",
+    });
+  });
+
+  it("rejects a score that disagrees with a valid distribution", async () => {
+    const adapter = createJevDecisionAdapter({
+      enabled: true,
+      apiKey: "test-only",
+      policy,
+      fetchImpl: async () => jevResponse({
+        quality: {
+          type: "score",
+          score: 3.5,
+          confidence: 0.7,
+          probabilities: { "0": 0.02, "1": 0.03, "2": 0.05, "3": 0.7, "4": 0.2 },
+          legend: { "0": "unusable", "1": "poor", "2": "mixed", "3": "good", "4": "excellent" },
+        },
+      }),
+    });
+
+    await expect(adapter.scoreQuality(qualityDecision)).resolves.toMatchObject({
+      status: "fallback",
+      reason: "invalid_response",
+    });
+  });
+
   it("falls back when a choice is outside the host-computed pool", async () => {
     const adapter = createJevDecisionAdapter({
       enabled: true,
@@ -189,7 +257,7 @@ describe("Jev decision adapter", () => {
     });
   });
 
-  it("falls back before transport when shadow policy is uncalibrated", async () => {
+  it("keeps direct uncalibrated shadow decisions closed unless explicitly observation-only", async () => {
     let calls = 0;
     const adapter = createJevDecisionAdapter({
       enabled: true,
@@ -201,11 +269,35 @@ describe("Jev decision adapter", () => {
       },
     });
 
-    await expect(adapter.match(matchDecision)).resolves.toMatchObject({
-      status: "fallback",
-      reason: "uncalibrated",
-    });
+    await expect(adapter.match(matchDecision)).resolves.toMatchObject({ status: "fallback", reason: "uncalibrated" });
     expect(calls).toBe(0);
+  });
+
+  it("observes valid shadow results before calibration in explicit observation-only mode", async () => {
+    let calls = 0;
+    const adapter = createJevDecisionAdapter({
+      enabled: true,
+      apiKey: "test-only",
+      policy: { ...policy, mode: "shadow" },
+      allowUncalibratedShadowObservation: true,
+      fetchImpl: async () => {
+        calls += 1;
+        return jevResponse({
+          selection: {
+            type: "choice",
+            choice: "candidate_opaque_01",
+            confidence: 0.99,
+            probabilities: { candidate_opaque_01: 0.92, abstain: 0.08 },
+          },
+        });
+      },
+    });
+
+    await expect(adapter.match(matchDecision)).resolves.toMatchObject({
+      status: "observed",
+      value: "candidate_opaque_01",
+    });
+    expect(calls).toBe(1);
   });
 
   it("falls back when calibrated shadow confidence or margin is below policy", async () => {

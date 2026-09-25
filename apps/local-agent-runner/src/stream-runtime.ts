@@ -18,6 +18,7 @@ import type { ProviderApiClient, ProviderName } from "./provider-api-client";
 import { createQueenOrchestrator } from "./queen-orchestrator";
 import type { QueenWorkflowStore } from "./queen-workflow-store";
 import { NonceReplayStore, verifySignedRequest, type SigningKey } from "./signing";
+import type { SystemOneShadowCoordinator } from "./system-one-shadow-coordinator";
 
 type OllamaStreamingClient = Pick<OllamaClient, "chatStream">;
 type ProviderClients = Partial<Record<ProviderName, Pick<ProviderApiClient, "chat">>>;
@@ -35,6 +36,8 @@ export type LocalStreamRuntimeOptions = {
     public: QueenWorkflowStore;
     owner: QueenWorkflowStore;
   };
+  systemOneShadow?: SystemOneShadowCoordinator;
+  systemOneShadowRefKey?: string;
   authorizeQueenGraphql?: (context: {
     request: ReturnType<typeof QueenGraphqlRequestSchema.parse>;
     callerAccess: CallerAccess;
@@ -64,6 +67,8 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
     agents: queenAgents,
     queenAgentId: "queen-router-v1",
     now,
+    ...(options.systemOneShadow ? { systemOneShadow: options.systemOneShadow } : {}),
+    ...(options.systemOneShadowRefKey ? { systemOneShadowRefKey: options.systemOneShadowRefKey } : {}),
     executeAgentText: async (request) => {
       const manifest = manifests.get(request.agentId);
       if (manifest === undefined || manifest.health.status === "offline") {
@@ -86,6 +91,8 @@ export function createLocalStreamRuntime(options: LocalStreamRuntimeOptions) {
     agents: agentCandidatesFromManifests([...manifests.values()], now),
     queenAgentId: "queen-router-v1",
     now,
+    ...(options.systemOneShadow ? { systemOneShadow: options.systemOneShadow } : {}),
+    ...(options.systemOneShadowRefKey ? { systemOneShadowRefKey: options.systemOneShadowRefKey } : {}),
     allowOwnerOnlyAgents: true,
     executeAgentText: async (request) => {
       const manifest = manifests.get(request.agentId);

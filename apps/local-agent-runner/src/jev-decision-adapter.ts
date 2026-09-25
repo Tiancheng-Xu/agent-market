@@ -13,6 +13,16 @@ import {
 } from "@agent-market/shared-contracts";
 import { z } from "zod";
 
+import {
+  probabilityMargin,
+  validateChoiceAnswer,
+  validateScoreAnswer,
+  type SystemOneDecisionFallback,
+  type SystemOneDecisionObserved,
+  type SystemOneDecisionProvider,
+  type SystemOneDecisionResult,
+} from "./system-one-decision-provider";
+
 const SYSTEM_ONE_URL = "https://api.typesafe.ai/v1/systemone";
 const DEFAULT_MODEL = "jev-latest";
 const DEFAULT_TIMEOUT_MS = 1_500;
@@ -37,7 +47,7 @@ const ChoiceAnswerSchema = z.strictObject({
 
 const ScoreAnswerSchema = z.strictObject({
   type: z.literal("score"),
-  score: z.number().int().min(0).max(4),
+  score: z.number().min(0).max(4),
   confidence: z.number().min(0).max(1),
   probabilities: z.record(z.string(), z.number().min(0).max(1)),
   legend: z.record(z.string(), z.string()).optional(),
@@ -45,38 +55,17 @@ const ScoreAnswerSchema = z.strictObject({
 
 export type JevFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
-export type JevShadowFallback = {
-  status: "fallback";
-  decisionType: JevDecisionType;
-  decisionId: string;
-  reason: JevFallbackReason;
-};
-
-export type JevShadowObserved = {
-  status: "observed";
-  decisionType: JevDecisionType;
-  decisionId: string;
-  value: string | number;
-  confidence: number;
-  probabilities: Record<string, number>;
-  margin: number;
-  model: string;
-  usage: { inputTokens: number; outputTokens: number };
-  latencyMs: number;
-};
-
-export type JevShadowResult = JevShadowFallback | JevShadowObserved;
-
-export type JevDecisionAdapter = {
-  match(decision: AgentMatchDecisionV1): Promise<JevShadowResult>;
-  scoreQuality(decision: AgentQualityDecisionV1): Promise<JevShadowResult>;
-  routeDispute(decision: DisputeRouteDecisionV1): Promise<JevShadowResult>;
-};
+export type JevShadowFallback = SystemOneDecisionFallback;
+export type JevShadowObserved = SystemOneDecisionObserved;
+export type JevShadowResult = SystemOneDecisionResult;
+export type JevDecisionAdapter = SystemOneDecisionProvider;
 
 export type JevDecisionAdapterConfig = {
   enabled: boolean;
   apiKey: string | undefined;
   policy: JevThresholdPolicyV1;
+  /** Set only when this adapter is consumed as a non-authoritative shadow observation. */
+  allowUncalibratedShadowObservation?: boolean;
   timeoutMs?: number;
   model?: string;
   fetchImpl?: JevFetch;
@@ -96,13 +85,14 @@ export function createJevDecisionAdapter(config: JevDecisionAdapterConfig): JevD
     if (config.apiKey === undefined || config.apiKey.trim() === "") {
       return fallback(decisionType, decisionId, "missing_key");
     }
-    if (policy.mode === "shadow" && !policy.calibrated) {
+    if (policy.mode === "shadow" && !policy.calibrated && config.allowUncalibratedShadowObservation !== true) {
       return fallback(decisionType, decisionId, "uncalibrated");
     }
     return undefined;
   };
 
   return {
+    provider: "jev",
     async match(input) {
       const decision = AgentMatchDecisionV1Schema.parse(input);
       const unavailable = preflight(decision.decisionType, decision.decisionId);
@@ -139,7 +129,7 @@ export function createJevDecisionAdapter(config: JevDecisionAdapterConfig): JevD
       if (!allowedChoices.has(answer.data.choice)) {
         return fallback(decision.decisionType, decision.decisionId, "out_of_pool");
       }
-      if (!hasValidDistribution(answer.data.probabilities, allowedChoices, answer.data.choice)) {
+      if (!validateChoiceAnswer(answer.data.probabilities, allowedChoices, answer.data.choice)) {
         return fallback(decision.decisionType, decision.decisionId, "invalid_response");
       }
       if (answer.data.choice === "abstain") return fallback(decision.decisionType, decision.decisionId, "uncalibrated");
@@ -171,7 +161,7 @@ export function createJevDecisionAdapter(config: JevDecisionAdapterConfig): JevD
 
       const answer = ScoreAnswerSchema.safeParse(response.payload.answers["quality"]);
       if (!answer.success) return fallback(decision.decisionType, decision.decisionId, "invalid_response");
-      if (!hasValidDistribution(answer.data.probabilities, new Set(["0", "1", "2", "3", "4"]), String(answer.data.score))) {
+      if (!validateScoreAnswer(answer.data.probabilities, answer.data.score)) {
         return fallback(decision.decisionType, decision.decisionId, "invalid_response");
       }
       if (!passesThreshold(policy, "quality", answer.data)) {
@@ -210,7 +200,7 @@ export function createJevDecisionAdapter(config: JevDecisionAdapterConfig): JevD
       if (!allowedChoices.has(answer.data.choice)) {
         return fallback(decision.decisionType, decision.decisionId, "out_of_pool");
       }
-      if (!hasValidDistribution(answer.data.probabilities, allowedChoices, answer.data.choice)) {
+      if (!validateChoiceAnswer(answer.data.probabilities, allowedChoices, answer.data.choice)) {
         return fallback(decision.decisionType, decision.decisionId, "invalid_response");
       }
       if (answer.data.choice === "abstain") return fallback(decision.decisionType, decision.decisionId, "uncalibrated");
@@ -287,6 +277,7 @@ function observed(
     value: answer.type === "choice" ? answer.choice : answer.score,
     confidence: answer.confidence,
     probabilities,
+    provider: "jev",
     margin: probabilityMargin(probabilities),
     model: response.payload.model,
     usage: {
@@ -295,26 +286,6 @@ function observed(
     },
     latencyMs: response.latencyMs,
   };
-}
-
-function probabilityMargin(probabilities: Record<string, number>): number {
-  const sorted = Object.values(probabilities).sort((left, right) => right - left);
-  return Math.max(0, (sorted[0] ?? 0) - (sorted[1] ?? 0));
-}
-
-function hasValidDistribution(
-  probabilities: Record<string, number>,
-  allowedKeys: ReadonlySet<string>,
-  selectedKey: string,
-): boolean {
-  const entries = Object.entries(probabilities);
-  if (entries.length === 0 || entries.some(([key]) => !allowedKeys.has(key))) return false;
-  const selected = probabilities[selectedKey];
-  if (selected === undefined) return false;
-  const sum = entries.reduce((total, [, probability]) => total + probability, 0);
-  if (Math.abs(sum - 1) > 0.01) return false;
-  const highest = Math.max(...entries.map(([, probability]) => probability));
-  return selected >= highest;
 }
 
 function passesThreshold(
@@ -328,7 +299,7 @@ function passesThreshold(
 }
 
 function fallback(decisionType: JevDecisionType, decisionId: string, reason: JevFallbackReason): JevShadowFallback {
-  return { status: "fallback", decisionType, decisionId, reason };
+  return { status: "fallback", provider: "jev", decisionType, decisionId, reason };
 }
 
 function statusReason(status: number): JevFallbackReason {

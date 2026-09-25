@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { AgentCandidate, QueenMutationName } from "@agent-market/shared-contracts";
+import type {
+  AgentCandidate,
+  AgentMatchDecisionV1,
+  AgentQualityDecisionV1,
+  DisputeRouteDecisionV1,
+  QueenMutationName,
+} from "@agent-market/shared-contracts";
 
 import { createQueenOrchestrator } from "./queen-orchestrator";
 import { createQueenFrameworkRuntime } from "./queen-workflow-runtime";
+import type { SystemOneShadowCoordinator } from "./system-one-shadow-coordinator";
 
 const now = () => new Date("2026-08-22T12:00:00.000Z");
 
@@ -41,6 +48,46 @@ describe("queen orchestrator state machine", () => {
 
     expect(ranked.data.rankNodeAgents.candidates.map((candidate: { agentId: string }) => candidate.agentId)[0]).toBe("cheap-executor");
     expect(ranked.data.rankNodeAgents.autoSelectedAgentId).toBe("cheap-executor");
+  });
+
+  it("observes agent matching without changing the deterministic ranking", async () => {
+    const observed: Array<{ baseline: unknown; decision: AgentMatchDecisionV1 }> = [];
+    const systemOneShadow: SystemOneShadowCoordinator = {
+      async observeMatch<T>(baseline: T, decision: AgentMatchDecisionV1): Promise<T> {
+        observed.push({ baseline, decision });
+        return baseline;
+      },
+      async observeQuality<T>(baseline: T): Promise<T> { return baseline; },
+      async observeDispute<T>(baseline: T): Promise<T> { return baseline; },
+      async flush(): Promise<void> {},
+    };
+    const orchestrator = createQueenOrchestrator({
+      agents: agents(),
+      now,
+      queenAgentId: "queen-router-v1",
+      systemOneShadow,
+      systemOneShadowRefKey: "test-only-reference-key-32-characters",
+    });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+
+    const ranked = await mutate(orchestrator, "RankNodeAgents", {
+      taskId: proposed.data.proposeTaskGraph.taskId,
+      nodeId: "execute-1",
+      requiredCapabilities: ["completion"],
+    });
+
+    expect(observed).toHaveLength(1);
+    expect(ranked.data.rankNodeAgents).toEqual(observed[0]!.baseline);
+    expect(observed[0]!.decision).toMatchObject({
+      schemaVersion: 1,
+      decisionType: "agent_match",
+      requiredCapabilityCodes: [expect.stringMatching(/^[0-9a-f]{64}$/)],
+    });
+    expect(observed[0]!.decision.taskRefHmac).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(observed[0]!.decision)).not.toContain(proposed.data.proposeTaskGraph.taskId);
   });
 
   it("ignores a forged owner callerScope and gates owner-only auto-selection on the server scope", async () => {
@@ -288,6 +335,65 @@ describe("queen orchestrator state machine", () => {
     expect(judged.data.judgeNodeOutput.redTeamRequired).toBe(true);
     expect(learned.data.writeLearningLoop.summary).toContain("[redacted-secret]");
     expect(learned.data.writeLearningLoop.summary).not.toContain("sk-secret12345");
+  });
+
+  it("observes quality and dispute routing without changing the Judge result", async () => {
+    const quality: Array<{ baseline: unknown; decision: AgentQualityDecisionV1 }> = [];
+    const disputes: Array<{ baseline: unknown; decision: DisputeRouteDecisionV1 }> = [];
+    const systemOneShadow: SystemOneShadowCoordinator = {
+      async observeMatch<T>(baseline: T): Promise<T> { return baseline; },
+      async observeQuality<T>(baseline: T, decision: AgentQualityDecisionV1): Promise<T> {
+        quality.push({ baseline, decision });
+        return baseline;
+      },
+      async observeDispute<T>(baseline: T, decision: DisputeRouteDecisionV1): Promise<T> {
+        disputes.push({ baseline, decision });
+        return baseline;
+      },
+      async flush(): Promise<void> {},
+    };
+    const orchestrator = createQueenOrchestrator({
+      agents: agents(),
+      now,
+      queenAgentId: "queen-router-v1",
+      systemOneShadow,
+      systemOneShadowRefKey: "test-only-reference-key-32-characters",
+    });
+    const proposed = await mutate(orchestrator, "ProposeTaskGraph", {
+      requirement: "Write a simple implementation plan",
+      queenAgentId: "queen-router-v1",
+    });
+    const graph = proposed.data.proposeTaskGraph;
+    await startGraph(orchestrator, graph);
+    await mutate(orchestrator, "SubmitNodeOutput", {
+      taskId: graph.taskId,
+      nodeId: "execute-1",
+      executorAgentId: "cheap-executor",
+      output: "executor output",
+    });
+
+    const judged = await mutate(orchestrator, "JudgeNodeOutput", {
+      taskId: graph.taskId,
+      nodeId: "execute-1",
+      judgeAgentId: "judge-agent",
+      score: 0.42,
+      verdict: "needs_revision",
+    });
+
+    expect(quality).toHaveLength(1);
+    expect(disputes).toHaveLength(1);
+    expect(judged.data.judgeNodeOutput).toEqual(quality[0]!.baseline);
+    expect(judged.data.judgeNodeOutput).toEqual(disputes[0]!.baseline);
+    expect(quality[0]!.decision).toMatchObject({
+      decisionType: "agent_quality",
+      completionStatus: "needs_revision",
+      candidateRef: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect(disputes[0]!.decision).toMatchObject({
+      decisionType: "dispute_route",
+      judgeOutcome: "needs_revision",
+      permittedRoutes: ["red_team", "repair", "ai_final_arbiter_review"],
+    });
   });
 
   it("uses isolated model execution hooks for executor, judge, red-team, repair, and final arbiter", async () => {

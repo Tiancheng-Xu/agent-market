@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a local Laya plus hosted Jev dual-shadow decision plane that records sanitized comparison evidence while the existing deterministic Agent Market workflow remains authoritative.
+**Goal:** Add an offline-capable local Laya plus optional hosted Jev dual-shadow decision plane that records sanitized comparison evidence while the existing deterministic Agent Market workflow remains authoritative.
 
 **Architecture:** Extract the current Jev result into a provider-neutral interface, implement Laya behind an injected lazy session loader, and compare both providers in a coordinator whose return value is always the deterministic baseline. The local runtime may preload a hash-pinned ONNX bundle only when `SYSTEM_ONE_SHADOW_MODE=dual-shadow`; off mode imports no model and requires no provider credentials.
 
@@ -16,7 +16,9 @@
 - This phase supports only `off` and `dual-shadow`; it must not define `laya-primary` or `jev-primary`.
 - Laya model revision is `68f27dfe5a27a54fb2b1fefc432f43f972e90868`; graph SHA-256 is `a874eb254b58b0fcb1e7ad56fbb188c29d64e08c9a46b689433e1f52c66dba1e`; data SHA-256 is `487746363a8da57bcadb4345352997d22a0fb90d70aa22c6856668d023242aba`.
 - Laya weights remain outside Git and must never download during a task or startup.
+- After one-time provisioning, Laya cold start and inference must work with no DNS, default route, package registry, model registry, or HTTP access. Missing assets fall back; they never trigger a download.
 - `TYPESAFE_API_KEY` remains server-side secret input and must never enter files, browser code, logs, fixtures, or Evidence.
+- Jev is an optional online comparison. Offline decisions are never queued for remote upload or replayed after reconnection.
 - Provider inputs contain only opaque references, HMACs, bucketed state, reason codes, and host-permitted choices.
 - No AWS, Cloudflare, database, chain, paid shared resource, Clash setting, or system proxy is created or changed.
 - All implementation and verification run under Node `>=22 <23`; the repository lockfile changes only for the pinned Laya dependency.
@@ -25,8 +27,11 @@
 
 - Fractional `score` outputs such as `3.97` must remain fractional; validate their five-label distribution without pretending the score is a selected label.
 - `off` mode must not import ONNX Runtime, stat model files, load 1.6 GiB of weights, or require a Jev key.
+- `dual-shadow` with Jev disabled must load and run Laya without a key or any outbound network call; Jev failure must not disable or delay Laya beyond the configured bound.
 - A Laya choice outside the supplied candidate or route pool must fail closed exactly like Jev.
 - Timeout does not cancel ONNX computation; late provider results must be ignored and never write Evidence twice.
+- Keep at most one unresolved call per provider and cap pending Evidence work; capacity skips never queue a later provider request.
+- `calibrated: false` blocks provider authority, not shadow observations; only the coordinator may consume provider outputs, and it always returns the deterministic baseline.
 - Dual-shadow provider disagreement or provider failure must preserve the deterministic baseline and emit only sanitized, bounded metadata.
 
 ---
@@ -218,6 +223,8 @@ Tests must prove:
 - later calls reuse the same session;
 - choice, fractional score, and dispute answers normalize correctly;
 - low confidence, malformed distributions, out-of-pool choices, load failures, and timeouts fall back;
+- a network sentinel that fails DNS/HTTP is never touched by model verification, session load, or inference;
+- missing or corrupt model files fall back without invoking any downloader or remote loader;
 - `close()` closes only a loaded session and is idempotent.
 
 - [ ] **Step 2: Verify RED because the Laya adapter does not exist**
@@ -243,9 +250,9 @@ The adapter must never pass a repo, revision, token, or cache directory to `Laya
 
 Reuse the Jev question text and criteria. Validate output with the shared provider helpers and apply the same threshold policy. Represent the model as `laya@${revision}` and usage as `{ inputTokens }` when provided.
 
-- [ ] **Step 6: Verify the adapter and dependency boundary**
+- [ ] **Step 6: Verify the adapter, offline bundle, and dependency boundary**
 
-Run local-agent-runner tests/typecheck, `pnpm install --offline --frozen-lockfile`, and a repository search proving no model binaries or local model paths are tracked.
+Run local-agent-runner tests/typecheck and `pnpm install --offline --frozen-lockfile`. From the exact production artifact, disable DNS and outbound network, cold-start Laya, and execute one synthetic decision using the hash-verified model bundle. Assert zero attempted package, model, update, telemetry, or connectivity-check requests. Verify that the deployment package already contains the required Node dependencies and native ONNX Runtime binary. Search the repository to prove no model binaries or local model paths are tracked.
 
 - [ ] **Step 7: Commit the Laya provider**
 
@@ -274,7 +281,7 @@ Pin these outcomes:
 expect(parseSystemOneShadowConfig({})).toEqual({ mode: "off" });
 ```
 
-For `dual-shadow`, require an absolute `LAYA_MODEL_DIR`, the exact pinned revision, integer `LAYA_TIMEOUT_MS` from 100–10,000, and a separately parsed optional Jev configuration. Reject unknown modes, relative paths, wrong revisions, and out-of-range timeouts.
+For `dual-shadow`, require an absolute `LAYA_MODEL_DIR`, the exact pinned revision, integer `LAYA_TIMEOUT_MS` from 100–10,000, and a separately parsed optional Jev configuration. Prove that `JEV_SHADOW_ENABLED=false` requires neither a key nor connectivity. Reject unknown modes, relative paths, wrong revisions, and out-of-range timeouts.
 
 - [ ] **Step 2: Verify RED, then implement the discriminated parser**
 
@@ -356,7 +363,7 @@ git commit -m "feat: observe system-one decisions without authority"
 
 - [ ] **Step 1: Write failing lifecycle tests**
 
-Assert that off mode creates no providers. Dual-shadow creates Laya once, creates Jev only when explicitly enabled with a key, and closes loaded providers on both `SIGINT` and `SIGTERM` through one idempotent close path.
+Assert that off mode creates no providers. Dual-shadow creates Laya once and creates Jev only when explicitly enabled with a key. With Jev disabled, missing DNS and a missing default route do not affect Laya. With Jev enabled but unreachable, the bounded fallback does not stop Laya or mutate the baseline, and no request is queued or replayed after a simulated reconnection. Close loaded providers on both `SIGINT` and `SIGTERM` through one idempotent close path.
 
 - [ ] **Step 2: Implement runtime composition**
 
@@ -364,7 +371,7 @@ Keep Keychain outside repository code: runtime receives `TYPESAFE_API_KEY` only 
 
 - [ ] **Step 3: Add frozen synthetic comparison cases**
 
-Include at least: clear match, ambiguous match, fractional quality, malformed score distribution, high-risk dispute, out-of-pool choice, missing model, missing key, provider disagreement, and timeout. Fixtures use injected transports/sessions; the test makes zero real network requests.
+Include at least: clear match, ambiguous match, fractional quality, malformed score distribution, high-risk dispute, out-of-pool choice, missing model, corrupt model hash, missing key, fully offline Laya, unreachable Jev, provider disagreement, and timeout. Fixtures use injected transports/sessions; the test makes zero real network requests and asserts zero deferred remote replays.
 
 - [ ] **Step 4: Generate Evidence from executed cases**
 
@@ -383,7 +390,7 @@ node scripts/validate-repository.mjs
 git diff --check
 ```
 
-Also run an offline local smoke against the already hash-verified model bundle. Do not call Jev during the release gate; the earlier three-case API probe remains feasibility evidence, not a repeatable test.
+Also run a cold-start offline local smoke against the already hash-verified model bundle with DNS and outbound traffic denied. Record the network guard result and prove one Laya observation plus the deterministic baseline complete without a key. Do not call Jev during the release gate; the earlier three-case API probe remains feasibility evidence, not a repeatable test.
 
 - [ ] **Step 6: Commit runtime and Evidence**
 
@@ -416,7 +423,7 @@ Because `packages/shared-contracts/src/index.ts`, Queen files, config, runtime, 
 
 - [ ] **Step 4: Activate only local `dual-shadow` after integration**
 
-Launch the local runner with the pinned external model directory and `SYSTEM_ONE_SHADOW_MODE=dual-shadow`. Jev comparison stays disabled unless the sanitized remote-comparison gate is explicitly retained. Verify readiness, one synthetic local observation, and rollback by setting `SYSTEM_ONE_SHADOW_MODE=off` and restarting.
+Launch the local runner with the pinned external model directory and `SYSTEM_ONE_SHADOW_MODE=dual-shadow`. Jev comparison stays disabled unless the sanitized remote-comparison gate is explicitly retained. With DNS and outbound traffic unavailable, verify cold-start readiness, one synthetic Laya observation, unchanged deterministic output, and zero attempted remote replay. Restore connectivity only after that gate. Verify rollback by setting `SYSTEM_ONE_SHADOW_MODE=off` and restarting.
 
 - [ ] **Step 5: Stop before cloud publication or authority promotion**
 

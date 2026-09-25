@@ -17,6 +17,7 @@
     "@aws-sdk/client-sqs": "3.1126.0",
     "@langchain/langgraph": "^1.4.12",
     "@langchain/langgraph-checkpoint-postgres": "1.0.5",
+    "@receptron/laya": "0.1.1",
     "@temporalio/client": "1.23.0",
     "@temporalio/worker": "1.23.0",
     "@temporalio/workflow": "1.23.0",

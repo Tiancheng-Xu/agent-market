@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "agent-market-system-one-dual-shadow-v1",
+  "generatedFrom": "2026-09-21T00:00:00.000Z",
+  "status": {
+    "deterministicAuthority": "host-only",
+    "laya": "synthetic-provider-fixture",
+    "jev": "synthetic-provider-fixture",
+    "providerAuthority": "prohibited"
+  },
+  "metrics": {
+    "caseCount": 13,
+    "agreementCounts": {
+      "all": 3,
+      "insufficient": 9,
+      "none": 1
+    },
+    "fallbackCounts": {
+      "below_threshold": 2,
+      "invalid_response": 4,
+      "out_of_pool": 2,
+      "disabled": 3,
+      "missing_key": 1,
+      "server_error": 1,
+      "timeout": 2
+    },
+    "fakeLayaProviderCalls": 11,
+    "fakeJevProviderCalls": 9,
+    "realTypeSafeRequests": 0,
+    "deferredRemoteReplays": 0,
+    "hardFilterViolations": 0,
+    "authorityMutations": 0
+  },
+  "portableTestBoundary": {
+    "realAdaptersExecuted": false,
+    "networkIsolation": "not-measured",
+    "modelAndPackageDownloads": "not-measured",
+    "releaseGateRequired": "hash-pinned-laya-with-network-denied"
+  }
+}

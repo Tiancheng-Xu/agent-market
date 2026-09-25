@@ -1,10 +1,13 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import {
   QueenGraphqlRequestSchema,
   RequiredWorkflowStages,
   TaskGraphSchema,
   type AgentCandidate,
+  type AgentMatchDecisionV1,
+  type AgentQualityDecisionV1,
+  type DisputeRouteDecisionV1,
   type NodeAssignment,
   type QueenGraphqlRequest,
   type QueenMutationName,
@@ -15,6 +18,7 @@ import {
 import { selectThreeWithAudit } from "./queen-ranking";
 import { createQueenFrameworkRuntime, type QueenFrameworkRuntime } from "./queen-workflow-runtime";
 import type { QueenWorkflowSnapshot, QueenWorkflowStore } from "./queen-workflow-store";
+import type { SystemOneShadowCoordinator } from "./system-one-shadow-coordinator";
 
 const canonicalModelIdentity = (modelTag: string) => modelTag.trim().toLowerCase();
 
@@ -54,6 +58,8 @@ export type QueenOrchestratorOptions = {
   frameworkRuntime?: QueenFrameworkRuntime;
   allowOwnerOnlyAgents?: boolean;
   workflowStore?: QueenWorkflowStore;
+  systemOneShadow?: SystemOneShadowCoordinator;
+  systemOneShadowRefKey?: string;
 };
 
 export type QueenGraphqlResponse = {
@@ -65,6 +71,9 @@ export type QueenGraphqlResponse = {
 };
 
 export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
+  if (options.systemOneShadow !== undefined && (options.systemOneShadowRefKey?.length ?? 0) < 32) {
+    throw new Error("SYSTEM_ONE_SHADOW_HMAC_KEY_REQUIRED");
+  }
   const now = options.now ?? (() => new Date());
   const tasks = new Map<string, QueenTaskRecord>();
   const operationTasks = new WeakMap<Record<string, unknown>, Map<string, QueenTaskRecord>>();
@@ -104,7 +113,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
             response = data("amendTaskGraph", amendTaskGraph(input));
             break;
           case "RankNodeAgents":
-            response = data("rankNodeAgents", rankNodeAgents(input));
+            response = data("rankNodeAgents", await rankNodeAgents(input));
             break;
           case "SelectNodeAgent":
             response = data("selectNodeAgent", selectNodeAgent(input));
@@ -255,7 +264,7 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
     };
   }
 
-  function rankNodeAgents(input: Record<string, unknown>) {
+  async function rankNodeAgents(input: Record<string, unknown>) {
     const task = taskFor(input);
     assertTaskMutable(task);
     const nodeId = stringInput(input, "nodeId");
@@ -303,13 +312,36 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       });
       task.graphConfirmedRevision = undefined;
     }
-    return {
+    const result = {
       nodeId,
       candidates,
       autoSelectedAgentId,
       rankingPolicy: "hard-filter-two-history-one-seeded-cold-start-decayed-window-quality-owner-scope-distinct-model-v1",
       matchingAudit: selection.audit,
     };
+    if (options.systemOneShadow !== undefined) {
+      const decision: AgentMatchDecisionV1 = {
+        schemaVersion: 1,
+        decisionType: "agent_match",
+        decisionId: shadowRef(options.systemOneShadowRefKey!, "match", task.taskId, nodeId, String(task.graph.graphRevision)),
+        taskRefHmac: taskRef(options.systemOneShadowRefKey!, task.taskId),
+        requiredCapabilityCodes: opaqueCodes(options.systemOneShadowRefKey!, task.taskId, requiredCapabilities, "completion"),
+        candidates: candidates.map((candidate) => ({
+          candidateRef: shadowRef(options.systemOneShadowRefKey!, "candidate", task.taskId, candidate.agentId),
+          passedImplementedGates: true,
+          passedAllRequiredGates: true,
+          capabilityMatch: true,
+          health: candidate.status === "online" ? "online" : "degraded",
+          costBucket: costBucket(candidate.costPer1kTokensUsd),
+          latencyBucket: latencyBucket(candidate.latencyMs),
+          qualityBucket: Math.max(1, Math.min(5, Math.ceil(candidate.qualityScore * 5))),
+          newcomer: (candidate.scoreEvents?.length ?? 0) === 0,
+          allowedRiskCodes: opaqueCodes(options.systemOneShadowRefKey!, task.taskId, candidate.riskCodes),
+        })),
+      };
+      await options.systemOneShadow.observeMatch(result, decision).catch(() => undefined);
+    }
+    return result;
   }
 
   function selectNodeAgent(input: Record<string, unknown>) {
@@ -467,6 +499,42 @@ export function createQueenOrchestrator(options: QueenOrchestratorOptions) {
       status: redTeamRequired ? "needs_revision" : "approved",
     };
     task.judgments.set(nodeId, judgment);
+    if (options.systemOneShadow !== undefined) {
+      const taskRefHmac = taskRef(options.systemOneShadowRefKey!, task.taskId);
+      const qualityDecision: AgentQualityDecisionV1 = {
+        schemaVersion: 1,
+        decisionType: "agent_quality",
+        decisionId: shadowRef(options.systemOneShadowRefKey!, "quality", task.taskId, nodeId),
+        taskRefHmac,
+        candidateRef: shadowRef(options.systemOneShadowRefKey!, "candidate", task.taskId, output.executorAgentId),
+        completionStatus: verdict === "approved" ? "completed" : verdict === "needs_revision" ? "needs_revision" : "failed",
+        retryBucket: "none",
+        latencyBucket: "unknown",
+        costBucket: "unknown",
+        evidenceCompleteness: "complete",
+        reasonCodes: [verdict === "approved" ? "judge_approved" : "judge_requires_review"],
+      };
+      const observations: Array<Promise<unknown>> = [
+        options.systemOneShadow.observeQuality(judgment, qualityDecision),
+      ];
+      if (redTeamRequired) {
+        const disputeDecision: DisputeRouteDecisionV1 = {
+          schemaVersion: 1,
+          decisionType: "dispute_route",
+          decisionId: shadowRef(options.systemOneShadowRefKey!, "dispute", task.taskId, nodeId),
+          taskRefHmac,
+          riskLevel: task.graph.riskLevel,
+          judgeOutcome: verdict,
+          retryBucket: "none",
+          evidenceCompleteness: "complete",
+          highRiskPolicyLocked: task.graph.riskLevel === "high",
+          permittedRoutes: ["red_team", "repair", "ai_final_arbiter_review"],
+          reasonCodes: ["judge_requires_review"],
+        };
+        observations.push(options.systemOneShadow.observeDispute(judgment, disputeDecision));
+      }
+      await Promise.allSettled(observations);
+    }
     return data("judgeNodeOutput", judgment);
   }
 
@@ -920,6 +988,33 @@ function parseJudgeText(value: string): { verdict: "approved" | "needs_revision"
   if (verdict === undefined || scoreMatch?.[1] === undefined) return undefined;
   const score = Number(scoreMatch[1]);
   return Number.isFinite(score) && score >= 0 && score <= 1 ? { verdict, score } : undefined;
+}
+
+function shadowRef(key: string, ...parts: string[]): string {
+  return createHmac("sha256", key).update(parts.join("\u0000")).digest("hex");
+}
+
+function taskRef(key: string, taskId: string): string {
+  return shadowRef(key, "task", taskId);
+}
+
+function opaqueCodes(key: string, taskId: string, values: readonly string[], fallback?: string): string[] {
+  const source = values.length > 0 ? values : fallback === undefined ? [] : [fallback];
+  return [...new Set(source.map((value) => shadowRef(key, "code", taskId, value)))];
+}
+
+function costBucket(costPer1kTokensUsd: number): "free" | "low" | "medium" | "high" {
+  if (costPer1kTokensUsd === 0) return "free";
+  if (costPer1kTokensUsd <= 0.005) return "low";
+  if (costPer1kTokensUsd <= 0.02) return "medium";
+  return "high";
+}
+
+function latencyBucket(latencyMs: number | undefined): "fast" | "medium" | "slow" | "unknown" {
+  if (latencyMs === undefined) return "unknown";
+  if (latencyMs <= 500) return "fast";
+  if (latencyMs <= 2_000) return "medium";
+  return "slow";
 }
 
 function safeMessage(error: unknown): string {

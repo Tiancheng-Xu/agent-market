@@ -2,14 +2,18 @@ export {
   CANONICAL_OLLAMA_ORIGIN,
   DEFAULT_OWNER_MODEL,
   DEFAULT_OWNER_MODEL_DIGEST,
+  PINNED_LAYA_MODEL_HASHES,
+  PINNED_LAYA_MODEL_REVISION,
   PROVIDER_MANAGED_DIGEST,
   assertCanonicalOllamaOrigin,
   isModelAllowed,
   parseJevShadowConfig,
   parseRunnerConfig,
+  parseSystemOneShadowConfig,
   type JevShadowConfig,
   type RunnerConfig,
   type RunnerEnv,
+  type SystemOneShadowConfig,
 } from "./config";
 export {
   OllamaClient,
@@ -66,3 +70,34 @@ export {
   type JevShadowObserved,
   type JevShadowResult,
 } from "./jev-decision-adapter";
+export {
+  probabilityMargin,
+  validateChoiceAnswer,
+  validateScoreAnswer,
+  type SystemOneDecisionFallback,
+  type SystemOneDecisionObserved,
+  type SystemOneDecisionProvider,
+  type SystemOneDecisionResult,
+  type SystemOneProviderName,
+} from "./system-one-decision-provider";
+export {
+  createLayaDecisionAdapter,
+  type LayaDecisionAdapter,
+  type LayaDecisionAdapterConfig,
+  type LayaReadiness,
+  type LayaSession,
+} from "./laya-decision-adapter";
+export {
+  createSystemOneShadowCoordinator,
+  type SystemOneShadowCoordinator,
+  type SystemOneShadowDiagnostic,
+  type SystemOneShadowEvidence,
+  type SystemOneShadowObservation,
+} from "./system-one-shadow-coordinator";
+export {
+  SYSTEM_ONE_SHADOW_POLICY,
+  createSystemOneRuntime,
+  type SystemOneRuntime,
+  type SystemOneRuntimeDependencies,
+  type SystemOneRuntimeReadiness,
+} from "./system-one-runtime";

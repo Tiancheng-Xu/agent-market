@@ -2,7 +2,7 @@
 
 > **给代理工作者：** 必须使用子技能：用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 逐项实施本计划。各步骤使用复选框（`- [ ]`）语法跟踪。
 
-**目标：** 增加由本地 Laya 和托管式 Jev 组成的双影子决策平面，在记录脱敏对照证据的同时，保持现有 Agent Market 确定性工作流的最终决策权。
+**目标：** 增加由具备离线能力的本地 Laya 和可选托管式 Jev 组成的双影子决策平面，在记录脱敏对照证据的同时，保持现有 Agent Market 确定性工作流的最终决策权。
 
 **架构：** 把当前 Jev 结果抽象为与提供方无关的接口，在注入式懒加载会话之后实现 Laya，并在一个始终返回确定性基线的协调器中比较两个提供方。只有当 `SYSTEM_ONE_SHADOW_MODE=dual-shadow` 时，本地运行时才能预加载经过哈希固定的 ONNX 包；关闭模式不导入任何模型，也不需要任何提供方凭据。
 
@@ -16,7 +16,9 @@
 - 本阶段只支持 `off` 和 `dual-shadow`；不得定义 `laya-primary` 或 `jev-primary`。
 - Laya 模型修订版为 `68f27dfe5a27a54fb2b1fefc432f43f972e90868`；计算图 SHA-256 为 `a874eb254b58b0fcb1e7ad56fbb188c29d64e08c9a46b689433e1f52c66dba1e`；数据 SHA-256 为 `487746363a8da57bcadb4345352997d22a0fb90d70aa22c6856668d023242aba`。
 - Laya 权重必须留在 Git 之外，任务执行或启动期间绝不能下载。
+- 完成一次性预置后，Laya 冷启动和推理必须能在没有 DNS、默认路由、包仓库、模型仓库或 HTTP 访问的情况下工作。资产缺失时只回退，绝不触发下载。
 - `TYPESAFE_API_KEY` 必须继续作为服务端机密输入，绝不能进入文件、浏览器代码、日志、fixture 或 Evidence。
+- Jev 只是可选的在线对照。离线决策绝不能排队等待远程上传，也不能在重连后补放。
 - 提供方输入只能包含不透明引用、HMAC、分桶状态、原因代码和宿主允许的选项。
 - 不创建或更改任何 AWS、Cloudflare、数据库、链、付费共享资源、Clash 设置或系统代理。
 - 所有实现和验证都在 Node `>=22 <23` 下运行；仓库 lockfile 只能因固定版本的 Laya 依赖而变更。
@@ -25,8 +27,11 @@
 
 - `3.97` 这类小数 `score` 输出必须保留小数；验证它的五标签分布时，不得把分数伪装成已选标签。
 - `off` 模式不得导入 ONNX Runtime、读取模型文件状态、加载 1.6 GiB 权重或要求 Jev 密钥。
+- 关闭 Jev 的 `dual-shadow` 必须能在没有密钥和任何出站网络调用的情况下加载并运行 Laya；Jev 故障不得禁用 Laya，也不得让 Laya 延迟超过配置上限。
 - Laya 选择了候选池或路由池之外的选项时，必须像 Jev 一样安全失败。
 - 超时不会取消 ONNX 计算；必须忽略迟到的提供方结果，且绝不能重复写入 Evidence。
+- 每个提供方最多保留一个未结束调用，并限制待处理 Evidence 数量；容量跳过的决策不得排队等待稍后发送。
+- `calibrated: false` 禁止提供方取得业务决策权，而不是禁止采集影子观测；只有协调器能消费提供方结果，且始终将确定性基线返回给宿主。
 - 双影子提供方发生分歧或故障时，必须保留确定性基线，并且只能发出经过脱敏、范围受限的元数据。
 
 ---
@@ -218,6 +223,8 @@ type LayaSession = {
 - 后续调用复用同一个会话；
 - choice、小数 score 和 dispute 答案能被正确标准化；
 - 低置信度、格式错误的分布、候选池外选项、加载失败和超时都会回退；
+- 让 DNS/HTTP 失败的网络哨兵不会被模型验证、会话加载或推理触碰；
+- 模型文件缺失或损坏时，系统会回退，且不调用任何下载器或远程加载器；
 - `close()` 只关闭已加载的会话，并且是幂等的。
 
 - [ ] **步骤 2：确认 RED，因为 Laya 适配器尚不存在**
@@ -243,9 +250,9 @@ return Laya.load({ modelDir, executionProviders: ["cpu"] });
 
 复用 Jev 的问题文本和标准。用共用的提供方辅助函数验证输出，并应用相同阈值策略。模型表示为 `laya@${revision}`；提供用量时表示为 `{ inputTokens }`。
 
-- [ ] **步骤 6：验证适配器和依赖边界**
+- [ ] **步骤 6：验证适配器、离线包和依赖边界**
 
-运行 local-agent-runner 的测试／类型检查、`pnpm install --offline --frozen-lockfile`，并搜索仓库，证明没有模型二进制文件或本地模型路径被跟踪。
+运行 local-agent-runner 的测试／类型检查和 `pnpm install --offline --frozen-lockfile`。使用精确的生产产物，关闭 DNS 和出站网络，冷启动 Laya，并通过已验证哈希的模型包执行一个合成决策。断言没有尝试发起包、模型、更新、遥测或联网检测请求。验证部署包已包含所需 Node 依赖和原生 ONNX Runtime 二进制文件。搜索仓库，证明没有模型二进制文件或本地模型路径被跟踪。
 
 - [ ] **步骤 7：提交 Laya 提供方**
 
@@ -274,7 +281,7 @@ git commit -m "feat: add hash-pinned local Laya provider"
 expect(parseSystemOneShadowConfig({})).toEqual({ mode: "off" });
 ```
 
-对 `dual-shadow`，要求 `LAYA_MODEL_DIR` 是绝对路径、使用精确的固定修订版、`LAYA_TIMEOUT_MS` 是 100–10,000 范围内的整数，并且单独解析可选 Jev 配置。拒绝未知模式、相对路径、错误修订版和超出范围的超时。
+对 `dual-shadow`，要求 `LAYA_MODEL_DIR` 是绝对路径、使用精确的固定修订版、`LAYA_TIMEOUT_MS` 是 100–10,000 范围内的整数，并且单独解析可选 Jev 配置。证明 `JEV_SHADOW_ENABLED=false` 既不需要密钥，也不需要联网。拒绝未知模式、相对路径、错误修订版和超出范围的超时。
 
 - [ ] **步骤 2：确认 RED，然后实现带判别字段的解析器**
 
@@ -356,7 +363,7 @@ git commit -m "feat: observe system-one decisions without authority"
 
 - [ ] **步骤 1：编写失败的生命周期测试**
 
-断言关闭模式不创建任何提供方。双影子模式只创建一次 Laya；只有在显式启用且提供密钥时才创建 Jev；并且通过一条幂等关闭路径，在 `SIGINT` 和 `SIGTERM` 时关闭已加载的提供方。
+断言关闭模式不创建任何提供方。双影子模式只创建一次 Laya，且只有在显式启用并提供密钥时才创建 Jev。关闭 Jev 时，DNS 缺失和默认路由缺失都不影响 Laya。启用 Jev 但无法连接时，有界回退不会停止 Laya 或改变基线，也不会在模拟重连后排队或补放请求。通过一条幂等关闭路径，在 `SIGINT` 和 `SIGTERM` 时关闭已加载的提供方。
 
 - [ ] **步骤 2：实现运行时组合**
 
@@ -364,7 +371,7 @@ git commit -m "feat: observe system-one decisions without authority"
 
 - [ ] **步骤 3：增加冻结的合成对照案例**
 
-至少包含：明确匹配、模糊匹配、小数质量分数、格式错误的分数分布、高风险争议、候选池外选项、模型缺失、密钥缺失、提供方分歧和超时。fixture 使用注入的传输层／会话；测试不发起任何真实网络请求。
+至少包含：明确匹配、模糊匹配、小数质量分数、格式错误的分数分布、高风险争议、候选池外选项、模型缺失、模型哈希损坏、密钥缺失、Laya 完全离线、Jev 无法连接、提供方分歧和超时。fixture 使用注入的传输层／会话；测试不发起任何真实网络请求，并断言没有延迟远程补放。
 
 - [ ] **步骤 4：根据实际执行的案例生成 Evidence**
 
@@ -383,7 +390,7 @@ node scripts/validate-repository.mjs
 git diff --check
 ```
 
-还要针对已经通过哈希验证的模型包运行离线本地冒烟测试。发布门禁期间不得调用 Jev；较早的三案例 API 探测仍只是可行性证据，而不是可重复测试。
+还要针对已经通过哈希验证的模型包，在 DNS 和出站流量被拒绝时运行一次冷启动离线本地冒烟测试。记录网络守卫结果，并证明不需要密钥即可完成一次 Laya 观测和确定性基线。发布门禁期间不得调用 Jev；较早的三案例 API 探测仍只是可行性证据，而不是可重复测试。
 
 - [ ] **步骤 6：提交运行时和 Evidence**
 
@@ -416,7 +423,7 @@ git commit -m "feat: wire local dual-shadow lifecycle"
 
 - [ ] **步骤 4：集成后只激活本地 `dual-shadow`**
 
-使用固定的外部模型目录和 `SYSTEM_ONE_SHADOW_MODE=dual-shadow` 启动本地 Runner。除非明确保留了脱敏远程对照门禁，否则 Jev 对照保持关闭。验证就绪状态和一次合成本地观测；回滚时把 `SYSTEM_ONE_SHADOW_MODE=off` 并重启。
+使用固定的外部模型目录和 `SYSTEM_ONE_SHADOW_MODE=dual-shadow` 启动本地 Runner。除非明确保留了脱敏远程对照门禁，否则 Jev 对照保持关闭。在 DNS 和出站流量不可用时，验证冷启动就绪、一次合成 Laya 观测、确定性输出不变，以及没有尝试远程补放。只有通过该门禁后才恢复网络。回滚时把 `SYSTEM_ONE_SHADOW_MODE=off` 并重启。
 
 - [ ] **步骤 5：在云端发布或权限晋级之前停止**
 

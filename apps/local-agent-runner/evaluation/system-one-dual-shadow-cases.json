@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "agent-market-system-one-dual-shadow-v1",
+  "frozenAt": "2026-09-21T00:00:00.000Z",
+  "scope": "synthetic-only",
+  "cases": [
+    { "id": "clear-match", "decisionType": "agent_match", "laya": { "status": "observed", "value": "candidate_a" }, "jev": { "status": "observed", "value": "candidate_a", "fakeTransportCalls": 1 } },
+    { "id": "ambiguous-match", "decisionType": "agent_match", "laya": { "status": "fallback", "reason": "below_threshold" }, "jev": { "status": "fallback", "reason": "below_threshold", "fakeTransportCalls": 1 } },
+    { "id": "fractional-quality", "decisionType": "agent_quality", "laya": { "status": "observed", "value": 3.97 }, "jev": { "status": "observed", "value": 3.97, "fakeTransportCalls": 1 } },
+    { "id": "malformed-score-distribution", "decisionType": "agent_quality", "laya": { "status": "fallback", "reason": "invalid_response" }, "jev": { "status": "fallback", "reason": "invalid_response", "fakeTransportCalls": 1 } },
+    { "id": "high-risk-dispute", "decisionType": "dispute_route", "laya": { "status": "observed", "value": "red_team" }, "jev": { "status": "observed", "value": "red_team", "fakeTransportCalls": 1 } },
+    { "id": "out-of-pool-choice", "decisionType": "agent_match", "laya": { "status": "fallback", "reason": "out_of_pool" }, "jev": { "status": "fallback", "reason": "out_of_pool", "fakeTransportCalls": 1 } },
+    { "id": "missing-model", "decisionType": "agent_match", "laya": { "status": "fallback", "reason": "invalid_response", "sessionCalls": 0 }, "jev": { "status": "fallback", "reason": "disabled" } },
+    { "id": "corrupt-model-hash", "decisionType": "agent_match", "laya": { "status": "fallback", "reason": "invalid_response", "sessionCalls": 0 }, "jev": { "status": "fallback", "reason": "disabled" } },
+    { "id": "missing-key", "decisionType": "agent_match", "laya": { "status": "observed", "value": "candidate_a" }, "jev": { "status": "fallback", "reason": "missing_key" } },
+    { "id": "fully-offline-laya", "decisionType": "agent_match", "laya": { "status": "observed", "value": "candidate_a" }, "jev": { "status": "fallback", "reason": "disabled" } },
+    { "id": "unreachable-jev", "decisionType": "agent_match", "laya": { "status": "observed", "value": "candidate_a" }, "jev": { "status": "fallback", "reason": "server_error", "fakeTransportCalls": 1 } },
+    { "id": "provider-disagreement", "decisionType": "agent_match", "laya": { "status": "observed", "value": "candidate_a" }, "jev": { "status": "observed", "value": "candidate_b", "fakeTransportCalls": 1 } },
+    { "id": "bounded-timeout", "decisionType": "agent_match", "laya": { "status": "fallback", "reason": "timeout" }, "jev": { "status": "fallback", "reason": "timeout", "fakeTransportCalls": 1 } }
+  ]
+}

@@ -142,13 +142,13 @@
           "quality": {
             "type": "score",
             "score": 3,
-            "confidence": 0.9,
+            "confidence": 1,
             "probabilities": {
-              "0": 0.01,
-              "1": 0.02,
-              "2": 0.05,
-              "3": 0.9,
-              "4": 0.02
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 1,
+              "4": 0
             },
             "legend": {
               "0": "unusable",

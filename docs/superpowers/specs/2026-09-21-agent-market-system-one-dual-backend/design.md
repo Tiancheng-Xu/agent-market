@@ -2,7 +2,7 @@
 
 ## 1. Goal
 
-Add a provider-neutral System-One decision plane to Agent Market so that Laya can run locally for private, low-latency shadow decisions while Jev remains available as a hosted comparison backend. Neither provider receives routing, scoring-ledger, dispute, wallet, permission, randomness, or settlement authority until task-specific calibration gates pass.
+Add a provider-neutral System-One decision plane to Agent Market so that Laya can run locally for private, low-latency shadow decisions while Jev remains available as a hosted comparison backend. A provisioned local device must keep running Laya when it has no Internet connection; Jev is an optional online comparison, never an availability dependency. Neither provider receives routing, scoring-ledger, dispute, wallet, permission, randomness, or settlement authority until task-specific calibration gates pass.
 
 ## 2. Current evidence
 
@@ -56,7 +56,9 @@ The normalized observed result records provider, actual model revision, selected
 
 ### 5.2 Laya provider
 
-The Laya adapter runs only inside the local Agent Runner process. It loads a pinned local ONNX bundle from a configured directory, never downloads weights during a task, uses CPU by default, and exposes readiness separately from process health. Model files stay outside Git and browser bundles.
+The Laya adapter runs only inside the local Agent Runner process. It loads a pinned local ONNX bundle from a configured directory, never downloads weights during startup or a task, uses CPU by default, and exposes readiness separately from process health. Model files stay outside Git and browser bundles.
+
+Offline operation is a deployment contract, not a best-effort optimization. Before a device goes offline, the ONNX graph/data, manifest and hashes, Node packages, and native ONNX Runtime binary must already be provisioned by a separate installation step or removable media. After provisioning, cold start and inference perform zero DNS, HTTP, or model-registry calls. Missing or corrupt local assets fail closed to the deterministic baseline and must never trigger an automatic download.
 
 The initial implementation uses the verified English checkpoint because Agent Market sends bucketed English codes and descriptions. Multilingual or fine-tuned checkpoints require a separate frozen evaluation and new pinned hashes.
 
@@ -64,18 +66,22 @@ The initial implementation uses the verified English checkpoint because Agent Ma
 
 The Jev adapter remains server-side and uses the existing macOS Keychain-to-environment launch boundary. It sends only opaque references, HMACs, bucketed attributes, reason codes, and permitted choices. It never sends raw prompts, conversations, source code, local paths, wallets, credentials, or database rows.
 
+Jev is disabled by default on devices that cannot guarantee connectivity. When enabled but unreachable, its failure is isolated as a bounded fallback; Laya and the deterministic host continue. The runtime does not probe a third-party connectivity endpoint, queue private decisions for later upload, or replay missed Jev comparisons when connectivity returns.
+
 The live response parser must accept fractional expected scores from `0` through `4`, while probability labels remain the discrete levels `0` through `4`.
 
 ### 5.4 Dual-shadow coordinator
 
 The only new deployable mode in this phase is `dual-shadow`. For every eligible sampled decision:
 
-1. Run the deterministic baseline.
-2. Run Laya locally.
-3. Optionally run Jev on the same sanitized state when the remote comparison budget and privacy policy allow it.
+1. Run the deterministic baseline and return it to the host without waiting for either provider.
+2. Start Laya locally as a bounded background observation.
+3. Optionally start Jev on the same sanitized state when connectivity, the remote comparison budget, and privacy policy allow it.
 4. Normalize and validate both results.
 5. Record agreement, disagreement, abstention, latency, model version, and result hashes.
-6. Return the deterministic baseline to the host workflow regardless of provider output.
+6. Drain outstanding observations on explicit runtime shutdown; provider or sink latency never holds the request path open.
+
+Bound provider work to one in-flight call per provider by default and bound pending observation/Evidence work. When either cap is full, do not queue a decision for later provider execution; record a capacity skip when the bounded Evidence path has room, otherwise drop the observation with a diagnostic. A timeout does not release a provider slot until the underlying call settles, because ONNX work may not be cancellable.
 
 There is no `laya-primary` or `jev-primary` mode in this phase. A missing model, missing key, timeout, malformed distribution, out-of-pool choice, low confidence, low margin, or provider disagreement preserves the deterministic result.
 
@@ -92,11 +98,11 @@ JEV_SHADOW_ENABLED=false
 JEV_SHADOW_TIMEOUT_MS=3000
 ```
 
-`TYPESAFE_API_KEY` remains secret-only and is never stored in configuration files. Startup validates the Laya file hashes before marking the provider ready. Shutdown closes the ONNX session. Turning `SYSTEM_ONE_SHADOW_MODE=off` is the kill switch and must require no model or key.
+`TYPESAFE_API_KEY` remains secret-only and is never stored in configuration files. Startup validates the Laya file hashes before marking the provider ready, without reaching the network. Shutdown closes the ONNX session. Turning `SYSTEM_ONE_SHADOW_MODE=off` is the kill switch and must require no model or key. With `dual-shadow` and `JEV_SHADOW_ENABLED=false`, local Laya observation must work without a key, DNS, or a default route. Provider or Evidence-sink network failures must not block the host path; no automatic remote replay is permitted.
 
 ## 7. Evaluation and promotion gates
 
-The existing six synthetic cases remain contract tests, not accuracy evidence. Promotion requires a frozen, labeled, sanitized dataset drawn from Agent Market decision shapes with difficult and negative cases.
+The runtime policy remains `calibrated: false`: provider outputs are observation-only and can never affect a host decision. In `dual-shadow`, enabled providers may still run on sanitized inputs so they can be evaluated; threshold failures, abstentions, capacity skips, and errors are recorded as non-authoritative outcomes. The existing synthetic cases remain contract tests, not accuracy evidence. Promotion requires a frozen, labeled, sanitized dataset drawn from Agent Market decision shapes with difficult and negative cases.
 
 For each decision type compare deterministic baseline, Laya, and Jev on:
 
@@ -119,7 +125,7 @@ Evidence must not store API keys, raw prompts, private messages, source code, lo
 
 ## 9. Deployment and rollback
 
-This phase deploys to the local Agent Runner only. It creates no AWS, Cloudflare, database, chain, or paid shared resources. The ONNX bundle is pre-provisioned and hash-verified before launch. Production rollout order is:
+This phase deploys to the local Agent Runner only. It creates no AWS, Cloudflare, database, chain, or paid shared resources. The ONNX bundle and all runtime dependencies are pre-provisioned and hash-verified before launch. The offline artifact must be complete enough to cold-start without a package registry, model registry, DNS, or HTTP. Production rollout order is:
 
 1. fix the fractional-score parser;
 2. add provider-neutral contracts and adapters under tests;
@@ -134,7 +140,11 @@ Rollback sets `SYSTEM_ONE_SHADOW_MODE=off`, restarts the local runner, and optio
 
 - Node 22 tests and typechecks pass.
 - A real fractional Jev score is accepted and normalized without rounding.
-- Laya runs from the pinned local bundle without network access.
+- After one-time provisioning, Laya cold-starts and runs from the pinned local bundle with outbound network and DNS unavailable.
+- Offline startup performs no package, model, update, telemetry, or connectivity-check request.
+- Missing or corrupt Laya assets fall back to the deterministic baseline without attempting a download.
+- Jev unavailability never disables Laya, blocks the host path beyond its configured bound, or causes deferred replay after reconnection.
+- Provider concurrency and pending Evidence work have explicit limits; saturated providers are not given queued decisions after capacity becomes available.
 - Both providers reject malformed distributions and out-of-pool choices.
 - Dual-shadow never changes the deterministic route, score ledger, dispute state, shuffle, permission, fund, wallet, or chain state.
 - Missing Laya files and missing Jev credentials fail closed to the deterministic baseline.
