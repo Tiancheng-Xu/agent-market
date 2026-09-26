@@ -1,6 +1,6 @@
 # Agent Market authoritative TODO
 
-Updated: 2026-09-25
+Updated: 2026-09-26
 Status: **complete / production Evidence verified**
 
 This is the single active delivery queue. Historical checklists are evidence of
@@ -34,14 +34,14 @@ falsifiable acceptance.
 
 ## Post-release extension: System-One Jev/Laya shadow integration (2026-09-24)
 
-Status: **implemented; the earlier Node 22 verification is recorded, but the latest Score-consistency guard has only been re-verified on Node 24; not merged or deployed**. The deterministic baseline remains authoritative, the mode defaults to `off`, and the provider policy remains `calibrated: false`.
+Status: **implemented; Node 22 verification and offline runtime evidence pass; not merged or deployed**. The deterministic baseline remains authoritative, the mode defaults to `off`, and the provider policy remains `calibrated: false` pending labeled evaluation.
 
 - [x] Add provider-neutral decision contracts, Jev and local Laya adapters, sanitized Queen decision inputs, and dual-shadow Evidence.
 - [x] Keep provider work off the request path; return the deterministic baseline immediately and drain bounded observations only during shutdown.
 - [x] Preserve per-provider capacity until timed-out underlying work settles; bound shutdown waiting and defer Laya session close until inference safely settles.
 - [x] Verify Node 22 local-agent-runner tests (199 passed, 8 skipped), shared-contract tests (61 passed), and local-agent-runner typecheck.
 - [x] Install and hash-verify the local ONNX assets, then prove cold start and inference with DNS and outbound network unavailable; missing assets must fall back without downloads. **2026-09-25:** the pinned bundle hashes match; Node 22.23.2 completed synthetic match, quality, and dispute inferences inside a network-denied OS sandbox (`fetch` calls: 0). The full Agent Runner suite passed 199 tests (8 skipped) and typecheck passed. Evidence: `docs/evidence/testing/2026-09-25-laya-offline-smoke.json`.
-- [ ] Re-run the full Agent Runner suite on Node 22 after the 2026-09-25 Score/probability expected-value guard; the latest suite is Node 24.20.0 only (203 passed, 8 skipped), with typecheck and repository/evidence validation passing.
+- [x] Re-run the full Agent Runner suite on Node 22 after the 2026-09-25 Score/probability expected-value guard. **2026-09-26:** Node 22.23.1 passed 203 tests (8 skipped across 7 skipped files); Agent Runner typecheck, repository validation, Evidence validation, and `git diff --check` also passed.
 - [ ] Run a frozen, de-identified, labeled evaluation for each decision type; review calibration, abstention, disagreement, latency, and cost before any provider can affect a workflow. The current 13-case fixture remains synthetic-only; the three-case real-model offline smoke proves runtime readiness only, not decision quality. A representative labeled dataset, calibration results, and Jev comparison are still absent.
 - [ ] After those gates, open a PR and run repository CI plus the required preview/readback before considering production rollout.
 
