@@ -27,6 +27,36 @@ function stream(markup: string): ReadableStream<Uint8Array> {
 }
 
 describe("Cloudflare Pages edge renderer", () => {
+  it("preserves public PRD clean URLs as static assets without widening document routes", async () => {
+    let renderCalls = 0;
+    const handler = createPagesHandler({
+      version: "test",
+      async render(pathname) {
+        renderCalls += 1;
+        return stream(`<h1>${pathname}</h1>`);
+      },
+      logger: { info() {}, error() {} },
+    });
+    const document = '<!doctype html><html><body><h1>完整项目 PRD</h1></body></html>';
+    const env: PagesEnvironment = {
+      ASSETS: { async fetch(request) {
+        const path = new URL(request.url).pathname;
+        return new Response(path === "/index.html" ? template : document);
+      } },
+    };
+    for (const path of ["/evidence/prd.html", "/evidence/prd", "/evidence/prd/"]) {
+      const response = await handler.fetch(new Request(`https://market.example${path}`, {
+        headers: { accept: "text/html" },
+      }), env);
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe(document);
+    }
+    expect(renderCalls).toBe(0);
+    for (const path of ["/evidence/missing", "/evidence/prd-extra", "/evidence/prd/nested"]) {
+      const response = await handler.fetch(new Request(`https://market.example${path}`), environment());
+      expect(response.status).toBe(404);
+    }
+  });
   it("serves the Cocos document from static assets instead of SSR", async () => {
     let renderCalls = 0;
     const handler = createPagesHandler({

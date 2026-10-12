@@ -258,7 +258,7 @@ async function performanceHmacSha256Hex(secret: string, message: string): Promis
 function isDocumentRequest(request: Request): boolean {
   if (request.method !== "GET" && request.method !== "HEAD") return false;
   const pathname = new URL(request.url).pathname;
-  if (pathname.startsWith("/assets/") || /\.[a-z0-9]+$/i.test(pathname)) {
+  if (pathname === "/evidence/prd" || pathname === "/evidence/prd/" || pathname.startsWith("/assets/") || /\.[a-z0-9]+$/i.test(pathname)) {
     return false;
   }
   const accept = request.headers.get("accept")?.trim();
