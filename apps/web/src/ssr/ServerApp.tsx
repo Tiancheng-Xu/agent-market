@@ -1,5 +1,6 @@
 import { FullChainEvidence } from "../evidence/FullChainEvidence";
 import phase2Evidence from "../evidence/phase2-evidence.generated.json";
+import { PrdEvidenceSummary } from "../evidence/PrdEvidenceSummary";
 import { routeForPath } from "./routeDefinitions";
 import { OpsPage } from "../pages/ControlPages";
 
@@ -35,6 +36,7 @@ export function ServerApp({ pathname }: { pathname: string }) {
       {pathname.replace(/\/+$/, "") === "/evidence" ? <>
         <p data-evidence-boundary="current">{phase2Evidence.truthBoundary.en}</p>
         <p><a href="/evidence/prd.html">查看完整项目 PRD</a> · Public product requirements, architecture and interview walkthrough; designs and verified deliveries are recorded separately.</p>
+        <PrdEvidenceSummary />
         <FullChainEvidence />
       </> : null}
     </main>
