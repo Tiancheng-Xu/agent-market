@@ -1,0 +1,55 @@
+flowchart LR
+  subgraph CLIENT["Public client trust boundary"]
+    B["Browser or HTTP client"]
+  end
+  subgraph EDGE["Existing Cloudflare project boundary"]
+    W["Existing Edge worker"]
+    S["Known route: React SSR stream"]
+    A["Versioned public assets: HTML JSON Mermaid"]
+    N["Unknown document route: 404"]
+    F["Existing bounded CSR fallback"]
+    P["Transaction gates: origin method body size"]
+    X["Reject or offline response; never fabricated success"]
+  end
+  B -->|HTTPS GET| W
+  W -->|Known document route| S
+  W -->|PRD and asset path| A
+  W -->|Unknown route| N
+  S -->|HTML response| B
+  A -->|Public data response| B
+  N -->|404 response| B
+  S -->|Render failure or timeout| F
+  F -->|Fallback document| B
+  W -. API path not exercised .-> P
+  P -. Rejected request .-> X
+  X -. Error response .-> B
+  subgraph PRIVATE["External private dependencies: not accepted by this snapshot"]
+    R["Existing local or provider Agent gateway dependency"]
+    T["Existing Transaction Engine dependency"]
+    D["Private service state and cleanup ownership not inspected"]
+  end
+  W -. Agent gateway not exercised .-> R
+  P -. Permitted forwarding not exercised .-> T
+  T -. Offline branch not exercised .-> X
+  R -. Storage boundary unverified .-> D
+  T -. Storage boundary unverified .-> D
+  subgraph DELIVERY["Existing source build and public-storage ownership"]
+    G["GitHub source and existing PR checks"]
+    C["Existing Git-integrated web build"]
+    Q["Build script owns temporary dist-directory cleanup"]
+    H["Pages manages deployed public assets; maintainer owns release or rollback decisions"]
+  end
+  G --> C
+  C --> W
+  C --> A
+  C --> Q
+  A --- H
+  subgraph OBS["Observation boundary"]
+    O["Observed proof: PR checks deployment metadata HTTP probes"]
+    U["Live service logs metrics and private payloads not verified or published"]
+  end
+  G -. Read-only release evidence .-> O
+  H -. Deployment metadata .-> O
+  B -. HTTP acceptance only .-> O
+  R -. No live observability assertion .-> U
+  T -. No live observability assertion .-> U
