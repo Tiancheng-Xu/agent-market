@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "slug": "agent-market",
+  "proof": [],
+  "assets": [],
+  "architecture": {
+    "runtime": {
+      "status": "implemented",
+      "source": "architecture/runtime.mmd",
+      "description": "Web/Evidence request and data flow with known Edge routing, fallback and rejection paths, public-asset storage, source/build ownership and observed release checks. Existing Agent/transaction dependencies are explicitly outside this acceptance snapshot; live service storage, runtime logs, wallet/Cocos interaction, AWS and chain activity remain unverified. The implemented status describes this tracked architecture view, not the live availability of every depicted dependency."
+    },
+    "githubActions": {
+      "status": "unverified",
+      "note": "Historical PR checks are recorded below, but no case-local GitHub Actions architecture diagram is supplied. This view status does not relabel those successful PR runs as a new main run."
+    },
+    "preview": {
+      "status": "unverified",
+      "note": "The historical Git-integrated preview deployment recorded below passed. A separate case-local preview architecture view has not been verified; no preview for this manifest's future carrier commit is claimed here."
+    },
+    "sequence": {
+      "status": "unverified",
+      "note": "No case-local end-to-end sequence view is verified by this manifest. HTTP routing alone does not prove signed Runtime, transaction, arbitration or wallet workflows."
+    },
+    "canary": {
+      "status": "not_applicable",
+      "note": "This scoped static Evidence declaration uses the existing normal Git-integrated Pages release path. It neither implements nor claims a traffic-splitting canary rollout."
+    }
+  },
+  "meaningfulSteps": [
+    {
+      "title": "Public PRD redaction snapshot",
+      "purpose": "Keep public documentation separate from non-public preparation material and give E19 and E20 distinct evidence meanings.",
+      "designReason": "Preserve the existing visual document while correcting its public evidence boundary rather than changing Runtime behavior.",
+      "scope": "The public PRD HTML at the historical verified source snapshot 0a051dd496074ce11b650948d18113536ce4e7d1.",
+      "expected": "The public document is complete, its table-of-contents targets resolve, E19 denotes confirmed provenance, E20 denotes local enterprise-approval evidence, and the original inline styles remain unchanged.",
+      "risks": "A document or screenshot is not live Agent, transaction or cloud execution proof. Non-public source material was not edited by that recovery.",
+      "observed": "Historical snapshot verified on 2026-10-15: production deployment ec665a3c-ffd7-4b53-9b5d-95dbf53a52f7 served the accepted 94364-byte PRD. Its SHA-256 was ca80fdf5ede5869fac7dd4c9320fd96b2b28336bdc6d07e9a64c78adf8703ea7. Both legacy aliases resolved to the same accepted document.",
+      "proof": "Historical source: https://github.com/Tiancheng-Xu/agent-market/commit/0a051dd496074ce11b650948d18113536ce4e7d1 ; accepted public route: https://agent-market.baby2b.online/evidence/prd ; release record: https://github.com/Tiancheng-Xu/agent-market/pull/34 . These identify the verified snapshot, not this manifest's future carrier commit."
+    },
+    {
+      "title": "Read-only public HTTP route snapshot",
+      "purpose": "Separate valid published routes and real 404 responses from transport errors and unverified business activity.",
+      "designReason": "Use the pinned source and canonical deployment, keep accepted inputs unchanged, and retry only unresolved transport or body comparisons.",
+      "scope": "The 17 server-route classes at the historical snapshot, public Evidence and PRD aliases, and a missing-path probe with text/html and */* Accept values.",
+      "expected": "Known document routes return 200; unknown paths return 404; the PRD canonical and alias bodies preserve the accepted evidence boundary.",
+      "risks": "HTTP 200 is route acceptance only. A synthetic dispute path does not prove a real case. These observations do not establish Runtime reachability, Cocos interaction, wallet signing, current AWS execution or a production SLO.",
+      "observed": "On 2026-10-15, 23 scoped HTTP gates were accepted for source 0a051dd496074ce11b650948d18113536ce4e7d1 and canonical production deployment ec665a3c-ffd7-4b53-9b5d-95dbf53a52f7. Temporary connection/TLS errors were kept separate from product HTTP failures. This is a historical observation, not continuous monitoring.",
+      "proof": "Pinned route definitions: https://github.com/Tiancheng-Xu/agent-market/blob/0a051dd496074ce11b650948d18113536ce4e7d1/apps/web/src/ssr/routeDefinitions.ts ; snapshot deployment: https://ec665a3c.agent-market-site.pages.dev ; public Evidence route: https://agent-market.baby2b.online/evidence/ ."
+    },
+    {
+      "title": "Existing PR verification and delivery snapshot",
+      "purpose": "Retain the actual verification and deployment lineage without inventing a new main Actions result.",
+      "designReason": "Reuse successful checks whose inputs did not change and use one bounded official retry for the failed Function publication.",
+      "scope": "Historical PR 34 head 5a8a1a925f0cfd262c59093c246c291c3249db62, its three successful GitHub checks, accepted preview and merge into the verified source snapshot.",
+      "expected": "Required PR checks and the corresponding preview pass before the normal Git-integrated production release.",
+      "risks": "Historical successful PR runs are not new main runs. This manifest must not self-attest the validation or production deployment of its own future carrier commit.",
+      "observed": "Verify Run 38255475633, project-contract Run 38255476231 and policy Run 38255476300 succeeded. One official retry produced successful preview 08facefe-f9b5-4efd-b8d6-b543b456a1bc. PR 34 merged as 0a051dd496074ce11b650948d18113536ce4e7d1; its canonical production deployment was accepted separately.",
+      "proof": "https://github.com/Tiancheng-Xu/agent-market/actions/runs/38255475633 ; https://github.com/Tiancheng-Xu/agent-market/actions/runs/38255476231 ; https://github.com/Tiancheng-Xu/agent-market/actions/runs/38255476300 ; https://08facefe.agent-market-site.pages.dev ; https://github.com/Tiancheng-Xu/agent-market/pull/34 ."
+    }
+  ]
+}
