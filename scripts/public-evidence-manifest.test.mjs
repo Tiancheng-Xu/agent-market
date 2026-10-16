@@ -1,3 +1,4 @@
+import { PRIVATE_OR_SECRET } from "./public-content-safety.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, realpathSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from "node:fs";
@@ -12,6 +13,18 @@ const statuses = new Set(["implemented", "planned", "unavailable", "not_applicab
 const stepFields = ["title", "purpose", "designReason", "scope", "expected", "risks", "observed", "proof"];
 
 const privateMaterial = /\/Users\/|file:\/\/|codex:\/\/|BEGIN.{0,30}PRIVATE KEY|\u4f73\u8fbe/i;
+
+
+function containsPrivateMaterial(value) {
+  if (typeof value === "string") return PRIVATE_OR_SECRET.test(value) || privateMaterial.test(value);
+  if (value && typeof value === "object") {
+    return Object.entries(value).some(([key, item]) =>
+      containsPrivateMaterial(item) ||
+      (typeof item === "string" && PRIVATE_OR_SECRET.test(key + ": " + item))
+    );
+  }
+  return false;
+}
 
 function violations(value, root = caseRoot) {
   const errors = [];
@@ -29,7 +42,7 @@ function violations(value, root = caseRoot) {
       } else if (!existsSync(target)) errors.push("missing source:" + name);
       else if (!realpathSync(target).startsWith(realpathSync(root) + sep)) {
         errors.push("case-relative source:" + name);
-      } else if (privateMaterial.test(readFileSync(target, "utf8"))) errors.push("private material");
+      } else if (containsPrivateMaterial(readFileSync(target, "utf8"))) errors.push("private material");
       if (!view.description?.trim()) errors.push("description:" + name);
     } else if (!view.note?.trim()) errors.push("note:" + name);
   }
@@ -39,7 +52,7 @@ function violations(value, root = caseRoot) {
       if (typeof step[field] !== "string" || !step[field].trim()) errors.push("step:" + field);
     }
   }
-  if (privateMaterial.test(JSON.stringify(value))) errors.push("private material");
+  if (containsPrivateMaterial(value)) errors.push("private material");
   return errors;
 }
 
@@ -118,5 +131,45 @@ test("implemented Mermaid bodies use the same private-material gate as JSON", ()
       writeFileSync(join(root, "architecture/runtime.mmd"), "flowchart LR\n%% " + privateText + "\n");
       assert.ok(violations(document, root).includes("private material"), privateText);
     }
+  });
+});
+
+const broaderPrivateFixtures = [
+  ["linux-home", "/home/example/private/report.txt"],
+  ["windows-home", "C:\\Users\\example\\private\\report.txt"],
+  ["secret-assignment", "secret: synthetic_example_123"],
+  ["password-assignment", "password = synthetic_example_123"],
+  ["private-key-assignment", "private_key: synthetic_example_123"],
+  ["api-key-assignment", "api_key = synthetic_example_123"],
+  ["token-assignment", "token: synthetic_example_123"],
+  ["account-identifier", "account 123456789012"],
+];
+
+for (const [name, privateText] of broaderPrivateFixtures) {
+  test("JSON rejects established private marker: " + name, () => {
+    const candidate = structuredClone(document);
+    candidate.meaningfulSteps[0].proof = privateText;
+    assert.ok(violations(candidate).includes("private material"));
+  });
+  test("Mermaid rejects established private marker: " + name, () => {
+    withCaseFixture((root) => {
+      writeFileSync(join(root, "architecture/runtime.mmd"), "flowchart LR\n%% " + privateText + "\n");
+      assert.ok(violations(document, root).includes("private material"));
+    });
+  });
+}
+
+test("JSON credential fields cannot hide assignments behind serialized key quotes", () => {
+  const candidate = structuredClone(document);
+  candidate.meaningfulSteps[0].metadata = { token: "synthetic_example_123" };
+  assert.ok(violations(candidate).includes("private material"));
+});
+
+test("public credential boundary prose and relative source paths remain allowed", () => {
+  withCaseFixture((root) => {
+    const candidate = structuredClone(document);
+    candidate.meaningfulSteps[0].proof = "Provider tokens remain private; API key handling is server-side. architecture/runtime.mmd";
+    writeFileSync(join(root, "architecture/runtime.mmd"), "flowchart LR\n A[Public Evidence] --> B[No credential values]\n");
+    assert.deepEqual(violations(candidate, root), []);
   });
 });

@@ -1,3 +1,4 @@
+import { PRIVATE_OR_SECRET } from "./public-content-safety.mjs";
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,7 +42,6 @@ const REQUIRED_PUBLIC_ARTIFACTS = [
   "apps/web/public/evidence/2026-08-26-visual-route-audit.json",
   "apps/web/public/evidence/2026-08-26-cocos-office-local.json",
 ];
-const PRIVATE_OR_SECRET = /(?:\/Users\/|\/home\/[^/\s]+\/|[A-Za-z]:\\Users\\|file:\/\/|\b\d{12}\b|(?:secret|password|private[_-]?key|api[_-]?key|token)\s*[:=]\s*["']?[A-Za-z0-9_\-./+]{8,})/i;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const PNG_DEPTHS = new Map([[0, new Set([1, 2, 4, 8, 16])], [2, new Set([8, 16])], [3, new Set([1, 2, 4, 8])], [4, new Set([8, 16])], [6, new Set([8, 16])]]);
 const PNG_CHANNELS = new Map([[0, 1], [2, 3], [3, 1], [4, 2], [6, 4]]);
